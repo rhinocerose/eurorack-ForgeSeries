@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "Eurorack-Dual-Quantizer",
+			"path": "."
+		},
+		{
+			"name": "firmware",
+			"path": "firmware"
+		}
+	],
+	"settings": {}
+}
