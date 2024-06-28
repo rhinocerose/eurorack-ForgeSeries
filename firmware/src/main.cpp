@@ -1,15 +1,15 @@
 #include <FlashAsEEPROM.h> //flash memory use as eeprom
-// Display setting
+#include <Wire.h>
+#include <Encoder.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
+
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-#include <Wire.h>
+
 // Rotery encoder setting
 #define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
-#include <Encoder.h>
 
 #define ENC_PIN_1 3      // rotary encoder left pin
 #define ENC_PIN_2 6      // rotary encoder right pin
@@ -20,12 +20,21 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 #define ENV_OUT_PIN_1 1
 #define ENV_OUT_PIN_2 2
 
+// Declare function prototypes
+void OLED_display();
+void PWM1(int);
+void PWM2(int);
+void intDAC(int);
+void MCP(int);
+void save();
+
 ////////////////////////////////////////////
 // ADC calibration. Change these according to your resistor values to make readings more accurate
 float AD_CH1_calb = 0.98; // reduce resistance error
 float AD_CH2_calb = 0.98; // reduce resistance error
 /////////////////////////////////////////
 
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotery encoder library setting
 float oldPosition = -999;            // rotery encoder library setting
 float newPosition = -999;            // rotery encoder library setting
@@ -316,7 +325,7 @@ void loop()
       }
     }
     else if (i == 34)
-    { // CH1 sync setting
+    { // Save settings
       save();
     }
 
@@ -518,6 +527,7 @@ void OLED_display()
   display.setTextSize(1);
   display.setTextColor(WHITE);
 
+  // Draw the keyboard scale 1
   if (i <= 27)
   {
     if (note1[1] == 0)
@@ -619,6 +629,7 @@ void OLED_display()
       display.fillRoundRect(0 + 14 * 6, 15, 11, 13, 2, WHITE);
     }
 
+    // Draw the keyboard scale 2
     if (note2[1] == 0)
     {
       display.drawRoundRect(7, 0 + 34, 11, 13, 2, WHITE);
@@ -718,7 +729,7 @@ void OLED_display()
       display.fillRoundRect(0 + 14 * 6, 15 + 34, 11, 13, 2, WHITE);
     }
 
-    // draw triangle
+    // Draw the selection triangle
     if (i <= 4)
     {
       display.fillTriangle(5 + i * 7, 28, 2 + i * 7, 33, 8 + i * 7, 33, WHITE);
@@ -768,7 +779,7 @@ void OLED_display()
       display.fillTriangle(127, 48, 127, 54, 121, 51, WHITE);
     }
 
-    // draw envelope param
+    // Draw envelope param
     display.setTextSize(1);
     display.setCursor(100, 0); // effect param3
     display.print("ATK");
@@ -784,8 +795,8 @@ void OLED_display()
     display.fillRoundRect(100, 57, dcy2 + 1, 4, 1, WHITE);
   }
 
-  // draw config setting
-  if (i >= 28)
+  // Draw config settings
+  if (i >= 28 && i <= 34)
   { // draw sync mode setting
     display.setTextSize(1);
     display.setCursor(10, 0);
@@ -810,8 +821,8 @@ void OLED_display()
     {
       display.print("NOTE");
     }
-
-    display.setCursor(10, 18); // draw octave shift
+    // draw octave shift
+    display.setCursor(10, 18);
     display.print("OCT  CH1:");
     display.setCursor(10, 27);
     display.print("     CH2:");
@@ -820,7 +831,8 @@ void OLED_display()
     display.setCursor(72, 27);
     display.print(oct2 - 2);
 
-    display.setCursor(10, 36); // draw sensitivity
+    // draw sensitivity
+    display.setCursor(10, 36);
     display.print("SENS CH1:");
     display.setCursor(10, 45);
     display.print("     CH2:");
@@ -829,7 +841,8 @@ void OLED_display()
     display.setCursor(72, 45);
     display.print(sensitivity_ch2 - 4);
 
-    display.setCursor(10, 54); // draw save
+    // draw save
+    display.setCursor(10, 54);
     display.print("SAVE");
 
     display.drawTriangle(0, 0 + (i - 28) * 9, 0, 6 + (i - 28) * 9, 7, 3 + (i - 28) * 9, WHITE);
