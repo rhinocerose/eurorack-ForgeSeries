@@ -4,6 +4,9 @@
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
+// Own libraries
+#include "scales.cpp"
+
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
@@ -70,6 +73,8 @@ int sensitivity_ch1, sensitivity_ch2, oct1, oct2; // sens = AD input attn,amp.oc
 int cv_qnt_thr_buf1[62]; // input quantize
 int cv_qnt_thr_buf2[62]; // input quantize
 byte search_qnt = 0;
+int scale_load = 0;
+int note_load = 0;
 bool note1[12]; // 1=note valid,0=note invalid
 bool note2[12];
 byte note_str1, note_str11, note_str2, note_str22;
@@ -327,6 +332,32 @@ void loop()
     else if (i == 34)
     { // Save settings
       save();
+    }
+
+    else if (i == 35)
+    { // Set Scale for loading
+      // Get the amount of scales
+      scale_load++;
+      if (scale_load > numScales)
+      {
+        scale_load = 0;
+      }
+    }
+    else if (i == 36)
+    { // Set Note for Loading
+      note_load++;
+      if (note_load > 11)
+      {
+        note_load = 0;
+      }
+    }
+    else if (i == 37)
+    { // Load Scale into quantizer 1
+      buildScale(note_load, scale_load, note1);
+    }
+    else if (i == 38)
+    { // Load Scale into quantizer 2
+      buildScale(note_load, scale_load, note2);
     }
 
     // select note set
@@ -846,6 +877,27 @@ void OLED_display()
     display.print("SAVE");
 
     display.drawTriangle(0, 0 + (i - 28) * 9, 0, 6 + (i - 28) * 9, 7, 3 + (i - 28) * 9, WHITE);
+  }
+  // draw scale load setting
+  const char *scale_name = scaleNames[scale_load];
+  const char *note_name = noteNames[note_load];
+  if (i >= 35 && i <= 38)
+  {
+    display.setTextSize(1);
+    display.setCursor(10, 0);
+    display.print("SCALE:");
+    display.setCursor(72, 0);
+    display.print(scale_name);
+    display.setCursor(10, 9);
+    display.print("ROOT:");
+    display.setCursor(72, 9);
+    display.print(note_name);
+    display.setCursor(10, 18);
+    display.print("LOAD IN CH1");
+    display.setCursor(10, 27);
+    display.print("LOAD IN CH2");
+
+    display.drawTriangle(0, 0 + (i - 35) * 9, 0, 6 + (i - 35) * 9, 7, 3 + (i - 35) * 9, WHITE);
   }
   display.display();
 }

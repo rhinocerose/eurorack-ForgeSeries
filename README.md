@@ -25,6 +25,11 @@ OCT: Octave shift. Select from a range of -2 to +2 to shift the octave of the ou
 SENS: Sensitivity to CV input. Functions equivalent to an attenuator or amplifier.
 SAVE: Saves each setting. Saved settings are loaded when the power is turned on.
 
+Next screen allows loading pre-defined presets for scale and note to each channel.
+SCALE: Selects which scale to use
+ROOT: Selects the root note for choosen scale
+LOAD CH1/CH2: Loads the selected Scale and Root into the channel overwriting the existing notes.
+
 ## Production specifications
 
 Eurorack standard 3U 6HP size
@@ -32,7 +37,6 @@ Power supply: 30mA (at 5V)
 On-board converter from 12V to internal 5V
 
 ## CURRENT STATE: HARDWARE VERIFIED WORKING, DOUBLE QUANTIZER FIRMWARE WORKING
-
 
 ## Hardware and PCB
 
@@ -55,10 +59,17 @@ Also make sure you order a Seediuno XIAO (with a SAMD21/Cortex M0 chip) as oppos
 When assembling, you can either use a header for the screen or solder it directly, as it is a litte too tall.
 The 7805 voltage regulator is optional, if you do not want to use it, simply solder the SEL header on the back of the main pcb to BOARD instead of REG (meaning you bridge the connection to choose your 5v voltage source to either be 12 regulated to 5v, or a 5V connection of your rack power if you have it).
 
-## Tuning
+## Calibration
 
 There are two things  in the circuit that need to be tuned for: The input resistor divider going from 5V to 3.3V, and the output opamp gain to go from 3.3 back to 5V.
-I will provide a script to help with this and a detailed description in the future, but for now the short version is: Input resistors are compensated for in code with the ADC_calb parameters. Output gain is adjusted using the trimmers on the main pcb.
+I will provide a script to help with this and a detailed description in the future, but for now the short version is: Input resistors are compensated for in code with the AD_CH1_calb/AD_CH2_calb parameters. Output gain is adjusted using the trimmers on the main pcb.
+
+Vin(5v) *(R21(33k)/R21(33k)+R19(18k) = Vout
+5v:1 = Vout:a(AD_CH1_calb) (in my case AD_CH1_calb = 0.971)
+
+3.3v to 5v(scale up)
+5v/3.3v = 1.51515
+0.51515 = 5k(adjustable)/6.8k
 
 ## Arduino Code
 
