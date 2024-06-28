@@ -86,7 +86,7 @@ bool note2[12];
 byte note_str1, note_str11, note_str2, note_str22;
 
 // display
-bool disp_reflesh = 1; // 0=not reflesh display , 1= reflesh display , countermeasure of display refresh busy
+bool disp_refresh = 1; // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
 
 //-------------------------------Initial setting--------------------------
 void setup()
@@ -192,7 +192,7 @@ void loop()
   if ((newPosition - 3) / 4 > oldPosition / 4)
   { // 4 is resolution of encoder
     oldPosition = newPosition;
-    disp_reflesh = 1;
+    disp_refresh = 1;
     switch (mode)
     {
     case 0:
@@ -219,7 +219,7 @@ void loop()
   else if ((newPosition + 3) / 4 < oldPosition / 4)
   { // 4 is resolution of encoder
     oldPosition = newPosition;
-    disp_reflesh = 1;
+    disp_refresh = 1;
     switch (mode)
     {
     case 0:
@@ -254,7 +254,7 @@ void loop()
   SW = digitalRead(ENC_CLICK_PIN);
   if (SW == 1 && old_SW != 1)
   {
-    disp_reflesh = 1;
+    disp_refresh = 1;
     if (i <= 11 && i >= 0 && mode == 0)
     {
       note1[i] = !note1[i];
@@ -549,12 +549,28 @@ void loop()
   }
 
   // display out
-  if (disp_reflesh == 1)
+  if (disp_refresh == 1)
   {
-    OLED_display(); // reflesh display
-    disp_reflesh = 0;
+    OLED_display(); // refresh display
+    disp_refresh = 0;
   }
 }
+
+void noteDisp(int16_t x0, int16_t y0, boolean on)
+{
+  uint16_t width = 11;
+  uint16_t height = 13;
+  uint16_t radius = 2;
+  uint16_t color = WHITE;
+  if (on)
+  {
+    display.fillRoundRect(x0, y0, width, height, radius, color);
+  }
+  else
+  {
+    display.drawRoundRect(x0, y0, width, height, radius, color);
+  }
+};
 
 //-----------------------------DISPLAY----------------------------------------
 void OLED_display()
@@ -566,204 +582,32 @@ void OLED_display()
   // Draw the keyboard scale 1
   if (i <= 27)
   {
-    if (note1[1] == 0)
-    {
-      display.drawRoundRect(7, 0, 11, 13, 2, WHITE);
-    }
-    else if (note1[1] == 1)
-    {
-      display.fillRoundRect(7, 0, 11, 13, 2, WHITE);
-    }
-
-    if (note1[3] == 0)
-    {
-      display.drawRoundRect(7 + 14 * 1, 0, 11, 13, 2, WHITE);
-    }
-    else if (note1[3] == 1)
-    {
-      display.fillRoundRect(7 + 14 * 1, 0, 11, 13, 2, WHITE);
-    }
-
-    if (note1[6] == 0)
-    {
-      display.drawRoundRect(8 + 14 * 3, 0, 11, 13, 2, WHITE);
-    }
-    else if (note1[6] == 1)
-    {
-      display.fillRoundRect(8 + 14 * 3, 0, 11, 13, 2, WHITE);
-    }
-    if (note1[8] == 0)
-    {
-      display.drawRoundRect(8 + 14 * 4, 0, 11, 13, 2, WHITE);
-    }
-    else if (note1[8] == 1)
-    {
-      display.fillRoundRect(8 + 14 * 4, 0, 11, 13, 2, WHITE);
-    }
-    if (note1[10] == 0)
-    {
-      display.drawRoundRect(8 + 14 * 5, 0, 11, 13, 2, WHITE);
-    }
-    else if (note1[10] == 1)
-    {
-      display.fillRoundRect(8 + 14 * 5, 0, 11, 13, 2, WHITE);
-    }
-    if (note1[0] == 0)
-    {
-      display.drawRoundRect(0, 15, 11, 13, 2, WHITE);
-    }
-    else if (note1[0] == 1)
-    {
-      display.fillRoundRect(0, 15, 11, 13, 2, WHITE);
-    }
-    if (note1[2] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 1, 15, 11, 13, 2, WHITE);
-    }
-    else if (note1[2] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 1, 15, 11, 13, 2, WHITE);
-    }
-    if (note1[4] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 2, 15, 11, 13, 2, WHITE);
-    }
-    else if (note1[4] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 2, 15, 11, 13, 2, WHITE);
-    }
-    if (note1[5] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 3, 15, 11, 13, 2, WHITE);
-    }
-    else if (note1[5] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 3, 15, 11, 13, 2, WHITE);
-    }
-    if (note1[7] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 4, 15, 11, 13, 2, WHITE);
-    }
-    else if (note1[7] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 4, 15, 11, 13, 2, WHITE);
-    }
-    if (note1[9] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 5, 15, 11, 13, 2, WHITE);
-    }
-    else if (note1[9] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 5, 15, 11, 13, 2, WHITE);
-    }
-    if (note1[11] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 6, 15, 11, 13, 2, WHITE);
-    }
-    else if (note1[11] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 6, 15, 11, 13, 2, WHITE);
-    }
+    note1[1] == 0 ? noteDisp(7, 0, 0) : noteDisp(7, 0, 1);
+    note1[3] == 0 ? noteDisp(7 + 14 * 1, 0, 0) : noteDisp(7 + 14 * 1, 0, 1);
+    note1[6] == 0 ? noteDisp(8 + 14 * 3, 0, 0) : noteDisp(8 + 14 * 3, 0, 1);
+    note1[8] == 0 ? noteDisp(8 + 14 * 4, 0, 0) : noteDisp(8 + 14 * 4, 0, 1);
+    note1[10] == 0 ? noteDisp(8 + 14 * 5, 0, 0) : noteDisp(8 + 14 * 5, 0, 1);
+    note1[0] == 0 ? noteDisp(0, 15, 0) : noteDisp(0, 15, 1);
+    note1[2] == 0 ? noteDisp(0 + 14 * 1, 15, 0) : noteDisp(0 + 14 * 1, 15, 1);
+    note1[4] == 0 ? noteDisp(0 + 14 * 2, 15, 0) : noteDisp(0 + 14 * 2, 15, 1);
+    note1[5] == 0 ? noteDisp(0 + 14 * 3, 15, 0) : noteDisp(0 + 14 * 3, 15, 1);
+    note1[7] == 0 ? noteDisp(0 + 14 * 4, 15, 0) : noteDisp(0 + 14 * 4, 15, 1);
+    note1[9] == 0 ? noteDisp(0 + 14 * 5, 15, 0) : noteDisp(0 + 14 * 5, 15, 1);
+    note1[11] == 0 ? noteDisp(0 + 14 * 6, 15, 0) : noteDisp(0 + 14 * 6, 15, 1);
 
     // Draw the keyboard scale 2
-    if (note2[1] == 0)
-    {
-      display.drawRoundRect(7, 0 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[1] == 1)
-    {
-      display.fillRoundRect(7, 0 + 34, 11, 13, 2, WHITE);
-    }
-
-    if (note2[3] == 0)
-    {
-      display.drawRoundRect(7 + 14 * 1, 0 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[3] == 1)
-    {
-      display.fillRoundRect(7 + 14 * 1, 0 + 34, 11, 13, 2, WHITE);
-    }
-
-    if (note2[6] == 0)
-    {
-      display.drawRoundRect(8 + 14 * 3, 0 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[6] == 1)
-    {
-      display.fillRoundRect(8 + 14 * 3, 0 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[8] == 0)
-    {
-      display.drawRoundRect(8 + 14 * 4, 0 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[8] == 1)
-    {
-      display.fillRoundRect(8 + 14 * 4, 0 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[10] == 0)
-    {
-      display.drawRoundRect(8 + 14 * 5, 0 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[10] == 1)
-    {
-      display.fillRoundRect(8 + 14 * 5, 0 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[0] == 0)
-    {
-      display.drawRoundRect(0, 15 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[0] == 1)
-    {
-      display.fillRoundRect(0, 15 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[2] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 1, 15 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[2] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 1, 15 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[4] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 2, 15 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[4] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 2, 15 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[5] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 3, 15 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[5] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 3, 15 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[7] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 4, 15 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[7] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 4, 15 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[9] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 5, 15 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[9] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 5, 15 + 34, 11, 13, 2, WHITE);
-    }
-    if (note2[11] == 0)
-    {
-      display.drawRoundRect(0 + 14 * 6, 15 + 34, 11, 13, 2, WHITE);
-    }
-    else if (note2[11] == 1)
-    {
-      display.fillRoundRect(0 + 14 * 6, 15 + 34, 11, 13, 2, WHITE);
-    }
+    note2[1] == 0 ? noteDisp(7, 0 + 34, 0) : noteDisp(7, 0 + 34, 1);
+    note2[3] == 0 ? noteDisp(7 + 14 * 1, 0 + 34, 0) : noteDisp(7 + 14 * 1, 0 + 34, 1);
+    note2[6] == 0 ? noteDisp(8 + 14 * 3, 0 + 34, 0) : noteDisp(8 + 14 * 3, 0 + 34, 1);
+    note2[8] == 0 ? noteDisp(8 + 14 * 4, 0 + 34, 0) : noteDisp(8 + 14 * 4, 0 + 34, 1);
+    note2[10] == 0 ? noteDisp(8 + 14 * 5, 0 + 34, 0) : noteDisp(8 + 14 * 5, 0 + 34, 1);
+    note2[0] == 0 ? noteDisp(0, 15 + 34, 0) : noteDisp(0, 15 + 34, 1);
+    note2[2] == 0 ? noteDisp(0 + 14 * 1, 15 + 34, 0) : noteDisp(0 + 14 * 1, 15 + 34, 1);
+    note2[4] == 0 ? noteDisp(0 + 14 * 2, 15 + 34, 0) : noteDisp(0 + 14 * 2, 15 + 34, 1);
+    note2[5] == 0 ? noteDisp(0 + 14 * 3, 15 + 34, 0) : noteDisp(0 + 14 * 3, 15 + 34, 1);
+    note2[7] == 0 ? noteDisp(0 + 14 * 4, 15 + 34, 0) : noteDisp(0 + 14 * 4, 15 + 34, 1);
+    note2[9] == 0 ? noteDisp(0 + 14 * 5, 15 + 34, 0) : noteDisp(0 + 14 * 5, 15 + 34, 1);
+    note2[11] == 0 ? noteDisp(0 + 14 * 6, 15 + 34, 0) : noteDisp(0 + 14 * 6, 15 + 34, 1);
 
     // Draw the selection triangle
     if (i <= 4)
