@@ -812,9 +812,9 @@ void save()
   EEPROM.write(14, sensitivity_ch2);
   EEPROM.commit();
   display.clearDisplay(); // clear display
-  display.setTextSize(1);
+  display.setTextSize(2);
   display.setTextColor(BLACK, WHITE);
-  display.setCursor(10, 54);
+  display.setCursor(10, 40);
   display.print("SAVED");
   display.display();
   delay(1000);
