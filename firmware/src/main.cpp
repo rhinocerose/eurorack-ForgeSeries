@@ -1,10 +1,11 @@
-#include <FlashAsEEPROM.h> //flash memory use as eeprom
 #include <Wire.h>
 #include <Encoder.h>
+// Use flash memory as eeprom
+#include <FlashAsEEPROM.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
-// Own libraries
+// Load local libraries
 #include "scales.cpp"
 
 #define OLED_ADDRESS 0x3C
@@ -41,6 +42,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotery encoder library setting
 float oldPosition = -999;            // rotery encoder library setting
 float newPosition = -999;            // rotery encoder library setting
+// Amount of menu items
+int menuItems = 38;
+// i is the current position of the encoder
 int i = 1;
 
 bool SW = 0;
@@ -73,14 +77,16 @@ int sensitivity_ch1, sensitivity_ch2, oct1, oct2; // sens = AD input attn,amp.oc
 int cv_qnt_thr_buf1[62]; // input quantize
 int cv_qnt_thr_buf2[62]; // input quantize
 byte search_qnt = 0;
+// Scale and Note loading indexes
 int scale_load = 0;
 int note_load = 0;
+// Note storage
 bool note1[12]; // 1=note valid,0=note invalid
 bool note2[12];
 byte note_str1, note_str11, note_str2, note_str22;
 
 // display
-bool disp_reflesh = 1; // 0=not reflesh display , 1= reflesh display , countermeasure of display reflesh bussy
+bool disp_reflesh = 1; // 0=not reflesh display , 1= reflesh display , countermeasure of display refresh busy
 
 //-------------------------------Initial setting--------------------------
 void setup()
@@ -193,7 +199,7 @@ void loop()
       i = i - 1;
       if (i < 0)
       {
-        i = 34;
+        i = menuItems;
       }
       break;
     case 1:
@@ -218,7 +224,7 @@ void loop()
     {
     case 0:
       i = i + 1;
-      if (34 < i)
+      if (menuItems < i)
       {
         i = 0;
       }
@@ -237,7 +243,7 @@ void loop()
       break;
     }
   }
-  i = constrain(i, 0, 34);
+  i = constrain(i, 0, menuItems);
   atk1 = constrain(atk1, 1, 26);
   dcy1 = constrain(dcy1, 1, 26);
   atk2 = constrain(atk2, 1, 26);
@@ -335,16 +341,15 @@ void loop()
     }
 
     else if (i == 35)
-    { // Set Scale for loading
-      // Get the amount of scales
+    { // Set Scale for loading avoiding overflow of numScales
       scale_load++;
-      if (scale_load > numScales)
+      if (scale_load > numScales - 1)
       {
         scale_load = 0;
       }
     }
     else if (i == 36)
-    { // Set Note for Loading
+    { // Set Note for Loading avoiding overflow of 12 notes
       note_load++;
       if (note_load > 11)
       {
