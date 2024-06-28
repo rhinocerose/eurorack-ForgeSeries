@@ -25,6 +25,7 @@
 #define ENV_OUT_PIN_2 2
 
 // Declare function prototypes
+void buildQuantBuffer(int[], bool[]);
 void quantizeCV(float, int[], int, int, float *);
 void noteDisp(int16_t, int16_t, boolean);
 void OLED_display();
@@ -372,24 +373,8 @@ void loop()
     }
 
     // select note set
-    k = 0;
-    for (byte j = 0; j <= 62; j++)
-    {
-      if (note1[j % 12] == 1)
-      {
-        cv_qnt_thr_buf1[k] = 17 * j - 8;
-        k++;
-      }
-    }
-    k = 0;
-    for (byte j = 0; j <= 62; j++)
-    {
-      if (note2[j % 12] == 1)
-      {
-        cv_qnt_thr_buf2[k] = 17 * j - 8;
-        k++;
-      }
-    }
+    buildQuantBuffer(cv_qnt_thr_buf1, note1);
+    buildQuantBuffer(cv_qnt_thr_buf2, note2);
   }
 
   //-------------------------------Analog read and qnt setting--------------------------
@@ -517,6 +502,19 @@ void loop()
   }
 }
 
+void buildQuantBuffer(int buff[], bool note[])
+{
+  int k = 0;
+  for (byte j = 0; j <= 62; j++)
+  {
+    if (note[j % 12] == 1)
+    {
+      buff[k] = 17 * j - 8;
+      k++;
+    }
+  }
+};
+
 void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, float *CV_out)
 {
   AD_CH = AD_CH * (16 + sensitivity_ch) / 20; // sens setting
@@ -544,6 +542,7 @@ void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, 
     *CV_out = constrain(CV_out1, 0, 4095);
   }
 }
+
 void noteDisp(int x0, int y0, boolean on)
 {
   int width = 11;
