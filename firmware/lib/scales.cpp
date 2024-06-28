@@ -1,6 +1,6 @@
 // Add presets for common scales
 // Major, Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Pentatonic Minor, Harmonic Minor, Melodic Minor, Whole Tone, Diminished, Chromatic
-char const *scaleNames[13] = {"Chrom", "Maj", "Min", "Dor", "Phr", "Lyd", "Mix", "Loc", "PeMin", "HaMin", "MelMin", "Whol", "Dim"};
+char const *scaleNames[13] = {"Chrom", "Maj", "Min", "Dor", "Phr", "Lyd", "Mix", "Loc", "PenMin", "HarMin", "MelMin", "Whol", "Dim"};
 char const *noteNames[12] = {"C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"};
 
 int const numScales = sizeof(scaleNames);
