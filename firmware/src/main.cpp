@@ -43,7 +43,7 @@ Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotery encoder library setting
 float oldPosition = -999;            // rotery encoder library setting
 float newPosition = -999;            // rotery encoder library setting
 // Amount of menu items
-int menuItems = 38;
+int menuItems = 39;
 // i is the current position of the encoder
 int i = 1;
 
@@ -363,6 +363,10 @@ void loop()
     else if (i == 38)
     { // Load Scale into quantizer 2
       buildScale(note_load, scale_load, note2);
+    }
+    else if (i == 39)
+    { // Save settings
+      save();
     }
 
     // select note set
@@ -745,6 +749,9 @@ void OLED_display()
     display.print("LOAD IN CH1");
     display.setCursor(10, 27);
     display.print("LOAD IN CH2");
+    // draw save
+    display.setCursor(10, 36);
+    display.print("SAVE");
 
     display.drawTriangle(0, 0 + (i - 35) * 9, 0, 6 + (i - 35) * 9, 7, 3 + (i - 35) * 9, WHITE);
   }
@@ -808,7 +815,7 @@ void save()
   display.setTextSize(1);
   display.setTextColor(BLACK, WHITE);
   display.setCursor(10, 54);
-  display.print("SAVEED");
+  display.print("SAVED");
   display.display();
   delay(1000);
 }
