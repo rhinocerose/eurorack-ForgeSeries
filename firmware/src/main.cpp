@@ -25,11 +25,13 @@
 #define ENV_OUT_PIN_2 2
 
 // Declare function prototypes
+void quantizeCV(float, int[], int, int, float *);
+void noteDisp(int16_t, int16_t, boolean);
 void OLED_display();
-void PWM1(int);
-void PWM2(int);
 void intDAC(int);
 void MCP(int);
+void PWM1(int);
+void PWM2(int);
 void save();
 
 ////////////////////////////////////////////
@@ -392,55 +394,10 @@ void loop()
 
   //-------------------------------Analog read and qnt setting--------------------------
   AD_CH1 = analogRead(CV_1_IN_PIN) / AD_CH1_calb;
-  AD_CH1 = AD_CH1 * (16 + sensitivity_ch1) / 20; // sens setting
-  if (AD_CH1 > 4095)
-  {
-    AD_CH1 = 4095;
-  }
-  for (search_qnt = 0; search_qnt <= 61; search_qnt++)
-  { // quantize
-    if (AD_CH1 >= cv_qnt_thr_buf1[search_qnt] * 4 && AD_CH1 < cv_qnt_thr_buf1[search_qnt + 1] * 4)
-    {
-      cmp1 = AD_CH1 - cv_qnt_thr_buf1[search_qnt] * 4;     // Detect closest note
-      cmp2 = cv_qnt_thr_buf1[search_qnt + 1] * 4 - AD_CH1; // Detect closest note
-      break;
-    }
-  }
-  if (cmp1 >= cmp2)
-  { // Detect closest note
-    CV_out1 = (cv_qnt_thr_buf1[search_qnt + 1] + 8) / 17 * 68.25 + (oct1 - 2) * 12 * 68.25;
-    CV_out1 = constrain(CV_out1, 0, 4095);
-  }
-  else if (cmp2 > cmp1)
-  { // Detect closest note
-    CV_out1 = (cv_qnt_thr_buf1[search_qnt] + 8) / 17 * 68.25 + (oct1 - 2) * 12 * 68.25;
-    CV_out1 = constrain(CV_out1, 0, 4095);
-  }
-  AD_CH2 = analogRead(CV_2_IN_PIN) / AD_CH2_calb; // 12bit to 10bit
-  AD_CH2 = AD_CH2 * (16 + sensitivity_ch2) / 20;  // sens setting
-  if (AD_CH2 > 4095)
-  {
-    AD_CH2 = 4095;
-  }
-  for (search_qnt = 0; search_qnt <= 61; search_qnt++)
-  { // quantize
-    if (AD_CH2 >= cv_qnt_thr_buf2[search_qnt] * 4 && AD_CH2 < cv_qnt_thr_buf2[search_qnt + 1] * 4)
-    {
-      cmp1 = AD_CH2 - cv_qnt_thr_buf1[search_qnt] * 4;
-      cmp2 = cv_qnt_thr_buf1[search_qnt + 1] * 4 - AD_CH2;
-      break;
-    }
-  }
-  if (cmp1 >= cmp2)
-  {
-    CV_out2 = (cv_qnt_thr_buf2[search_qnt + 1] + 8) / 17 * 68.25 + (oct2 - 2) * 12 * 68.25;
-    CV_out2 = constrain(CV_out2, 0, 4095);
-  }
-  else if (cmp2 > cmp1)
-  {
-    CV_out2 = (cv_qnt_thr_buf2[search_qnt] + 8) / 17 * 68.25 + (oct2 - 2) * 12 * 68.25;
-    CV_out2 = constrain(CV_out2, 0, 4095);
-  }
+  quantizeCV(AD_CH1, cv_qnt_thr_buf1, sensitivity_ch1, oct1, &CV_out1);
+
+  AD_CH2 = analogRead(CV_2_IN_PIN) / AD_CH2_calb;
+  quantizeCV(AD_CH2, cv_qnt_thr_buf2, sensitivity_ch2, oct2, &CV_out2);
 
   //-------------------------------OUTPUT SETTING--------------------------
   CLK_in = digitalRead(CLK_PIN);
@@ -560,12 +517,39 @@ void loop()
   }
 }
 
-void noteDisp(int16_t x0, int16_t y0, boolean on)
+void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, float *CV_out)
 {
-  uint16_t width = 11;
-  uint16_t height = 13;
-  uint16_t radius = 2;
-  uint16_t color = WHITE;
+  AD_CH = AD_CH * (16 + sensitivity_ch) / 20; // sens setting
+  if (AD_CH > 4095)
+  {
+    AD_CH = 4095;
+  }
+  for (search_qnt = 0; search_qnt <= 61; search_qnt++)
+  { // quantize
+    if (AD_CH >= cv_qnt_thr_buf[search_qnt] * 4 && AD_CH < cv_qnt_thr_buf[search_qnt + 1] * 4)
+    {
+      cmp1 = AD_CH - cv_qnt_thr_buf[search_qnt] * 4;     // Detect closest note
+      cmp2 = cv_qnt_thr_buf[search_qnt + 1] * 4 - AD_CH; // Detect closest note
+      break;
+    }
+  }
+  if (cmp1 >= cmp2)
+  { // Detect closest note
+    *CV_out = (cv_qnt_thr_buf[search_qnt + 1] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25;
+    *CV_out = constrain(CV_out1, 0, 4095);
+  }
+  else if (cmp2 > cmp1)
+  { // Detect closest note
+    *CV_out = (cv_qnt_thr_buf[search_qnt] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25;
+    *CV_out = constrain(CV_out1, 0, 4095);
+  }
+}
+void noteDisp(int x0, int y0, boolean on)
+{
+  int width = 11;
+  int height = 13;
+  int radius = 2;
+  int color = WHITE;
   if (on)
   {
     display.fillRoundRect(x0, y0, width, height, radius, color);
