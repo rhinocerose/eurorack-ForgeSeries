@@ -14,7 +14,7 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
-// Rotery encoder setting
+// rotary encoder setting
 #define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
 
 #define ENC_PIN_1 3      // rotary encoder left pin
@@ -25,6 +25,7 @@
 #define ENC_CLICK_PIN 10 // pin for encoder switch
 #define ENV_OUT_PIN_1 1
 #define ENV_OUT_PIN_2 2
+#define DAC_INTERNAL_PIN A0
 
 // Declare function prototypes
 void noteDisp(int16_t, int16_t, boolean);
@@ -41,10 +42,13 @@ float AD_CH1_calb = 0.98; // reduce resistance error
 float AD_CH2_calb = 0.98; // reduce resistance error
 /////////////////////////////////////////
 
+// OLED display initialization
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
-Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotery encoder library setting
-float oldPosition = -999;            // rotery encoder library setting
-float newPosition = -999;            // rotery encoder library setting
+
+// Rotary encoder initialization
+Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
+float oldPosition = -999;            // rotary encoder library setting
+float newPosition = -999;            // rotary encoder library setting
 // Amount of menu items
 int menuItems = 39;
 // i is the current position of the encoder
@@ -172,7 +176,7 @@ void loop()
   old_AD_CH1 = AD_CH1;
   old_AD_CH2 = AD_CH2;
 
-  //-------------------------------Rotery endoder--------------------------
+  //-------------------------------rotary endoder--------------------------
   newPosition = myEnc.read();
   if ((newPosition - 3) / 4 > oldPosition / 4)
   { // 4 is resolution of encoder
@@ -697,7 +701,7 @@ void OLED_display()
 //-----------------------------OUTPUT----------------------------------------
 void intDAC(int intDAC_OUT)
 {
-  analogWrite(A0, intDAC_OUT / 4); // "/4" -> 12bit to 10bit
+  analogWrite(DAC_INTERNAL_PIN, intDAC_OUT / 4); // "/4" -> 12bit to 10bit
 }
 
 void MCP(int MCP_OUT)
