@@ -1,21 +1,42 @@
-// Display setting
+#include <Arduino.h>
+#include <Wire.h>
+#include <Encoder.h>
+
+#include <FlashAsEEPROM.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
+// Display setting
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
+// rotary encoder setting
+#define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
+
+#define ENC_PIN_1 3      // rotary encoder left pin
+#define ENC_PIN_2 6      // rotary encoder right pin
+#define CLK_PIN 7        // Clock input pin
+#define CV_1_IN_PIN 8    // channel 1 analog in
+#define CV_2_IN_PIN 9    // channel 2 analog in
+#define ENC_CLICK_PIN 10 // pin for encoder switch
+#define ENV_OUT_PIN_1 1
+#define ENV_OUT_PIN_2 2
+#define DAC_INTERNAL_PIN A0
+
+////////////////////////////////////////////
+// ADC calibration. Change these according to your resistor values to make readings more accurate
+float AD_CH1_calb = 1.085; // reduce resistance error
+float AD_CH2_calb = 1.085; // reduce resistance error
+/////////////////////////////////////////
+
+// OLED display initialization
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-#include <Wire.h>
-// Rotery encoder setting
-#define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
-#include <Encoder.h>
-
-Encoder myEnc(6, 3);      // rotery encoder library setting
-float oldPosition = -999; // rotery encoder library setting
-float newPosition = -999; // rotery encoder library setting
+// Rotary encoder initialization
+Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
+float oldPosition = -999;            // rotary encoder library setting
+float newPosition = -999;            // rotary encoder library setting
 int i = 0;
 bool SW = 0;
 bool old_SW = 0;
@@ -25,12 +46,10 @@ int gate_timer1 = 0;
 int gate_timer2 = 0;
 
 float AD_CH1 = 0;
-float AD_CH1_calb = 1.085; // reduce resistance error
 float AD_CH2 = 0;
-// float AD_CH2_calb = 1.094;//reduce resistance error
 
 // menu setting
-byte menu = 1;  // 1=ch1 rec/play , 2=ch1 divide , 3 = reset , 4~6 =ch2 , 7 = MUTE ch1 , 8 = STOP ch1 , 9~10 ch2
+byte menu = 1;  // 1=ch1 rec/play , 2=ch1 divide , 3 = reset , 4~6 =ch2 , 7 = MUTE ch1 , 8 = STOP ch1 , 9~10 ch2, 11 = save
 bool mode1 = 1; // 0 =rec , 1 =play
 bool mode2 = 1; // 0 =rec , 1 =play
 
@@ -78,19 +97,19 @@ bool old_CV_in2 = 0; // for detect trig ON
 // display
 byte disp_step1 = 0;
 byte disp_step2 = 0;
-bool disp_reflesh = 1; // 0=not reflesh display , 1= reflesh display , countermeasure of display reflesh bussy
+bool disp_refresh = 1; // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
 
 //-------------------------------Initial setting--------------------------
 void setup()
 {
   analogWriteResolution(10);
   analogReadResolution(12);
-  pinMode(7, INPUT_PULLDOWN); // CLK in
-  pinMode(8, INPUT);          // IN1
-  pinMode(9, INPUT);          // IN2
-  pinMode(10, INPUT_PULLUP);  // push sw
-  pinMode(1, OUTPUT);         // CH1 gate out
-  pinMode(2, OUTPUT);         // CH2 gate out
+  pinMode(CLK_PIN, INPUT_PULLDOWN);     // CLK in
+  pinMode(CV_1_IN_PIN, INPUT);          // IN1
+  pinMode(CV_2_IN_PIN, INPUT);          // IN2
+  pinMode(ENC_CLICK_PIN, INPUT_PULLUP); // push sw
+  pinMode(ENV_OUT_PIN_1, OUTPUT);       // CH1 gate out
+  pinMode(ENV_OUT_PIN_2, OUTPUT);       // CH2 gate out
 
   // OLED initialize
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -107,7 +126,7 @@ void loop()
   old_CV_in2 = CV_in2;
   old_CLK_in = CLK_in;
 
-  //-------------------------------Rotery endoder--------------------------
+  //-------------------------------rotary endoder--------------------------
   newPosition = myEnc.read();
 
   if (mode1 == 1 && mode2 == 1)
@@ -116,14 +135,14 @@ void loop()
     { // 4 is resolution of encoder
       oldPosition = newPosition;
       i = i - 1;
-      disp_reflesh = 1;
+      disp_refresh = 1;
     }
 
     else if ((newPosition + 3) / 4 < oldPosition / 4)
     { // 4 is resolution of encoder
       oldPosition = newPosition;
       i = i + 1;
-      disp_reflesh = 1;
+      disp_refresh = 1;
     }
     i = constrain(i, 1, 10);
     menu = i;
@@ -135,7 +154,7 @@ void loop()
     { // 4 is resolution of encoder
       oldPosition = newPosition;
       rec_step = rec_step - 1; // while REC , turn left back step
-      disp_reflesh = 1;
+      disp_refresh = 1;
 
       if ((rec_step != 0) && (mode1 == 0))
       {
@@ -167,15 +186,15 @@ void loop()
       }
 
       rec_step++; // while REC , turn right rest step
-      disp_reflesh = 1;
+      disp_refresh = 1;
     }
   }
 
   //-----------------PUSH SW------------------------------------
-  SW = digitalRead(10);
+  SW = digitalRead(ENC_CLICK_PIN);
   if (SW == 1 && old_SW != 1)
   {
-    disp_reflesh = 1;
+    disp_refresh = 1;
     switch (menu)
     {
     case 1:
@@ -247,6 +266,9 @@ void loop()
     case 10:
       stop_ch2 = !stop_ch2;
       break;
+
+    case 11:
+      save();
     }
   }
   //-------------------------------CH1 REC--------------------------
@@ -254,13 +276,13 @@ void loop()
   if (mode1 == 0)
   {
     // when mode is REC and trig in
-    CV_in2 = analogRead(9) / 2048; // 0 or 1
+    CV_in2 = analogRead(CV_2_IN_PIN) / 2048; // 0 or 1
 
     if (old_CV_in2 == 1 && CV_in2 == 0)
     { // when trigger fall , record CV input
 
       // analog read and quantize
-      AD_CH1 = analogRead(8) / 4 * AD_CH1_calb; // 12bit to 10bit
+      AD_CH1 = analogRead(CV_1_IN_PIN) / 4 * AD_CH1_calb; // 12bit to 10bit
       for (search_qnt = 0; search_qnt <= 61; search_qnt++)
       { // quantize
         if (AD_CH1 >= cv_qnt_thr[search_qnt] && AD_CH1 < cv_qnt_thr[search_qnt + 1])
@@ -273,27 +295,27 @@ void loop()
 
       // Check the input CV
       intDAC(cv_qnt_out[stepcv_ch1[rec_step]]); // OUTPUT internal DAC
-      digitalWrite(1, LOW);                     // because LOW active , LOW is output
+      digitalWrite(ENV_OUT_PIN_1, LOW);         // because LOW active , LOW is output
       delay(5);                                 // gate time 5msec
-      digitalWrite(1, HIGH);
+      digitalWrite(ENV_OUT_PIN_1, HIGH);
 
       // add step
       rec_step++;
       rec_step = constrain(rec_step, 0, 127);
-      disp_reflesh = 1;
+      disp_refresh = 1;
     }
   }
   //-------------------------------CH2 REC--------------------------
   if (mode2 == 0)
   {
     // when mode is REC and trig in
-    CV_in2 = analogRead(9) / 2048; // 0 or 1
+    CV_in2 = analogRead(CV_2_IN_PIN) / 2048; // 0 or 1
 
     if (old_CV_in2 == 1 && CV_in2 == 0)
     { // when trigger fall , record CV input
 
       // analog read and quantize
-      AD_CH2 = analogRead(8) / 4 * AD_CH1_calb; // 12bit to 10bit
+      AD_CH2 = analogRead(CV_1_IN_PIN) / 4 * AD_CH1_calb; // 12bit to 10bit
       for (search_qnt = 0; search_qnt <= 61; search_qnt++)
       { // quantize
         if (AD_CH2 >= cv_qnt_thr[search_qnt] && AD_CH2 < cv_qnt_thr[search_qnt + 1])
@@ -306,23 +328,23 @@ void loop()
 
       // Check the input CV
       MCP(cv_qnt_out[stepcv_ch2[rec_step]]); // OUTPUT internal DAC
-      digitalWrite(2, LOW);                  // because LOW active , LOW is output
+      digitalWrite(ENV_OUT_PIN_2, LOW);      // because LOW active , LOW is output
       delay(5);
-      digitalWrite(2, HIGH);
+      digitalWrite(ENV_OUT_PIN_2, HIGH);
 
       // add step
       rec_step++;
       rec_step = constrain(rec_step, 0, 127);
-      disp_reflesh = 1;
+      disp_refresh = 1;
     }
   }
 
   //-------------------------------OUTPUT SETTING--------------------------
 
-  CLK_in = digitalRead(7);
+  CLK_in = digitalRead(CLK_PIN);
   if (old_CLK_in == 0 && CLK_in == 1)
   {
-    disp_reflesh = 1;
+    disp_refresh = 1;
 
     if (mode1 == 1 && stop_ch1 != 1)
     {                                                // CH1 output
@@ -330,11 +352,11 @@ void loop()
       if ((stepgate_ch1[step_ch1_play] == 1) && (step_ch1 == 0) && (mute_ch1 == 0))
       {
         gate_timer1 = millis();
-        digitalWrite(1, LOW); // because LOW active , LOW is output
+        digitalWrite(ENV_OUT_PIN_1, LOW); // because LOW active , LOW is output
       }
       else if (stepgate_ch1[step_ch1_play] == 0)
       {
-        digitalWrite(1, HIGH); // because LOW active , HIGH is no output
+        digitalWrite(ENV_OUT_PIN_1, HIGH); // because LOW active , HIGH is no output
       }
       step_ch1++;
       //      step_ch2++;
@@ -355,11 +377,11 @@ void loop()
       if ((stepgate_ch2[step_ch2_play] == 1) && (step_ch2 == 0) && (mute_ch2 == 0))
       {
         gate_timer2 = millis();
-        digitalWrite(2, LOW); // because LOW active , LOW is output
+        digitalWrite(ENV_OUT_PIN_2, LOW); // because LOW active , LOW is output
       }
       else if (stepgate_ch1[step_ch1_play] == 0)
       {
-        digitalWrite(2, HIGH); // because LOW active , HIGH is no output
+        digitalWrite(ENV_OUT_PIN_2, HIGH); // because LOW active , HIGH is no output
       }
       //      step_ch1++;
       step_ch2++;
@@ -376,27 +398,27 @@ void loop()
   }
 
   if (gate_timer1 + 10 >= millis())
-  {                       // gate ON time is 10msec
-    digitalWrite(1, LOW); // because LOW active , HIGH is no output
+  {                                   // gate ON time is 10msec
+    digitalWrite(ENV_OUT_PIN_1, LOW); // because LOW active , HIGH is no output
   }
   else
   {
-    digitalWrite(1, HIGH);
+    digitalWrite(ENV_OUT_PIN_1, HIGH);
   }
 
   if (gate_timer2 + 10 >= millis())
-  {                       // gate ON time is 10msec
-    digitalWrite(2, LOW); // because LOW active , HIGH is no output
+  {                                   // gate ON time is 10msec
+    digitalWrite(ENV_OUT_PIN_2, LOW); // because LOW active , HIGH is no output
   }
   else
   {
-    digitalWrite(2, HIGH);
+    digitalWrite(ENV_OUT_PIN_2, HIGH);
   }
 
-  if (disp_reflesh == 1)
+  if (disp_refresh == 1)
   {
-    OLED_display(); // reflesh display
-    disp_reflesh = 0;
+    OLED_display(); // refresh display
+    disp_refresh = 0;
   }
 }
 
@@ -440,6 +462,10 @@ void OLED_display()
   else if (menu >= 9 && menu <= 10)
   {
     display.drawTriangle(0, (menu - 7) * 9 + 18, 0, (menu - 6) * 9 - 3 + 18, 5, (menu - 6) * 9 - 6 + 18, WHITE);
+  } // Add save menu option
+  else if (menu == 11)
+  {
+    display.drawTriangle(0, 54, 0, 57, 5, 60, WHITE);
   }
 
   if (menu <= 6)
@@ -514,6 +540,9 @@ void OLED_display()
       display.setCursor(32, 45);
       display.print("on");
     }
+    // Add save menu option
+    display.setCursor(8, 54);
+    display.print("SAVE");
   }
 
   display.display();
@@ -522,7 +551,7 @@ void OLED_display()
 //-----------------------------OUTPUT CV----------------------------------------
 void intDAC(int intDAC_OUT)
 {
-  analogWrite(A0, intDAC_OUT / 4); // "/4" -> 12bit to 10bit
+  analogWrite(DAC_INTERNAL_PIN, intDAC_OUT / 4); // "/4" -> 12bit to 10bit
 }
 
 void MCP(int MCP_OUT)
@@ -531,4 +560,47 @@ void MCP(int MCP_OUT)
   Wire.write((MCP_OUT >> 8) & 0x0F);
   Wire.write(MCP_OUT);
   Wire.endTransmission();
+}
+
+// Save data
+void save()
+{
+  delay(100);
+  // Save sequence 1 CV
+  for (int i = 0; i < 128; i++)
+  {
+    EEPROM.write(i, stepcv_ch1[i]);
+  }
+  // Save sequence 2 CV
+  for (int i = 0; i < 128; i++)
+  {
+    EEPROM.write(i + 128, stepcv_ch2[i]);
+  }
+  // Save sequence 1 Gate
+  for (int i = 0; i < 128; i++)
+  {
+    EEPROM.write(i + 256, stepgate_ch1[i]);
+  }
+  // Save sequence 2 Gate
+  for (int i = 0; i < 128; i++)
+  {
+    EEPROM.write(i + 384, stepgate_ch2[i]);
+  }
+  // Save mute 1 and 2
+  EEPROM.write(385, mute_ch1);
+  EEPROM.write(386, mute_ch2);
+  // Save stop 1 and 2
+  EEPROM.write(387, stop_ch1);
+  EEPROM.write(388, stop_ch2);
+  // Save max step 1 and 2
+  EEPROM.write(389, max_step_ch1);
+  EEPROM.write(390, max_step_ch2);
+  EEPROM.commit();
+  display.clearDisplay(); // clear display
+  display.setTextSize(2);
+  display.setTextColor(BLACK, WHITE);
+  display.setCursor(10, 40);
+  display.print("SAVED");
+  display.display();
+  delay(1000);
 }
