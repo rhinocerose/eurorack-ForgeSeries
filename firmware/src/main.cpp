@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include <Wire.h>
 #include <Encoder.h>
 // Use flash memory as eeprom
@@ -7,6 +8,7 @@
 
 // Load local libraries
 #include "scales.cpp"
+#include "quantizer.cpp"
 
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
@@ -25,8 +27,6 @@
 #define ENV_OUT_PIN_2 2
 
 // Declare function prototypes
-void buildQuantBuffer(int[], bool[]);
-void quantizeCV(float, int[], int, int, float *);
 void noteDisp(int16_t, int16_t, boolean);
 void OLED_display();
 void intDAC(int);
@@ -62,7 +62,6 @@ int CV_in1, CV_in2;
 float CV_out1, CV_out2, old_CV_out1, old_CV_out2;
 long gate_timer1, gate_timer2; // EG curve progress speed
 
-int cmp1, cmp2; // Detect closest note
 int k = 0;
 
 // envelope curve setting
@@ -79,7 +78,6 @@ int sensitivity_ch1, sensitivity_ch2, oct1, oct2; // sens = AD input attn,amp.oc
 // CV setting
 int cv_qnt_thr_buf1[62]; // input quantize
 int cv_qnt_thr_buf2[62]; // input quantize
-byte search_qnt = 0;
 // Scale and Note loading indexes
 int scale_load = 0;
 int note_load = 0;
@@ -161,24 +159,8 @@ void setup()
   }
 
   // initial quantizer setting
-  k = 0;
-  for (byte j = 0; j <= 62; j++)
-  {
-    if (note1[j % 12] == 1)
-    {
-      cv_qnt_thr_buf1[k] = 17 * j - 8;
-      k++;
-    }
-  }
-  k = 0;
-  for (byte j = 0; j <= 62; j++)
-  {
-    if (note2[j % 12] == 1)
-    {
-      cv_qnt_thr_buf2[k] = 17 * j - 8;
-      k++;
-    }
-  }
+  initializeQuantBuffer(note1, cv_qnt_thr_buf1);
+  initializeQuantBuffer(note2, cv_qnt_thr_buf2);
 }
 
 void loop()
@@ -373,8 +355,8 @@ void loop()
     }
 
     // select note set
-    buildQuantBuffer(cv_qnt_thr_buf1, note1);
-    buildQuantBuffer(cv_qnt_thr_buf2, note2);
+    buildQuantBuffer(note1, cv_qnt_thr_buf1);
+    buildQuantBuffer(note2, cv_qnt_thr_buf2);
   }
 
   //-------------------------------Analog read and qnt setting--------------------------
@@ -502,47 +484,6 @@ void loop()
   }
 }
 
-void buildQuantBuffer(int buff[], bool note[])
-{
-  int k = 0;
-  for (byte j = 0; j <= 62; j++)
-  {
-    if (note[j % 12] == 1)
-    {
-      buff[k] = 17 * j - 8;
-      k++;
-    }
-  }
-};
-
-void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, float *CV_out)
-{
-  AD_CH = AD_CH * (16 + sensitivity_ch) / 20; // sens setting
-  if (AD_CH > 4095)
-  {
-    AD_CH = 4095;
-  }
-  for (search_qnt = 0; search_qnt <= 61; search_qnt++)
-  { // quantize
-    if (AD_CH >= cv_qnt_thr_buf[search_qnt] * 4 && AD_CH < cv_qnt_thr_buf[search_qnt + 1] * 4)
-    {
-      cmp1 = AD_CH - cv_qnt_thr_buf[search_qnt] * 4;     // Detect closest note
-      cmp2 = cv_qnt_thr_buf[search_qnt + 1] * 4 - AD_CH; // Detect closest note
-      break;
-    }
-  }
-  if (cmp1 >= cmp2)
-  { // Detect closest note
-    *CV_out = (cv_qnt_thr_buf[search_qnt + 1] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25;
-    *CV_out = constrain(CV_out1, 0, 4095);
-  }
-  else if (cmp2 > cmp1)
-  { // Detect closest note
-    *CV_out = (cv_qnt_thr_buf[search_qnt] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25;
-    *CV_out = constrain(CV_out1, 0, 4095);
-  }
-}
-
 void noteDisp(int x0, int y0, boolean on)
 {
   int width = 11;
@@ -605,21 +546,27 @@ void OLED_display()
     {
       display.fillTriangle(12 + i * 7, 28, 9 + i * 7, 33, 15 + i * 7, 33, WHITE);
     }
-    else if (i == 12 && mode == 0)
+    else if (i == 12)
     {
-      display.drawTriangle(127, 0, 127, 6, 121, 3, WHITE);
+      if (mode == 0)
+      {
+        display.drawTriangle(127, 0, 127, 6, 121, 3, WHITE);
+      }
+      else if (mode == 1)
+      {
+        display.fillTriangle(127, 0, 127, 6, 121, 3, WHITE);
+      }
     }
-    else if (i == 12 && mode == 1)
+    else if (i == 13)
     {
-      display.fillTriangle(127, 0, 127, 6, 121, 3, WHITE);
-    }
-    else if (i == 13 && mode == 0)
-    {
-      display.drawTriangle(127, 16, 127, 22, 121, 19, WHITE);
-    }
-    else if (i == 13 && mode == 2)
-    {
-      display.fillTriangle(127, 16, 127, 22, 121, 19, WHITE);
+      if (mode == 0)
+      {
+        display.drawTriangle(127, 16, 127, 22, 121, 19, WHITE);
+      }
+      else if (mode == 2)
+      {
+        display.fillTriangle(127, 16, 127, 22, 121, 19, WHITE);
+      }
     }
     else if (i >= 14 && i <= 18)
     {
@@ -629,21 +576,27 @@ void OLED_display()
     {
       display.fillTriangle(12 + (i - 14) * 7, 33, 9 + (i - 14) * 7, 28, 15 + (i - 14) * 7, 28, WHITE);
     }
-    else if (i == 26 && mode == 0)
+    else if (i == 26)
     {
-      display.drawTriangle(127, 32, 127, 38, 121, 35, WHITE);
+      if (mode == 0)
+      {
+        display.drawTriangle(127, 32, 127, 38, 121, 35, WHITE);
+      }
+      else if (mode == 3)
+      {
+        display.fillTriangle(127, 32, 127, 38, 121, 35, WHITE);
+      }
     }
-    else if (i == 26 && mode == 3)
+    else if (i == 27)
     {
-      display.fillTriangle(127, 32, 127, 38, 121, 35, WHITE);
-    }
-    else if (i == 27 && mode == 0)
-    {
-      display.drawTriangle(127, 48, 127, 54, 121, 51, WHITE);
-    }
-    else if (i == 27 && mode == 4)
-    {
-      display.fillTriangle(127, 48, 127, 54, 121, 51, WHITE);
+      if (mode == 0)
+      {
+        display.drawTriangle(127, 48, 127, 54, 121, 51, WHITE);
+      }
+      else if (mode == 4)
+      {
+        display.fillTriangle(127, 48, 127, 54, 121, 51, WHITE);
+      }
     }
 
     // Draw envelope param

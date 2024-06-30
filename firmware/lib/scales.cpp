@@ -1,15 +1,16 @@
 // Add presets for common scales
-// Major, Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Pentatonic Minor, Harmonic Minor, Melodic Minor, Whole Tone, Diminished, Chromatic
-char const *scaleNames[13] = {"Chrom", "Maj", "Min", "Dor", "Phr", "Lyd", "Mix", "Loc", "PenMin", "HarMin", "MelMin", "Whol", "Dim"};
-char const *noteNames[12] = {"C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"};
 
-int const numScales = sizeof(scaleNames);
+// Major, Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Pentatonic Minor, Harmonic Minor, Melodic Minor, Whole Tone, Diminished, Chromatic
+char const *scaleNames[] = {"Chrom", "Maj", "Min", "Dor", "Phr", "Lyd", "Mix", "Loc", "PenMin", "HarMin", "MelMin", "Whol", "Dim"};
+char const *noteNames[] = {"C", "C#/Db", "D", "D#/Eb", "E", "F", "F#/Gb", "G", "G#/Ab", "A", "A#/Bb", "B"};
+int const numScales = sizeof(scaleNames) / sizeof(scaleNames[0]);
+
 // ScaleNotes contains the note indexes for each scale
 // Eg. 0 for root, 2 for major second, 4 for major third, 5 for perfect fourth, 7 for perfect fifth, 9 for major sixth, 11 for major seventh
 // C  C# D  D# E F F# G G# A A# B
 // 0  1  2  3  4 5 6  7 8  9 10 11
-int scaleNotes[numScales][12] = {
-    {0, 0, 0, 0, 0, 0, 0},  // Chromatic (This does not matter for this array but we need the index 0)
+int scaleNotes[numScales][7] = {
+    {},                     // Chromatic (This does not matter for this array but we need the index 0)
     {0, 2, 4, 5, 7, 9, 11}, // Major
     {0, 2, 3, 5, 7, 8, 10}, // Minor
     {0, 2, 3, 5, 7, 9, 10}, // Dorian

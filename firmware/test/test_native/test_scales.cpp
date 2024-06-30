@@ -1,24 +1,11 @@
 #include <gtest/gtest.h>
 // uncomment line below if you plan to use GMock
 // #include <gmock/gmock.h>
-#include <scales.cpp>
 
-int main(int argc, char **argv)
-{
-  ::testing::InitGoogleTest(&argc, argv);
-  // if you plan to use GMock, replace the line above with
-  // ::testing::InitGoogleMock(&argc, argv);
-
-  if (RUN_ALL_TESTS())
-    ;
-
-  // Always return zero-code and allow PlatformIO to parse results
-  return 0;
-}
+#include "scales.cpp"
 
 // C  C# D  D# E  F  F# G  G# A  A# B
 // 0  1  2  3  4  5  6  7  8  9  10 11
-//
 
 // Test Chromatic
 TEST(buildScale, Chromatic)
