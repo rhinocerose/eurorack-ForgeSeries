@@ -58,11 +58,6 @@ const byte div_ch2[7] = {1, 2, 4, 8, 16, 32, 64}; // divide rate
 byte select_div_ch1 = 0;
 byte select_div_ch2 = 0;
 
-bool mute_ch1 = 0; // 0=not mute , 1=mute
-bool mute_ch2 = 0; // 0=not mute , 1=mute
-bool stop_ch1 = 0; // 0=not stop , 1=stop
-bool stop_ch2 = 0; // 0=not stop , 1=stop
-
 // CV setting
 const int cv_qnt_out[61] = {
     0, 68, 137, 205, 273, 341, 410, 478, 546, 614, 683, 751,
@@ -77,17 +72,23 @@ const int cv_qnt_thr[62] = {
 byte search_qnt = 0;
 byte rec_step = 0;
 
+// Initialize settings
 byte stepcv_ch1[128] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 byte stepcv_ch2[128] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 bool stepgate_ch1[128] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 bool stepgate_ch2[128] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+bool mute_ch1 = 0;     // 0=not mute , 1=mute
+bool mute_ch2 = 0;     // 0=not mute , 1=mute
+bool stop_ch1 = 0;     // 0=not stop , 1=stop
+bool stop_ch2 = 0;     // 0=not stop , 1=stop
+byte max_step_ch1 = 1; // count step input number
+byte max_step_ch2 = 1; // count step input number
+
 float step_ch1 = 1;
 byte step_ch1_play = 1;
 float step_ch2 = 1;
 byte step_ch2_play = 1;
-byte max_step_ch1 = 1; // count step input number
-byte max_step_ch2 = 1; // count step input number
 
 bool CV_in1 = 0;     // record CV input or CH1 output trigger
 bool CV_in2 = 0;     // record TRIG input or CH2 output trigger
@@ -110,6 +111,9 @@ void setup()
   pinMode(ENC_CLICK_PIN, INPUT_PULLUP); // push sw
   pinMode(ENV_OUT_PIN_1, OUTPUT);       // CH1 gate out
   pinMode(ENV_OUT_PIN_2, OUTPUT);       // CH2 gate out
+
+  // Load settings from EEPROM
+  load();
 
   // OLED initialize
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
@@ -587,14 +591,14 @@ void save()
     EEPROM.write(i + 384, stepgate_ch2[i]);
   }
   // Save mute 1 and 2
-  EEPROM.write(385, mute_ch1);
-  EEPROM.write(386, mute_ch2);
+  EEPROM.write(512, mute_ch1);
+  EEPROM.write(513, mute_ch2);
   // Save stop 1 and 2
-  EEPROM.write(387, stop_ch1);
-  EEPROM.write(388, stop_ch2);
+  EEPROM.write(514, stop_ch1);
+  EEPROM.write(515, stop_ch2);
   // Save max step 1 and 2
-  EEPROM.write(389, max_step_ch1);
-  EEPROM.write(390, max_step_ch2);
+  EEPROM.write(516, max_step_ch1);
+  EEPROM.write(517, max_step_ch2);
   EEPROM.commit();
   display.clearDisplay(); // clear display
   display.setTextSize(2);
@@ -603,4 +607,38 @@ void save()
   display.print("SAVED");
   display.display();
   delay(1000);
+}
+
+void load()
+{
+  if (EEPROM.isValid() == 1)
+    // Load sequence 1 CV
+    for (int i = 0; i < 128; i++)
+    {
+      stepcv_ch1[i] = EEPROM.read(i);
+    }
+  // Load sequence 2 CV
+  for (int i = 0; i < 128; i++)
+  {
+    stepcv_ch2[i] = EEPROM.read(i + 128);
+  }
+  // Load sequence 1 Gate
+  for (int i = 0; i < 128; i++)
+  {
+    stepgate_ch1[i] = EEPROM.read(i + 256);
+  }
+  // Load sequence 2 Gate
+  for (int i = 0; i < 128; i++)
+  {
+    stepgate_ch2[i] = EEPROM.read(i + 384);
+  }
+  // Load mute 1 and 2
+  mute_ch1 = EEPROM.read(512);
+  mute_ch2 = EEPROM.read(513);
+  // Load stop 1 and 2
+  stop_ch1 = EEPROM.read(514);
+  stop_ch2 = EEPROM.read(515);
+  // Load max step 1 and 2
+  max_step_ch1 = EEPROM.read(516);
+  max_step_ch2 = EEPROM.read(517);
 }

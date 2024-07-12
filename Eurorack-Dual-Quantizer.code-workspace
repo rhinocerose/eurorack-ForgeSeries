@@ -1,12 +1,20 @@
 {
 	"folders": [
 		{
-			"name": "Eurorack-Dual-Quantizer",
+			"name": "Eurorack-Modules",
 			"path": "."
 		},
 		{
-			"name": "firmware",
-			"path": "firmware"
+			"name": "DualQuantizer",
+			"path": "firmware-DQ"
+		},
+		{
+			"name": "Sequencer",
+			"path": "firmware-SEQ"
+		},
+		{
+			"name": "Clock Gen",
+			"path": "firmware-CLK"
 		}
 	],
 	"settings": {

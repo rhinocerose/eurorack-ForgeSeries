@@ -17,18 +17,19 @@
 // rotary encoder setting
 #define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
 
-#define ENC_PIN_1 3      // rotary encoder left pin
-#define ENC_PIN_2 6      // rotary encoder right pin
-#define CLK_PIN 7        // Clock input pin
+#define CLK_IN_PIN 7     // Clock input pin
 #define CV_1_IN_PIN 8    // channel 1 analog in
 #define CV_2_IN_PIN 9    // channel 2 analog in
+#define ENC_PIN_1 3      // rotary encoder left pin
+#define ENC_PIN_2 6      // rotary encoder right pin
 #define ENC_CLICK_PIN 10 // pin for encoder switch
 #define ENV_OUT_PIN_1 1
 #define ENV_OUT_PIN_2 2
-#define DAC_INTERNAL_PIN A0
+#define DAC_INTERNAL_PIN A0 // DAC output pin (internal)
+// Second DAC output goes to MCP4725 via I2C
 
 // Declare function prototypes
-void noteDisp(int16_t, int16_t, boolean);
+void noteDisp(int, int, boolean);
 void OLED_display();
 void intDAC(int);
 void MCP(int);
@@ -98,7 +99,7 @@ void setup()
 {
   analogWriteResolution(10);
   analogReadResolution(12);
-  pinMode(CLK_PIN, INPUT_PULLDOWN);     // CLK in
+  pinMode(CLK_IN_PIN, INPUT_PULLDOWN);  // CLK in
   pinMode(CV_1_IN_PIN, INPUT);          // IN1
   pinMode(CV_2_IN_PIN, INPUT);          // IN2
   pinMode(ENC_CLICK_PIN, INPUT_PULLUP); // push sw
@@ -176,7 +177,7 @@ void loop()
   old_AD_CH1 = AD_CH1;
   old_AD_CH2 = AD_CH2;
 
-  //-------------------------------rotary endoder--------------------------
+  //-------------------------------rotary encoder--------------------------
   newPosition = myEnc.read();
   if ((newPosition - 3) / 4 > oldPosition / 4)
   { // 4 is resolution of encoder
@@ -371,7 +372,7 @@ void loop()
   quantizeCV(AD_CH2, cv_qnt_thr_buf2, sensitivity_ch2, oct2, &CV_out2);
 
   //-------------------------------OUTPUT SETTING--------------------------
-  CLK_in = digitalRead(CLK_PIN);
+  CLK_in = digitalRead(CLK_IN_PIN);
 
   // trig sync trigger detect
   if (CLK_in == 1 && old_CLK_in == 0)
@@ -602,6 +603,14 @@ void OLED_display()
         display.fillTriangle(127, 48, 127, 54, 121, 51, WHITE);
       }
     }
+    else if (i == 28)
+    {
+      display.drawTriangle(0, 0 + (i - 28) * 9, 0, 6 + (i - 28) * 9, 7, 3 + (i - 28) * 9, WHITE);
+    }
+    else if (i == 35)
+    {
+      display.drawTriangle(0, 0 + (i - 35) * 9, 0, 6 + (i - 35) * 9, 7, 3 + (i - 35) * 9, WHITE);
+    }
 
     // Draw envelope param
     display.setTextSize(1);
@@ -668,8 +677,6 @@ void OLED_display()
     // draw save
     display.setCursor(10, 54);
     display.print("SAVE");
-
-    display.drawTriangle(0, 0 + (i - 28) * 9, 0, 6 + (i - 28) * 9, 7, 3 + (i - 28) * 9, WHITE);
   }
   // draw scale load setting
   const char *scale_name = scaleNames[scale_load];
@@ -692,8 +699,6 @@ void OLED_display()
     // draw save
     display.setCursor(10, 36);
     display.print("SAVE");
-
-    display.drawTriangle(0, 0 + (i - 35) * 9, 0, 6 + (i - 35) * 9, 7, 3 + (i - 35) * 9, WHITE);
   }
   display.display();
 }
