@@ -1,19 +1,53 @@
-# HAGIWO 029/033 Eurorack Quantizer Module
+# Eurorack Modules
 
-This project is an update to the through-hole PCB version and aggregates information from the [original](https://note.com/solder_state/n/nb8b9a2f212a2) Hagiwo 033 Dual Quantizer and the updated thru-hole project by [Testbild-synth](https://github.com/Testbild-synth/HAGIWO-029-033-Eurorack-quantizer). The module uses a Seeeduino Xiao (SAMD21/Cortex M0 chip) and a MCP4725 DAC.
+This project is a collection of Eurorack modules based on the fantastic work of Hagiwo and some of my creation. The modules are designed to be easy to build and modify and be built with through-hole components. The firmware is based on the Arduino platform.
 
-I've consolidated the information from both projects like the original concepts, generated PCBs and Panel from Testbild-synth and added some new functionality to the code.
+The concept is to have a generic hardware with a display, rotary encoder, a trigger (clock) input, two CV inputs, 2 CV outputs and 2 trigger outputs. With this base hardware, I can create different modules by changing the firmware.
+
+This project currently provides the following modules:
+
+- Clock Generator
+- Dual Quantizer
+- Sequencer
+- Generative Sequencer
+
+The hardware is based on Hagiwo 033 module. The quantizer base code is from the [original](https://note.com/solder_state/n/nb8b9a2f212a2) Hagiwo 033 Dual Quantizer and the updated thru-hole project by [Testbild-synth](https://github.com/Testbild-synth/HAGIWO-029-033-Eurorack-quantizer). The module uses a Seeeduino Xiao (SAMD21/Cortex M0 chip) and a MCP4725 DAC.
+
+I've consolidated the information from both projects like the original concepts, generated PCBs and Panel from Testbild-synth and added some new functionality to the code. Each new module firmware wil be in a separate folder which can be built and uploaded to the Seeeduino Xiao using PlatformIO.
 
 <img src="images/in_rack.jpg" width="30%" height="30%">
 
-## Interface
+## Clock Generator
 
-TRIG: Trigger input (0-5V)
-IN1, IN2: CV input to be quantized (0-5V)
-GATE 1 / 2: Gate with envelope curve output for each channel (0-5V)
-CV 1 / 2: CV output with quantized scale output for each channel (CH1: 10bit, CH2: 12bit, 0-5V)
+This module provides a clock generator with a display and a rotary encoder to select the BPM and the division of the clock signal. The module has 4 (four) trigger outputs and a clock input. The module has a configuration screen to change the clock division/multiplication parameters for each output and tap-tempo functionality. All configurations can saved in the EEPROM memory in the SAVE menu.
 
-## Operation
+### Interface
+
+- TRIG: Optional Clock input (0-5V)
+- IN1, IN2: CV input to control internal parameters (0-5V) (not used yet)
+- GATE 1 / 2: Clock Outputs 1 and 3 (0-5V)
+- CV 1 / 2: Clock Outputs 2 and 4 (0-5V)
+
+### Operation
+
+The main screen shows the current BPM and a square that pulses according to each output. Pushing the encoder enables the BPM edit mode which can be changed from 10 to 350 BPM. Pushing the encoder again returns to the parameter selection mode.
+
+Rotating the encoder, changes to the second page of configuration where you can select the division/multiplication of the clock signal for each output. Select the division/multiplication by pushing the encoder for each parameter and rotating it to select the desired value. Pushing the encoder again returns to the parameter selection mode.
+
+The next screen is the tap-tempo, pulse duration and save screen. You can tap the tempo by selecting the option and pushing the encoder 3 (three) times. Pushing the encoder again returns to the parameter selection mode. To save the settings, select the SAVE option and push the encoder.
+
+## Dual Quantizer
+
+This module is a dual quantizer with a display and a rotary encoder to select the scale and root note for each channel. The module has two CV inputs and two CV outputs with a trigger output for each channel. The module has an envelope generator for each channel with attack and decay parameters. The module has a configuration screen to change the parameters for each channel and a preset screen to load predefined scales and notes for each channel.
+
+### Interface
+
+- TRIG: Trigger input (0-5V)
+- IN1, IN2: CV input to be quantized (0-5V)
+- GATE 1 / 2: Gate with envelope curve output for each channel (0-5V)
+- CV 1 / 2: CV output with quantized scale output for each channel (CH1: 10bit, CH2: 12bit, 0-5V)
+
+### Operation
 
 Use the rotary encoder to select the parameter, and the push the switch to change parameters.
 The upper half of the screen shows CH1, and the lower half CH2. Select the keyboard displayed as a rectangle to select the note for which quantization is enabled. Pushing the encoder enables or disables the selected note.
@@ -32,11 +66,27 @@ LOAD CH1/CH2: Loads the selected Scale and Root into the channel overwriting the
 
 ## Production specifications
 
-Eurorack standard 3U 6HP size
-Power supply: 30mA (at 5V)
-On-board converter from 12V to internal 5V
+- Eurorack standard 3U 6HP size
+- Power supply: 30mA (at 5V)
+- On-board converter from 12V to internal 5V
 
-## CURRENT STATE: HARDWARE VERIFIED WORKING, DOUBLE QUANTIZER FIRMWARE WORKING
+## Project State
+
+- ✅ - Working
+- ❎ - Not tested
+- ❓ - In progress
+
+| Project              | Simulation | Hardware |
+| -------------------- | ---------- | -------- |
+| Hardware             |            | ❎        |
+| Clock Generator      | ✅          | ❓        |
+| Dual Quantizer       | ❎          | ❎        |
+| Sequencer            | ❎          | ❎        |
+| Generative Sequencer | ❎          | ❎        |
+
+## Simulations
+
+- Clock Generator: [Link](https://wokwi.com/projects/403695855594826753)
 
 ## Hardware and PCB
 
@@ -83,8 +133,3 @@ The main changes are:
 - I followed suggestions from [this very nice blog about adc accuracy on samd21](https://blog.thea.codes/getting-the-most-out-of-the-samd21-adc/). With lower input impedance and the changes from this blog, the readings got a lot more accurate on mine. Downside is more latency (in the single ms range) but frankly im willing to take that for more stability/less noise.
 - Also, to make use of this, the note calculation is now done with 12 bit instead of downsampling the adc values to 10 bit.
 - Comment out the specified lines in the code if you dont want the slower adc.
-
-## TODO
-
-- Test and verify SH101 firmware
-- maybe add display indication for played notes
