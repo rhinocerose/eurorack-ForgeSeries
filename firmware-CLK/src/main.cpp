@@ -70,8 +70,10 @@ const int numOutputs = 4;
 int divisors[numOutputs] = {7, 7, 7, 7}; // Clock time divisors (initialize at 1x)
 
 unsigned long previousMillis[numOutputs] = {0, 0, 0, 0}; // Last pulse time for each output
-unsigned long pulseEndMillis[numOutputs] = {0, 0, 0, 0}; // End time for current pulse for each output
-bool pulsing[numOutputs] = {false, false, false, false}; // Pulse status for each output
+unsigned long pulseEndMillis[numOutputs] = {0, 0, 0, 0}; // End time for current pulse for each cycle
+unsigned long pulseEndMillisOutput[numOutputs] = {0, 0, 0, 0}; // End time for current pulse for each output
+bool pulsing[numOutputs] = {false, false, false, false}; // Pulse status for each cycle
+bool pulsingOutput[numOutputs] = {false, false, false, false}; // Pulse status for each output
 
 bool externalClock = false; // Flag to determine if external clock is being used
 unsigned long lastSyncTime = 0;
@@ -347,16 +349,16 @@ void generatePulse()
     if (!pulsing[i])
     {
       // Start a new pulse
-      setPin(i, HIGH);
-      pulseEndMillis[i] = millis() + pulseDuration;
-      pulsing[i] = true;
+      digitalWrite(5 + i, HIGH);
+      pulseEndMillisOutput[i] = millis() + pulseDuration;
+      pulsingOutput[i] = true;
     }
 
-    if (pulsing[i] && millis() >= pulseEndMillis[i])
+    if (pulsingOutput[i] && millis() >= pulseEndMillisOutput[i])
     {
       // End the current pulse
-      setPin(i, LOW);
-      pulsing[i] = false;
+      digitalWrite(5 + i, LOW);
+      pulsingOutput[i] = false;
     }
   }
 }

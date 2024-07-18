@@ -26,5 +26,5 @@ jobs:
           python -m pip install --upgrade pip
           pip install platformio
 
-      - name: Build and Test (only native environment)
-        run: pio test -e native -d ./firmware
+      - name: Build and Test (Dual Quantizer)
+        run: pio test -e native -d ./firmware-DQ
