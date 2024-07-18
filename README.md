@@ -25,8 +25,8 @@ This module provides a clock generator with a display and a rotary encoder to se
 
 - TRIG: Optional Clock input (0-5V)
 - IN1, IN2: CV input to control internal parameters (0-5V) (not used yet)
-- GATE 1 / 2: Clock Outputs 1 and 3 (0-5V)
-- CV 1 / 2: Clock Outputs 2 and 4 (0-5V)
+- GATE 1 / 2: Clock Outputs 1 and 2 (0-5V)
+- CV 1 / 2: Clock Outputs 3 and 4 (0-5V)
 
 ### Operation
 
@@ -103,6 +103,31 @@ When ordering the display module, make sure to choose an 0.96 I2C oled module th
 Also make sure you order a Seediuno XIAO (with a SAMD21/Cortex M0 chip) as opposed to the XIAO esp32c3 or the XIAO rp2040, those are different chips.
 
 <img src="images/display.jpg" width="20%" height="20%">
+
+Pinout Diagram:
+
+```text
+|--------------------|
+|                    |
+|         O          |    1
+|                    |
+|   O           O    |  2   3
+|                    |
+|                    |
+|   O           O    |  4   5
+|                    |
+|   O           O    |  6   7
+|                    |
+----------------------
+```
+
+- 1 - Trigger / Clock Input
+- 2 - CV In 1
+- 3 - CV In 2
+- 4 - Trigger Out 1
+- 5 - Trigger Out 2
+- 6 - CV Out 1 (Internal DAC)
+- 7 - CV Out 2 (External DAC)
 
 ## Assembly
 

@@ -69,10 +69,10 @@ unsigned int const maxBPM = 350;
 const int numOutputs = 4;
 int divisors[numOutputs] = {7, 7, 7, 7}; // Clock time divisors (initialize at 1x)
 
-unsigned long previousMillis[numOutputs] = {0, 0, 0, 0}; // Last pulse time for each output
-unsigned long pulseEndMillis[numOutputs] = {0, 0, 0, 0}; // End time for current pulse for each cycle
+unsigned long previousMillis[numOutputs] = {0, 0, 0, 0};       // Last pulse time for each output
+unsigned long pulseEndMillis[numOutputs] = {0, 0, 0, 0};       // End time for current pulse for each cycle
 unsigned long pulseEndMillisOutput[numOutputs] = {0, 0, 0, 0}; // End time for current pulse for each output
-bool pulsing[numOutputs] = {false, false, false, false}; // Pulse status for each cycle
+bool pulsing[numOutputs] = {false, false, false, false};       // Pulse status for each cycle
 bool pulsingOutput[numOutputs] = {false, false, false, false}; // Pulse status for each output
 
 bool externalClock = false; // Flag to determine if external clock is being used
@@ -327,17 +327,17 @@ void setPin(int pin, int value)
   {
     value ? digitalWrite(OUT_1, HIGH) : digitalWrite(OUT_1, LOW);
   }
-  else if (pin == 1)
+  else if (pin == 1) // Gate Output 2
   {
     value ? digitalWrite(OUT_2, HIGH) : digitalWrite(OUT_2, LOW);
   }
-  else if (pin == 2)
+  else if (pin == 2) // Internal DAC Output
   {
     intDAC(value ? 4095 : 0);
   }
-  else if (pin == 3)
+  else if (pin == 3) // MCP DAC Output
   {
-    PWM1(value ? 4095 : 0);
+    value ? MCP(4095) : MCP(0);
   }
 }
 
