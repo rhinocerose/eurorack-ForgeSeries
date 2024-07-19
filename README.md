@@ -86,7 +86,7 @@ LOAD CH1/CH2: Loads the selected Scale and Root into the channel overwriting the
 
 ## Simulations
 
-- Clock Generator: [Link](https://wokwi.com/projects/403695855594826753)
+- Clock Generator: [Link](https://wokwi.com/projects/403851982905059329)
 
 ## Hardware and PCB
 
