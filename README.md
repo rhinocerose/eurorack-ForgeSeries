@@ -19,12 +19,12 @@ I've consolidated the information from both projects like the original concepts,
 
 ## Clock Generator
 
-This module provides a clock generator with a display and a rotary encoder to select the BPM and the division of the clock signal. The module has 4 (four) trigger outputs and a clock input. The module has a configuration screen to change the clock division/multiplication parameters for each output and tap-tempo functionality. All configurations can saved in the EEPROM memory in the SAVE menu.
+This module provides a clock generator with a display and a rotary encoder to select the BPM and the division of the clock signal. The module has 4 (four) trigger outputs. The module has a configuration screen to change the clock division/multiplication parameters for each output and tap-tempo functionality. All configurations can saved in the EEPROM memory in the SAVE menu.
 
 ### Interface
 
-- TRIG: Optional Clock input (0-5V)
-- IN1, IN2: CV input to control internal parameters (0-5V) (not used yet)
+- TRIG: Optional Clock input (0-5V) (Not implemented yet)
+- IN1, IN2: CV input to control internal parameters (0-5V) (Not implemented yet)
 - GATE 1 / 2: Clock Outputs 1 and 2 (0-5V)
 - CV 1 / 2: Clock Outputs 3 and 4 (0-5V)
 

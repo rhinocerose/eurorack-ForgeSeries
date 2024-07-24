@@ -52,12 +52,6 @@ Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
 float oldPosition = -999;            // rotary encoder library setting
 float newPosition = -999;            // rotary encoder library setting
 
-// external or internal sync?
-bool _external_sync_on = false;
-const int externalClockPin = CLK_IN_PIN;
-unsigned long lastSyncTime = 0;
-bool lastClockState = LOW;
-
 // Define the clock resolution
 #define PPQN uClock.PPQN_96
 
@@ -74,6 +68,8 @@ unsigned int const maxBPM = 350;
 unsigned int pulseDuration = 20; // Pulse duration in milliseconds
 unsigned long _bpm_blink_timer = 1;
 unsigned long _bpm_output_timer = 1;
+
+volatile bool usingExternalClock = false;
 
 // Menu variables
 int menuItems = 8; // BPM, div1, div2, div3, div4, pulse duration, tap tempo, save
@@ -430,7 +426,17 @@ void handleOLEDDisplay()
       display.setTextSize(3);
       display.print("BPM");
       display.setCursor(70, 0);
-      display.print(int(bpm));
+      if (usingExternalClock)
+      {
+        display.print(int(uClock.getTempo()));
+        display.setTextSize(1);
+        display.setCursor(120, 24);
+        display.print("E");
+      }
+      else
+      {
+        display.print(int(bpm));
+      }
       if (mode == 0) // Draw empty triangle on the left of BPM
       {
         display.drawTriangle(0, 2, 0, 18, 8, 10, WHITE);
@@ -522,40 +528,6 @@ void handleOLEDDisplay()
   }
 }
 
-// External clock handling variables
-unsigned long lastSyncTime = 0;
-bool lastClockState = LOW;
-// Handle external clock
-void handleExternalClock()
-{
-  // Detect if we have an external clock for two pulses and switch to that
-  // If no clock is seen, switch back to internal clock
-  bool clockState = digitalRead(externalClockPin);
-  if (clockState != lastClockState)
-  {
-    lastSyncTime = millis();
-    lastClockState = clockState;
-  }
-  if (millis() - lastSyncTime > 1000)
-  {
-    lastClockState = LOW;
-  }
-  if (lastClockState == HIGH)
-  {
-    uClock.setMode(uClock.EXTERNAL_CLOCK);
-  }
-  else
-  {
-    uClock.setMode(uClock.INTERNAL_CLOCK);
-  }
-
-  // If we have an external clock, tick uClock clockMe function
-  if (lastClockState == HIGH)
-  {
-    uClock.clockMe();
-  }
-}
-
 void setup()
 {
   // Initialize serial port
@@ -614,19 +586,12 @@ void setup()
   // you need to use at least one!
   uClock.setOnPPQN(onPPQNCallback);
 
-  // set external sync mode?
-  if (_external_sync_on)
-  {
-    uClock.setMode(uClock.EXTERNAL_CLOCK);
-  }
-
   // Starts clock
   uClock.start();
 }
 
 void loop()
 {
-
   handleEncoderClick();
 
   handleEncoderPosition();
@@ -634,6 +599,4 @@ void loop()
   handleCVInputs();
 
   handleOLEDDisplay();
-
-  handleExternalClock();
 }
