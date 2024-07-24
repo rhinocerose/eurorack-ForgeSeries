@@ -59,7 +59,7 @@ float newPosition = -999;            // rotary encoder library setting
 float valid_dividers[] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0};
 int const numDividers = (sizeof(valid_dividers) / sizeof(valid_dividers[0])) - 1;
 char const *dividers_desc[] = {"1/128", "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16", "32", "64", "128"};
-int dividers[] = {7, 7, 7, 7}; // Store each output divider
+int dividers[] = {7, 7, 7, 7}; // Store each output divider index
 
 // BPM and clock settings
 float bpm = 120;
@@ -82,6 +82,29 @@ bool output_indicator[] = {false, false, false, false}; // Pulse status for indi
 
 // -------------------------------------------------------------------------------
 
+// OUTPUTS
+void intDAC(int intDAC_OUT)
+{
+  analogWrite(DAC_INTERNAL_PIN, intDAC_OUT / 4); // "/4" -> 12bit to 10bit
+}
+
+void MCP(int MCP_OUT)
+{
+  Wire.beginTransmission(0x60);
+  Wire.write((MCP_OUT >> 8) & 0x0F);
+  Wire.write(MCP_OUT);
+  Wire.endTransmission();
+}
+
+void PWM1(int duty1)
+{
+  pwm(OUT_1, 46000, duty1);
+}
+void PWM2(int duty2)
+{
+  pwm(OUT_2, 46000, duty2);
+}
+
 // This will manage the LEDs and display of the tempo for each output
 void tempoIndication(uint32_t *tick)
 {
@@ -98,7 +121,7 @@ void tempoIndication(uint32_t *tick)
     {
       _bpm_blink_timer = int(48 / valid_dividers[dividers[i]]);
       output_indicator[i] = true;
-      if (i == 0)
+      if (i == 0) // Sync the built-in LED with the first output
       {
         digitalWrite(LED_BUILTIN, HIGH);
       }
@@ -134,11 +157,11 @@ void setPin(int pin, int value)
   }
   else if (pin == 2) // Internal DAC Output
   {
-    // value ? intDAC(4095) : intDAC(0);
+    value ? intDAC(4095) : intDAC(0);
   }
   else if (pin == 3) // MCP DAC Output
   {
-    // value ? MCP(4095) : MCP(0);
+    value ? MCP(4095) : MCP(0);
   }
 }
 
@@ -167,29 +190,6 @@ void onPPQNCallback(uint32_t tick)
 
   // Trigger the function to manage the output tick
   tempoOutput(&tick);
-}
-
-//-----------------------------OUTPUT----------------------------------------
-void intDAC(int intDAC_OUT)
-{
-  analogWrite(DAC_INTERNAL_PIN, intDAC_OUT / 4); // "/4" -> 12bit to 10bit
-}
-
-void MCP(int MCP_OUT)
-{
-  Wire.beginTransmission(0x60);
-  Wire.write((MCP_OUT >> 8) & 0x0F);
-  Wire.write(MCP_OUT);
-  Wire.endTransmission();
-}
-
-void PWM1(int duty1)
-{
-  pwm(OUT_1, 46000, duty1);
-}
-void PWM2(int duty2)
-{
-  pwm(OUT_2, 46000, duty2);
 }
 
 // Update the BPM value
@@ -549,22 +549,10 @@ void setup()
   pinMode(OUT_2, OUTPUT);              // CH2 out
   pinMode(LED_BUILTIN, OUTPUT);        // LED
 
-  // Initialize all pins to LOW
-  digitalWrite(OUT_1, LOW);
-  digitalWrite(OUT_2, LOW);
-  // intDAC(0);
-  // MCP(0);
-
-  // Display the splash screen (we're legally required to do so)
-  display.display();
-  unsigned long start = millis();
-  display.clearDisplay();
-  while (millis() - start < 1000)
-    ;
-  display.display();
-
   // I2C connect (to MCP4725)
   Wire.begin();
+
+  display.display();
 
   // ADC settings. These increase ADC reading stability but at the cost of cycle time. Takes around 0.7ms for one reading with these
   REG_ADC_AVGCTRL |= ADC_AVGCTRL_SAMPLENUM_1;
