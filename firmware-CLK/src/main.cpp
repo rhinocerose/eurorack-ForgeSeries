@@ -70,6 +70,7 @@ unsigned long _bpm_blink_timer = 1;
 unsigned long _bpm_output_timer = 1;
 
 volatile bool usingExternalClock = false;
+unsigned long lastClockTime = 0;
 
 // Menu variables
 int menuItems = 8; // BPM, div1, div2, div3, div4, pulse duration, tap tempo, save
@@ -528,6 +529,35 @@ void handleOLEDDisplay()
   }
 }
 
+// Clock in expects a 24PPQN signal
+void onClockReceived()
+{
+  lastClockTime = millis();
+  usingExternalClock = true;
+  uClock.clockMe();
+}
+
+// Handle external clock
+void handleExternalClock()
+{
+  unsigned long currentTime = millis();
+  if (usingExternalClock)
+  {
+    uClock.setMode(uClock.EXTERNAL_CLOCK);
+  }
+  else
+  {
+    uClock.setMode(uClock.INTERNAL_CLOCK);
+    updateBPM();
+  }
+
+  // If no clock pulse is received for 1 second, switch back to internal clock
+  if (currentTime - lastClockTime > 1000)
+  {
+    usingExternalClock = false;
+  }
+}
+
 void setup()
 {
   // Initialize serial port
@@ -548,6 +578,8 @@ void setup()
   pinMode(OUT_1, OUTPUT);              // CH1 out
   pinMode(OUT_2, OUTPUT);              // CH2 out
   pinMode(LED_BUILTIN, OUTPUT);        // LED
+
+  attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), onClockReceived, RISING);
 
   // I2C connect (to MCP4725)
   Wire.begin();
@@ -587,4 +619,6 @@ void loop()
   handleCVInputs();
 
   handleOLEDDisplay();
+
+  handleExternalClock();
 }
