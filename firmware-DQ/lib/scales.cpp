@@ -9,6 +9,7 @@ int const numScales = sizeof(scaleNames) / sizeof(scaleNames[0]);
 // Eg. 0 for root, 2 for major second, 4 for major third, 5 for perfect fourth, 7 for perfect fifth, 9 for major sixth, 11 for major seventh
 // C  C# D  D# E F F# G G# A A# B
 // 0  1  2  3  4 5 6  7 8  9 10 11
+
 int scaleNotes[numScales][7] = {
     {},                     // Chromatic (This does not matter for this array but we need the index 0)
     {0, 2, 4, 5, 7, 9, 11}, // Major
@@ -32,6 +33,7 @@ void buildScale(int scaleIndex, int noteIndex, bool *note)
   // Chromatic scale
   if (scaleIndex == 0)
   {
+    // Fill all notes
     for (int i = 0; i < 12; i++)
     {
       note[i] = 1;

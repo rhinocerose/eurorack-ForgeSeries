@@ -15,6 +15,10 @@
 		{
 			"name": "Clock Gen",
 			"path": "firmware-CLK"
+		},
+		{
+			"name": "Simulator",
+			"path": "firmware-SIMULATOR"
 		}
 	],
 	"settings": {

@@ -37,7 +37,7 @@ void buildQuantBuffer(bool note[], int buff[])
 
 void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, float *CV_out)
 {
-  int cmp1, cmp2; // Detect closest note
+  int cmp1 = 0, cmp2 = 0; // Detect closest note
   byte search_qnt = 0;
   AD_CH = AD_CH * (16 + sensitivity_ch) / 20; // sens setting
   if (AD_CH > 4095)

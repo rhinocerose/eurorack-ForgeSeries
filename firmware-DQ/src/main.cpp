@@ -1,5 +1,7 @@
 #include <Arduino.h>
 #include <Wire.h>
+// Rotary encoder setting
+#define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
 #include <Encoder.h>
 // Use flash memory as eeprom
 #include <FlashAsEEPROM.h>
@@ -13,9 +15,6 @@
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-
-// rotary encoder setting
-#define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
 
 #define CLK_IN_PIN 7     // Clock input pin
 #define CV_1_IN_PIN 8    // channel 1 analog in
@@ -39,8 +38,8 @@ void save();
 
 ////////////////////////////////////////////
 // ADC calibration. Change these according to your resistor values to make readings more accurate
-float AD_CH1_calb = 0.98; // reduce resistance error
-float AD_CH2_calb = 0.98; // reduce resistance error
+float AD_CH1_calb = 0.983; // reduce resistance error
+float AD_CH2_calb = 0.981; // reduce resistance error
 /////////////////////////////////////////
 
 // OLED display initialization
@@ -55,7 +54,7 @@ int menuItems = 39;
 // i is the current position of the encoder
 int i = 1;
 
-bool SW = 0;
+bool SW = 1;
 bool old_SW = 0;
 bool CLK_in = 0;
 bool old_CLK_in = 0;
@@ -105,9 +104,13 @@ void setup()
   pinMode(ENC_CLICK_PIN, INPUT_PULLUP); // push sw
   pinMode(ENV_OUT_PIN_1, OUTPUT);       // CH1 EG out
   pinMode(ENV_OUT_PIN_2, OUTPUT);       // CH2 EG out
+
   // OLED initialize
   display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
   display.clearDisplay();
+
+  // Initialize Serial Monitor
+  Serial.begin(115200);
 
   // I2C connect
   Wire.begin();
@@ -205,6 +208,7 @@ void loop()
       dcy2--;
       break;
     }
+    Serial.println("Menu index: " + String(i));
   }
   else if ((newPosition + 3) / 4 < oldPosition / 4)
   { // 4 is resolution of encoder
@@ -214,7 +218,7 @@ void loop()
     {
     case 0:
       i = i + 1;
-      if (menuItems < i)
+      if (i > menuItems)
       {
         i = 0;
       }
@@ -232,6 +236,7 @@ void loop()
       dcy2++;
       break;
     }
+    Serial.println("Menu index: " + String(i));
   }
   i = constrain(i, 0, menuItems);
   atk1 = constrain(atk1, 1, 26);
@@ -239,11 +244,13 @@ void loop()
   atk2 = constrain(atk2, 1, 26);
   atk2 = constrain(atk2, 1, 26);
   dcy2 = constrain(dcy2, 1, 26);
+  // Serial.println("Attack 1: " + String(atk1) + " Decay 1: " + String(dcy1) + " Attack 2: " + String(atk2) + " Decay 2: " + String(dcy2));
 
   //-----------------PUSH SW------------------------------------
   SW = digitalRead(ENC_CLICK_PIN);
   if (SW == 1 && old_SW != 1)
   {
+    Serial.println("SW pushed at index: " + String(i));
     disp_refresh = 1;
     if (i <= 11 && i >= 0 && mode == 0)
     {
@@ -262,27 +269,27 @@ void loop()
       mode = 0;
     }
     else if (i == 13 && mode == 0)
-    {           // CH1 atk setting
+    {           // CH1 dcy setting
       mode = 2; // dcy1 setting
     }
     else if (i == 13 && mode == 2)
-    { // CH1 atk setting
+    { // CH1 dcy setting
       mode = 0;
     }
     else if (i == 26 && mode == 0)
-    {           // CH1 atk setting
+    {           // CH2 atk setting
       mode = 3; // atk2 setting
     }
     else if (i == 26 && mode == 3)
-    { // CH1 atk setting
+    { // CH2 atk setting
       mode = 0;
     }
     else if (i == 27 && mode == 0)
-    {           // CH1 atk setting
+    {           // CH2 dcy setting
       mode = 4; // dcy2 setting
     }
     else if (i == 27 && mode == 4)
-    { // CH1 atk setting
+    { // CH2 dcy setting
       mode = 0;
     }
     else if (i == 28)
@@ -348,11 +355,13 @@ void loop()
     }
     else if (i == 37)
     { // Load Scale into quantizer 1
-      buildScale(note_load, scale_load, note1);
+      Serial.println("Loading scale " + String(scale_load) + "  for note " + String(note_load) + " into quantizer 1");
+      buildScale(scale_load, note_load, note1);
     }
     else if (i == 38)
     { // Load Scale into quantizer 2
-      buildScale(note_load, scale_load, note2);
+      Serial.println("Loading scale " + String(scale_load) + "  for note " + String(note_load) + " into quantizer 2");
+      buildScale(scale_load, note_load, note2);
     }
     else if (i == 39)
     { // Save settings
@@ -420,12 +429,12 @@ void loop()
   }
 
   // envelope ch1 out
-  if (gate_timer1 + (atk1 - 1) * 200 <= micros() && ad_trg1 == 1 && ad1 <= 199)
+  if (gate_timer1 + (atk1 - 1) * 200 <= static_cast<long>(micros()) && ad_trg1 == 1 && ad1 <= 199)
   {
     ad1++;
     gate_timer1 = micros();
   }
-  else if (gate_timer1 + (dcy1 - 1) * 600 <= micros() && ad_trg1 == 1 && ad1 > 199)
+  else if (gate_timer1 + (dcy1 - 1) * 600 <= static_cast<long>(micros()) && ad_trg1 == 1 && ad1 > 199)
   {
     ad1++;
     gate_timer1 = micros();
@@ -446,12 +455,12 @@ void loop()
   }
 
   // envelope ch2 out
-  if (gate_timer2 + (atk2 - 1) * 200 <= micros() && ad_trg2 == 1 && ad2 <= 199)
+  if (gate_timer2 + (atk2 - 1) * 200 <= static_cast<long>(micros()) && ad_trg2 == 1 && ad2 <= 199)
   {
     ad2++;
     gate_timer2 = micros();
   }
-  else if (gate_timer2 + (dcy2 - 1) * 600 <= micros() && ad_trg2 == 1 && ad2 > 199)
+  else if (gate_timer2 + (dcy2 - 1) * 600 <= static_cast<long>(micros()) && ad_trg2 == 1 && ad2 > 199)
   {
     ad2++;
     gate_timer2 = micros();
@@ -603,14 +612,6 @@ void OLED_display()
         display.fillTriangle(127, 48, 127, 54, 121, 51, WHITE);
       }
     }
-    else if (i == 28)
-    {
-      display.drawTriangle(0, 0 + (i - 28) * 9, 0, 6 + (i - 28) * 9, 7, 3 + (i - 28) * 9, WHITE);
-    }
-    else if (i == 35)
-    {
-      display.drawTriangle(0, 0 + (i - 35) * 9, 0, 6 + (i - 35) * 9, 7, 3 + (i - 35) * 9, WHITE);
-    }
 
     // Draw envelope param
     display.setTextSize(1);
@@ -677,11 +678,14 @@ void OLED_display()
     // draw save
     display.setCursor(10, 54);
     display.print("SAVE");
+
+    // Draw triangles
+    display.fillTriangle(1, (i - 28) * 9, 1, (i - 28) * 9 + 8, 5, (i - 28) * 9 + 4, WHITE);
   }
   // draw scale load setting
   const char *scale_name = scaleNames[scale_load];
   const char *note_name = noteNames[note_load];
-  if (i >= 35 && i <= 38)
+  if (i >= 35 && i <= 39)
   {
     display.setTextSize(1);
     display.setCursor(10, 0);
@@ -699,6 +703,8 @@ void OLED_display()
     // draw save
     display.setCursor(10, 36);
     display.print("SAVE");
+    // Draw triangles
+    display.fillTriangle(1, (i - 35) * 9, 1, (i - 35) * 9 + 8, 5, (i - 35) * 9 + 4, WHITE);
   }
   display.display();
 }
