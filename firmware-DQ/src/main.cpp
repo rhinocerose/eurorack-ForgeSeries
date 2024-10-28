@@ -4,13 +4,12 @@
 #define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
 #include <Encoder.h>
 // Use flash memory as eeprom
-#include <FlashAsEEPROM.h>
+#include <FlashAsEEPROM_SAMD.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
 // Load local libraries
 #include "scales.cpp"
-#include "quantizer.cpp"
 
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
@@ -35,11 +34,12 @@ void MCP(int);
 void PWM1(int);
 void PWM2(int);
 void save();
+void load();
 
 ////////////////////////////////////////////
 // ADC calibration. Change these according to your resistor values to make readings more accurate
-float AD_CH1_calb = 0.983; // reduce resistance error
-float AD_CH2_calb = 0.981; // reduce resistance error
+float AD_CH1_calb = 0.99728; // reduce resistance error
+float AD_CH2_calb = 0.99728; // reduce resistance error
 /////////////////////////////////////////
 
 // OLED display initialization
@@ -62,7 +62,6 @@ byte mode = 0; // 0=select,1=atk1,2=dcy1,3=atk2,4=dcy2
 
 float AD_CH1, old_AD_CH1, AD_CH2, old_AD_CH2;
 
-int CV_in1, CV_in2;
 float CV_out1, CV_out2, old_CV_out1, old_CV_out2;
 long gate_timer1, gate_timer2; // EG curve progress speed
 
@@ -71,6 +70,7 @@ int k = 0;
 // envelope curve setting
 int ad[200] = { // envelope table
     0, 15, 30, 44, 59, 73, 87, 101, 116, 130, 143, 157, 170, 183, 195, 208, 220, 233, 245, 257, 267, 279, 290, 302, 313, 324, 335, 346, 355, 366, 376, 386, 397, 405, 415, 425, 434, 443, 452, 462, 470, 479, 488, 495, 504, 513, 520, 528, 536, 544, 552, 559, 567, 573, 581, 589, 595, 602, 609, 616, 622, 629, 635, 642, 648, 654, 660, 666, 672, 677, 683, 689, 695, 700, 706, 711, 717, 722, 726, 732, 736, 741, 746, 751, 756, 760, 765, 770, 774, 778, 783, 787, 791, 796, 799, 803, 808, 811, 815, 818, 823, 826, 830, 834, 837, 840, 845, 848, 851, 854, 858, 861, 864, 866, 869, 873, 876, 879, 881, 885, 887, 890, 893, 896, 898, 901, 903, 906, 909, 911, 913, 916, 918, 920, 923, 925, 927, 929, 931, 933, 936, 938, 940, 942, 944, 946, 948, 950, 952, 954, 955, 957, 960, 961, 963, 965, 966, 968, 969, 971, 973, 975, 976, 977, 979, 980, 981, 983, 984, 986, 988, 989, 990, 991, 993, 994, 995, 996, 997, 999, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1012, 1013, 1014, 1014, 1015, 1016, 1017, 1018, 1019, 1020};
+
 int ad1 = 0; // PWM DUTY reference
 int ad2 = 0; // PWM DUTY reference
 bool ad_trg1 = 0;
@@ -83,7 +83,7 @@ int sensitivity_ch1, sensitivity_ch2, oct1, oct2; // sens = AD input attn,amp.oc
 int cv_qnt_thr_buf1[62]; // input quantize
 int cv_qnt_thr_buf2[62]; // input quantize
 // Scale and Note loading indexes
-int scale_load = 0;
+int scale_load = 1;
 int note_load = 0;
 // Note storage
 bool note1[12]; // 1=note valid,0=note invalid
@@ -92,6 +92,75 @@ byte note_str1, note_str11, note_str2, note_str22;
 
 // display
 bool disp_refresh = 1; // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
+
+// Initialize the quantizer buffer
+// Inputs:
+//   note: array of 12 booleans, one for each note in an octave
+// Outputs:
+//   buff: array of 62 integers, the quantizer buffer
+void initializeQuantBuffer(bool note[], int buff[])
+{
+  int k = 0;
+  for (byte j = 0; j <= 62; j++)
+  {
+    if (note[j % 12] == 1)
+    {
+      buff[k] = 17 * j - 8;
+      k++;
+    }
+  }
+};
+
+void buildQuantBuffer(bool note[], int buff[])
+{
+  int k = 0;
+  for (byte j = 0; j <= 62; j++)
+  {
+    if (note[j % 12] == 1)
+    {
+      buff[k] = 17 * j - 8;
+      k++;
+    }
+  }
+};
+
+void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, float *CV_out)
+{
+  int cmp1 = 0, cmp2 = 0; // Detect closest note
+  byte search_qnt = 0;
+  AD_CH = AD_CH * (16 + sensitivity_ch) / 20; // sens setting
+  if (AD_CH > 4095)
+  {
+    AD_CH = 4095;
+  }
+  for (search_qnt = 0; search_qnt <= 61; search_qnt++)
+  { // quantize
+    if (AD_CH >= cv_qnt_thr_buf[search_qnt] * 4 && AD_CH < cv_qnt_thr_buf[search_qnt + 1] * 4)
+    {
+      cmp1 = AD_CH - cv_qnt_thr_buf[search_qnt] * 4;     // Detect closest note
+      cmp2 = cv_qnt_thr_buf[search_qnt + 1] * 4 - AD_CH; // Detect closest note
+      break;
+    }
+  }
+  if (cmp1 >= cmp2)
+  { // Detect closest note
+    *CV_out = (cv_qnt_thr_buf[search_qnt + 1] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25;
+    *CV_out = constrain(*CV_out, 0, 4095);
+    // Serial.print("Input Note: ");
+    // Serial.print(AD_CH);
+    // Serial.print(" Quantized to: ");
+    Serial.println((cv_qnt_thr_buf[search_qnt + 1] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25);
+  }
+  else if (cmp2 > cmp1)
+  { // Detect closest note
+    *CV_out = (cv_qnt_thr_buf[search_qnt] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25;
+    *CV_out = constrain(*CV_out, 0, 4095);
+    // Serial.print("Input Note: ");
+    // Serial.print(AD_CH);
+    // Serial.print(" Quantized to: ");
+    Serial.println((cv_qnt_thr_buf[search_qnt] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25);
+  }
+}
 
 //-------------------------------Initial setting--------------------------
 void setup()
@@ -119,52 +188,8 @@ void setup()
   REG_ADC_AVGCTRL |= ADC_AVGCTRL_SAMPLENUM_1;
   ADC->AVGCTRL.reg = ADC_AVGCTRL_SAMPLENUM_128 | ADC_AVGCTRL_ADJRES(4);
 
-  // read stored data
-  if (EEPROM.isValid() == 1)
-  { // already writed eeprom
-    note_str1 = EEPROM.read(1);
-    note_str11 = EEPROM.read(2);
-    note_str2 = EEPROM.read(3);
-    note_str22 = EEPROM.read(4);
-    atk1 = EEPROM.read(5);
-    dcy1 = EEPROM.read(6);
-    atk2 = EEPROM.read(7);
-    dcy2 = EEPROM.read(8);
-    sync1 = EEPROM.read(9);
-    sync2 = EEPROM.read(10);
-    oct1 = EEPROM.read(11);
-    oct2 = EEPROM.read(12);
-    sensitivity_ch1 = EEPROM.read(13);
-    sensitivity_ch2 = EEPROM.read(14);
-  }
-  else if (EEPROM.isValid() == 0)
-  { // no eeprom data , setting any number to eeprom
-    note_str1 = 0;
-    note_str11 = 0;
-    note_str2 = 2;
-    note_str22 = 2;
-    atk1 = 1;
-    dcy1 = 4;
-    atk2 = 2;
-    dcy2 = 6;
-    sync1 = 1;
-    sync2 = 1;
-    oct1 = 2;
-    oct2 = 2;
-    sensitivity_ch1 = 4;
-    sensitivity_ch2 = 4;
-  }
-  // setting stored note data
-  for (int j = 0; j <= 7; j++)
-  {
-    note1[j] = bitRead(note_str1, j);
-    note2[j] = bitRead(note_str2, j);
-  }
-  for (int j = 0; j <= 3; j++)
-  {
-    note1[j + 8] = bitRead(note_str11, j);
-    note2[j + 8] = bitRead(note_str22, j);
-  }
+  // Load scale and note settings from flash memory
+  load();
 
   // initial quantizer setting
   initializeQuantBuffer(note1, cv_qnt_thr_buf1);
@@ -732,7 +757,58 @@ void PWM2(int duty2)
   pwm(ENV_OUT_PIN_2, 46000, duty2);
 }
 
-//-----------------------------store data----------------------------------------
+// Load data from flash memory
+void load()
+{
+  // read stored data
+  if (EEPROM.isValid() == 1)
+  { // already writed eeprom
+    note_str1 = EEPROM.read(1);
+    note_str11 = EEPROM.read(2);
+    note_str2 = EEPROM.read(3);
+    note_str22 = EEPROM.read(4);
+    atk1 = EEPROM.read(5);
+    dcy1 = EEPROM.read(6);
+    atk2 = EEPROM.read(7);
+    dcy2 = EEPROM.read(8);
+    sync1 = EEPROM.read(9);
+    sync2 = EEPROM.read(10);
+    oct1 = EEPROM.read(11);
+    oct2 = EEPROM.read(12);
+    sensitivity_ch1 = EEPROM.read(13);
+    sensitivity_ch2 = EEPROM.read(14);
+  }
+  else if (EEPROM.isValid() == 0)
+  { // no eeprom data , setting any number to eeprom
+    note_str1 = 0;
+    note_str11 = 0;
+    note_str2 = 2;
+    note_str22 = 2;
+    atk1 = 1;
+    dcy1 = 4;
+    atk2 = 2;
+    dcy2 = 6;
+    sync1 = 1;
+    sync2 = 1;
+    oct1 = 2;
+    oct2 = 2;
+    sensitivity_ch1 = 4;
+    sensitivity_ch2 = 4;
+  }
+  // setting stored note data
+  for (int j = 0; j <= 7; j++)
+  {
+    note1[j] = bitRead(note_str1, j);
+    note2[j] = bitRead(note_str2, j);
+  }
+  for (int j = 0; j <= 3; j++)
+  {
+    note1[j + 8] = bitRead(note_str11, j);
+    note2[j + 8] = bitRead(note_str22, j);
+  }
+}
+
+// Save data to flash memory
 void save()
 { // save setting data to flash memory
   delay(100);
