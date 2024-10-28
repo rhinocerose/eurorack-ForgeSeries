@@ -1,7 +1,8 @@
 #include <Arduino.h>
-#include <SPI.h>
 #include <Wire.h>
+#include <Adafruit_MCP4725.h>
 #include <Adafruit_GFX.h>
+#define SSD1306_NO_SPLASH
 #include <Adafruit_SSD1306.h>
 #define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
@@ -21,8 +22,8 @@
 #define OUT_1 2
 #define OUT_2 1
 #define DAC_INTERNAL_PIN A0 // DAC output pin (internal). Second DAC output goes to MCP4725 via I2C
-#define NUM_OUTPUTS 1
-const int outputPins[NUM_OUTPUTS] = {LED_BUILTIN};
+#define NUM_OUTPUTS 3       // Output 4 is disabled since it breaks screen when updating //TODO: Fix this
+// const int outputPins[NUM_OUTPUTS] = {LED_BUILTIN};
 #else
 // Pin definitions for simulator
 #define CLK_IN_PIN 12
@@ -52,19 +53,23 @@ Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
 float oldPosition = -999;            // rotary encoder library setting
 float newPosition = -999;            // rotary encoder library setting
 
+// Create the MCP4725 object
+Adafruit_MCP4725 dac;
+#define DAC_RESOLUTION (12)
+
 // Define the clock resolution
 #define PPQN uClock.PPQN_96
 
 // Valid dividers and multipliers
-float valid_dividers[] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64.0, 128.0};
+float valid_dividers[] = {0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0};
 int const numDividers = (sizeof(valid_dividers) / sizeof(valid_dividers[0])) - 1;
-char const *dividers_desc[] = {"1/128", "1/64", "1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16", "32", "64", "128"};
-int dividers[] = {7, 7, 7, 7}; // Store each output divider index
+char const *dividers_desc[] = {"1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16", "32"};
+int dividers[] = {5, 5, 5, 5}; // Store each output divider index (initialize at 1)
 
 // BPM and clock settings
 float bpm = 120;
 unsigned int const minBPM = 10;
-unsigned int const maxBPM = 350;
+unsigned int const maxBPM = 300;
 unsigned int pulseDuration = 20; // Pulse duration in milliseconds
 unsigned long _bpm_blink_timer = 1;
 unsigned long _bpm_output_timer = 1;
@@ -75,7 +80,7 @@ unsigned long lastClockTime = 0;
 // Menu variables
 int menuItems = 8; // BPM, div1, div2, div3, div4, pulse duration, tap tempo, save
 int menu_index = 0;
-bool SW = 0;
+bool SW = 1;
 bool old_SW = 0;
 byte mode = 0;                                          // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=pulseduration
 bool disp_refresh = 1;                                  // 0=not refresh display , 1= refresh display
@@ -91,10 +96,7 @@ void intDAC(int intDAC_OUT)
 
 void MCP(int MCP_OUT)
 {
-  Wire.beginTransmission(0x60);
-  Wire.write((MCP_OUT >> 8) & 0x0F);
-  Wire.write(MCP_OUT);
-  Wire.endTransmission();
+  dac.setVoltage(MCP_OUT, false);
 }
 
 void PWM1(int duty1)
@@ -107,10 +109,10 @@ void PWM2(int duty2)
 }
 
 // This will manage the LEDs and display of the tempo for each output
-void tempoIndication(uint32_t *tick)
+void tempoIndication(uint32_t tick)
 {
-  // Refresh the display every 6 ticks
-  if (!(*tick % 6))
+  // Refresh the display
+  if (!(tick % 8))
   {
     disp_refresh = 1;
   }
@@ -118,9 +120,9 @@ void tempoIndication(uint32_t *tick)
   for (int i = 0; i < NUM_OUTPUTS; i++)
   {
     // Check if the current tick is a multiple of the multiplier
-    if (!(*tick % int(PPQN / valid_dividers[dividers[i]])) || (*tick == 0))
+    if (!(tick % int(PPQN / valid_dividers[dividers[i]])) || (tick == 1))
     {
-      _bpm_blink_timer = int(48 / valid_dividers[dividers[i]]);
+      _bpm_blink_timer = int(PPQN / 2 / valid_dividers[dividers[i]]);
       output_indicator[i] = true;
       if (i == 0) // Sync the built-in LED with the first output
       {
@@ -130,7 +132,7 @@ void tempoIndication(uint32_t *tick)
       digitalWrite(outputPins[i], HIGH); // For simulator
 #endif
     }
-    else if (!(*tick % _bpm_blink_timer))
+    else if (!(tick % _bpm_blink_timer))
     { // get led off
       output_indicator[i] = false;
       if (i == 0)
@@ -150,11 +152,11 @@ void setPin(int pin, int value)
 {
   if (pin == 0) // Gate Output 1
   {
-    value ? digitalWrite(OUT_1, HIGH) : digitalWrite(OUT_1, LOW);
+    value ? digitalWrite(OUT_2, LOW) : digitalWrite(OUT_2, HIGH);
   }
   else if (pin == 1) // Gate Output 2
   {
-    value ? digitalWrite(OUT_2, HIGH) : digitalWrite(OUT_2, LOW);
+    value ? digitalWrite(OUT_1, LOW) : digitalWrite(OUT_1, HIGH);
   }
   else if (pin == 2) // Internal DAC Output
   {
@@ -162,21 +164,24 @@ void setPin(int pin, int value)
   }
   else if (pin == 3) // MCP DAC Output
   {
-    value ? MCP(4095) : MCP(0);
+    value ? MCP(4095) : MCP(0); // TODO: Fix this
   }
 }
 
 // This will manage the output tick for each output with the configured pulse duration
-void tempoOutput(uint32_t *tick)
+void tempoOutput(uint32_t tick)
 {
-  _bpm_output_timer = int(ceil((pulseDuration * bpm * PPQN) / (60000)));
+  // _bpm_output_timer = int(ceil((pulseDuration * bpm * PPQN) / (60000))); // Calculate the number of ticks for the pulse duration
+  // float dutyCycle = pulseDuration / 100.0; // Convert pulse duration to duty cycle (0.0 to 1.0)
+  float dutyCycle = 0.5;
   for (int i = 0; i < NUM_OUTPUTS; i++)
   {
-    if (!(*tick % int(PPQN / valid_dividers[dividers[i]])) || (*tick == 0))
+    int _bpm_output_timer = int(PPQN / valid_dividers[dividers[i]] * dutyCycle);
+    if (!(tick % int(PPQN / valid_dividers[dividers[i]])) || (tick == 1))
     {
       setPin(i, HIGH);
     }
-    else if (!(*tick % _bpm_output_timer))
+    else if (int(tick % int(PPQN / valid_dividers[dividers[i]])) >= _bpm_output_timer)
     {
       setPin(i, LOW);
     }
@@ -187,10 +192,10 @@ void tempoOutput(uint32_t *tick)
 void onPPQNCallback(uint32_t tick)
 {
   // Trigger the function to manage the tempo indication
-  tempoIndication(&tick);
+  tempoIndication(tick);
 
   // Trigger the function to manage the output tick
-  tempoOutput(&tick);
+  tempoOutput(tick);
 }
 
 // Update the BPM value
@@ -567,7 +572,31 @@ void setup()
   pinMode(CLK_IN_PIN, INPUT_PULLDOWN); // CLK in
   pinMode(LED_BUILTIN, OUTPUT);        // LED
 
-  display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS);
+  // inits the clock library
+  uClock.init();
+  uClock.setPPQN(PPQN);
+  uClock.setOnPPQN(onPPQNCallback);
+
+  // Initialize the DAC
+  if (!dac.begin(0x60))
+  { // 0x60 is the default I2C address for MCP4725
+    Serial.println("MCP4725 not found!");
+    while (1)
+      ;
+  }
+  Serial.println("MCP4725 initialized.");
+  MCP(0); // Set the DAC output to 0
+
+  // initialize OLED display with address 0x3C for 128x64
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS))
+  {
+    Serial.println(F("SSD1306 allocation failed"));
+    for (;;)
+      ; // Don't proceed, loop forever
+  }
+  display.display();
+  delay(2000); // wait for initializing
+  display.clearDisplay();
   analogWriteResolution(10);
   analogReadResolution(12);
 
@@ -581,30 +610,14 @@ void setup()
 
   attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), onClockReceived, RISING);
 
-  // I2C connect (to MCP4725)
-  Wire.begin();
-
-  display.display();
-
   // ADC settings. These increase ADC reading stability but at the cost of cycle time. Takes around 0.7ms for one reading with these
   REG_ADC_AVGCTRL |= ADC_AVGCTRL_SAMPLENUM_1;
   ADC->AVGCTRL.reg = ADC_AVGCTRL_SAMPLENUM_128 | ADC_AVGCTRL_ADJRES(4);
-
-  // inits the clock library
-  uClock.init();
 
   // read stored data (before setting the clock BPM)
   load();
 
   updateBPM();
-
-  // avaliable resolutions
-  // [ uClock.PPQN_24, uClock.PPQN_48, uClock.PPQN_96, uClock.PPQN_384, uClock.PPQN_480, uClock.PPQN_960 ]
-  // not mandatory to call, the default is 96PPQN if not set
-  uClock.setPPQN(PPQN);
-
-  // you need to use at least one!
-  uClock.setOnPPQN(onPPQNCallback);
 
   // Starts clock
   uClock.start();
