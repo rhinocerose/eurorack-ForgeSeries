@@ -7,7 +7,6 @@
 #define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
 #include <FlashAsEEPROM.h>
-#include <uClock.h>
 
 // #define IN_SIMULATOR
 
@@ -22,7 +21,7 @@
 #define OUT_1 2
 #define OUT_2 1
 #define DAC_INTERNAL_PIN A0 // DAC output pin (internal). Second DAC output goes to MCP4725 via I2C
-#define NUM_OUTPUTS 3       // Output 4 is disabled since it breaks screen when updating //TODO: Fix this
+#define NUM_OUTPUTS 4
 // const int outputPins[NUM_OUTPUTS] = {LED_BUILTIN};
 #else
 // Pin definitions for simulator
@@ -49,44 +48,49 @@ float AD_CH1, old_AD_CH1, AD_CH2, old_AD_CH2;
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Rotary encoder initialization
-Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
-float oldPosition = -999;            // rotary encoder library setting
-float newPosition = -999;            // rotary encoder library setting
+Encoder myEnc(ENC_PIN_1, ENC_PIN_2);
+float oldPosition = -999;
+float newPosition = -999;
 
 // Create the MCP4725 object
 Adafruit_MCP4725 dac;
 #define DAC_RESOLUTION (12)
 
-// Define the clock resolution
-#define PPQN uClock.PPQN_96
-
 // Valid dividers and multipliers
 float valid_dividers[] = {0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0};
 int const numDividers = (sizeof(valid_dividers) / sizeof(valid_dividers[0])) - 1;
-char const *dividers_desc[] = {"1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16", "32"};
-int dividers[] = {5, 5, 5, 5}; // Store each output divider index (initialize at 1)
+const char *dividers_desc[] = {"1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16", "32"};
+int dividers[] = {5, 5, 5, 5};
 
 // BPM and clock settings
 float bpm = 120;
 unsigned int const minBPM = 10;
 unsigned int const maxBPM = 300;
-unsigned int pulseDuration = 20; // Pulse duration in milliseconds
-unsigned long _bpm_blink_timer = 1;
-unsigned long _bpm_output_timer = 1;
+
+unsigned int dutyCycle = 50; // Duty cycle percentage (0-100%)
+unsigned long pulseInterval[NUM_OUTPUTS];
+unsigned long pulseHighTime[NUM_OUTPUTS];
+unsigned long pulseLowTime[NUM_OUTPUTS];
 
 volatile bool usingExternalClock = false;
 unsigned long lastClockTime = 0;
 
+// Timing for outputs
+unsigned long lastPulseTime[NUM_OUTPUTS] = {0};
+bool isPulseOn[NUM_OUTPUTS] = {false};
+
 // Menu variables
-int menuItems = 8; // BPM, div1, div2, div3, div4, pulse duration, tap tempo, save
-int menu_index = 0;
+int menuItems = 8; // BPM, div1, div2, div3, div4, duty cycle, tap tempo, save
+int menu_index = 1;
 bool SW = 1;
 bool old_SW = 0;
-byte mode = 0;                                          // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=pulseduration
-bool disp_refresh = 1;                                  // 0=not refresh display , 1= refresh display
+byte mode = 0;                                          // 0=menu select, 1=bpm, 2=div1, ..., 6=dutyCycle
+bool disp_refresh = 1;                                  // Display refresh flag
 bool output_indicator[] = {false, false, false, false}; // Pulse status for indicator
 
-// -------------------------------------------------------------------------------
+// External clock variables
+volatile unsigned long clockInterval = 0;
+volatile unsigned long lastClockInterruptTime = 0;
 
 // OUTPUTS
 void intDAC(int intDAC_OUT)
@@ -101,50 +105,12 @@ void MCP(int MCP_OUT)
 
 void PWM1(int duty1)
 {
-  pwm(OUT_1, 46000, duty1);
+  // Implement PWM if needed
 }
+
 void PWM2(int duty2)
 {
-  pwm(OUT_2, 46000, duty2);
-}
-
-// This will manage the LEDs and display of the tempo for each output
-void tempoIndication(uint32_t tick)
-{
-  // Refresh the display
-  if (!(tick % 8))
-  {
-    disp_refresh = 1;
-  }
-
-  for (int i = 0; i < NUM_OUTPUTS; i++)
-  {
-    // Check if the current tick is a multiple of the multiplier
-    if (!(tick % int(PPQN / valid_dividers[dividers[i]])) || (tick == 1))
-    {
-      _bpm_blink_timer = int(PPQN / 2 / valid_dividers[dividers[i]]);
-      output_indicator[i] = true;
-      if (i == 0) // Sync the built-in LED with the first output
-      {
-        digitalWrite(LED_BUILTIN, HIGH);
-      }
-#ifdef IN_SIMULATOR
-      digitalWrite(outputPins[i], HIGH); // For simulator
-#endif
-    }
-    else if (!(tick % _bpm_blink_timer))
-    { // get led off
-      output_indicator[i] = false;
-      if (i == 0)
-      {
-        digitalWrite(LED_BUILTIN, LOW);
-      }
-#ifdef IN_SIMULATOR
-      digitalWrite(outputPins[i], LOW); // For simulator
-#endif
-      _bpm_blink_timer = 1;
-    }
-  }
+  // Implement PWM if needed
 }
 
 // Set the output pins to HIGH or LOW
@@ -168,44 +134,19 @@ void setPin(int pin, int value)
   }
 }
 
-// This will manage the output tick for each output with the configured pulse duration
-void tempoOutput(uint32_t tick)
-{
-  // _bpm_output_timer = int(ceil((pulseDuration * bpm * PPQN) / (60000))); // Calculate the number of ticks for the pulse duration
-  // float dutyCycle = pulseDuration / 100.0; // Convert pulse duration to duty cycle (0.0 to 1.0)
-  float dutyCycle = 0.5;
-  for (int i = 0; i < NUM_OUTPUTS; i++)
-  {
-    int _bpm_output_timer = int(PPQN / valid_dividers[dividers[i]] * dutyCycle);
-    if (!(tick % int(PPQN / valid_dividers[dividers[i]])) || (tick == 1))
-    {
-      setPin(i, HIGH);
-    }
-    else if (int(tick % int(PPQN / valid_dividers[dividers[i]])) >= _bpm_output_timer)
-    {
-      setPin(i, LOW);
-    }
-  }
-}
-
-// the main uClock PPQN resolution ticking
-void onPPQNCallback(uint32_t tick)
-{
-  // Trigger the function to manage the tempo indication
-  tempoIndication(tick);
-
-  // Trigger the function to manage the output tick
-  tempoOutput(tick);
-}
-
-// Update the BPM value
+// Update the BPM value and recalculate pulse intervals and times
 void updateBPM()
 {
   bpm = constrain(bpm, minBPM, maxBPM);
-  uClock.setTempo(bpm);
+  for (int i = 0; i < NUM_OUTPUTS; i++)
+  {
+    pulseInterval[i] = (60000.0 / bpm) * valid_dividers[dividers[i]];
+    pulseHighTime[i] = pulseInterval[i] * (dutyCycle / 100.0);
+    pulseLowTime[i] = pulseInterval[i] - pulseHighTime[i];
+  }
 }
 
-// Tap tempo function, collects the time between three or more taps and sets the BPM accordingly
+// Tap tempo function
 static unsigned long lastTapTime = 0;
 static unsigned long tapTimes[3] = {0, 0, 0};
 static int tapIndex = 0;
@@ -214,21 +155,18 @@ void setTapTempo()
   unsigned long currentMillis = millis();
   if (currentMillis - lastTapTime > 2000)
   {
-    // Reset the tap tempo if no taps have been received for more than 2 seconds
     tapIndex = 0;
   }
   if (tapIndex < 3)
   {
-    // Collect tap times
     tapTimes[tapIndex] = currentMillis;
     tapIndex++;
     lastTapTime = currentMillis;
   }
   if (tapIndex == 3)
   {
-    // Calculate the BPM from the tap times
     unsigned long averageTime = (tapTimes[2] - tapTimes[0]) / 2;
-    bpm = 60000 / averageTime;
+    bpm = 60000.0 / averageTime;
     tapIndex++;
     updateBPM();
   }
@@ -246,7 +184,7 @@ void load()
     dividers[1] = EEPROM.read(2);
     dividers[2] = EEPROM.read(3);
     dividers[3] = EEPROM.read(4);
-    pulseDuration = EEPROM.read(5);
+    dutyCycle = EEPROM.read(5);
   }
 }
 
@@ -258,7 +196,7 @@ void save()
   EEPROM.write(2, dividers[1]);
   EEPROM.write(3, dividers[2]);
   EEPROM.write(4, dividers[3]);
-  EEPROM.write(5, pulseDuration);
+  EEPROM.write(5, dutyCycle);
   EEPROM.commit();
   display.clearDisplay(); // clear display
   display.setTextSize(2);
@@ -348,7 +286,9 @@ void handleEncoderPosition()
     switch (mode)
     {
     case 0:
-      menu_index < 0 ? menu_index = menuItems - 1 : menu_index--;
+      menu_index--;
+      if (menu_index < 0)
+        menu_index = menuItems - 1;
       break;
     case 1: // Set BPM
       bpm = bpm - 1;
@@ -356,18 +296,23 @@ void handleEncoderPosition()
       break;
     case 2: // Set div1
       dividers[0] = constrain(dividers[0] - 1, 0, numDividers);
+      updateBPM();
       break;
     case 3: // Set div2
       dividers[1] = constrain(dividers[1] - 1, 0, numDividers);
+      updateBPM();
       break;
     case 4: // Set div3
       dividers[2] = constrain(dividers[2] - 1, 0, numDividers);
+      updateBPM();
       break;
     case 5: // Set div4
       dividers[3] = constrain(dividers[3] - 1, 0, numDividers);
+      updateBPM();
       break;
-    case 6: // Set pulse duration
-      pulseDuration = constrain(pulseDuration - 1, 1, 100);
+    case 6: // Set duty cycle
+      dutyCycle = constrain(dutyCycle - 1, 1, 99);
+      updateBPM();
       break;
     }
   }
@@ -378,7 +323,9 @@ void handleEncoderPosition()
     switch (mode)
     {
     case 0:
-      menu_index > menuItems - 1 ? menu_index = 0 : menu_index++;
+      menu_index++;
+      if (menu_index > menuItems - 1)
+        menu_index = 0;
       break;
     case 1: // Set BPM
       bpm = bpm + 1;
@@ -387,26 +334,30 @@ void handleEncoderPosition()
     case 2:
       // Set div1
       dividers[0] = constrain(dividers[0] + 1, 0, numDividers);
+      updateBPM();
       break;
     case 3:
       // Set div2
       dividers[1] = constrain(dividers[1] + 1, 0, numDividers);
+      updateBPM();
       break;
     case 4:
       // Set div3
       dividers[2] = constrain(dividers[2] + 1, 0, numDividers);
+      updateBPM();
       break;
     case 5:
       // Set div4
       dividers[3] = constrain(dividers[3] + 1, 0, numDividers);
+      updateBPM();
       break;
     case 6:
-      // Set pulse duration
-      pulseDuration = constrain(pulseDuration + 1, 1, 999);
+      // Set duty cycle
+      dutyCycle = constrain(dutyCycle + 1, 1, 99);
+      updateBPM();
       break;
     }
   }
-  menu_index = constrain(menu_index, 0, menuItems - 1);
 }
 
 void handleCVInputs()
@@ -432,22 +383,19 @@ void handleOLEDDisplay()
       display.setTextSize(3);
       display.print("BPM");
       display.setCursor(70, 0);
+      display.print(int(bpm));
       if (usingExternalClock)
       {
-        display.print(int(uClock.getTempo()));
         display.setTextSize(1);
         display.setCursor(120, 24);
         display.print("E");
       }
-      else
-      {
-        display.print(int(bpm));
-      }
-      if (mode == 0) // Draw empty triangle on the left of BPM
+      // Draw selection triangle
+      if (mode == 0)
       {
         display.drawTriangle(0, 2, 0, 18, 8, 10, WHITE);
       }
-      else if (mode == 1) // Draw filled triangle on the left of BPM
+      else if (mode == 1)
       {
         display.fillTriangle(0, 2, 0, 18, 8, 10, WHITE);
       }
@@ -472,7 +420,7 @@ void handleOLEDDisplay()
       display.println("CLOCK DIVIDERS");
       for (int i = 0; i < NUM_OUTPUTS; i++)
       {
-        // Display the clock divider for each output proportional to the menu index
+        // Display the clock divider for each output
         display.setCursor(10, 20 + (i * 9));
         display.print("DIV");
         display.setCursor(30, 20 + (i * 9));
@@ -499,9 +447,9 @@ void handleOLEDDisplay()
     {
       display.setTextSize(1);
       display.setCursor(10, 1);
-      display.println("PULSE DUR(ms):");
+      display.println("DUTY CYCLE(%):");
       display.setCursor(100, 1);
-      display.print(pulseDuration);
+      display.print(dutyCycle);
       if (mode == 0 && menu_index == 5)
       {
         display.drawTriangle(1, 0, 1, 8, 5, 4, 1);
@@ -537,9 +485,13 @@ void handleOLEDDisplay()
 // Clock in expects a 24PPQN signal
 void onClockReceived()
 {
-  lastClockTime = millis();
+  unsigned long interruptTime = micros();
+  clockInterval = interruptTime - lastClockInterruptTime;
+  lastClockInterruptTime = interruptTime;
   usingExternalClock = true;
-  uClock.clockMe();
+  // Recalculate BPM based on external clock
+  bpm = 60000000.0 / clockInterval;
+  updateBPM();
 }
 
 // Handle external clock
@@ -548,18 +500,58 @@ void handleExternalClock()
   unsigned long currentTime = millis();
   if (usingExternalClock)
   {
-    uClock.setMode(uClock.EXTERNAL_CLOCK);
+    usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 500;
+    if (!usingExternalClock)
+    {
+      updateBPM();
+    }
   }
-  else
-  {
-    uClock.setMode(uClock.INTERNAL_CLOCK);
-    updateBPM();
-  }
+}
 
-  // If no clock pulse is received for 1 second, switch back to internal clock
-  if (currentTime - lastClockTime > 1000)
+// Handle the outputs
+void handleOutputs()
+{
+  unsigned long currentMillis = millis();
+  for (int i = 0; i < NUM_OUTPUTS; i++)
   {
-    usingExternalClock = false;
+    if (!isPulseOn[i])
+    {
+      if ((currentMillis - lastPulseTime[i]) >= pulseLowTime[i])
+      {
+        // Start pulse
+        setPin(i, HIGH);
+        isPulseOn[i] = true;
+        lastPulseTime[i] = currentMillis;
+        output_indicator[i] = true;
+        if (i == 0)
+        {
+          digitalWrite(LED_BUILTIN, HIGH);
+        }
+#ifdef IN_SIMULATOR
+        digitalWrite(outputPins[i], HIGH); // For simulator
+#endif
+        disp_refresh = 1;
+      }
+    }
+    else
+    {
+      if ((currentMillis - lastPulseTime[i]) >= pulseHighTime[i])
+      {
+        // End pulse
+        setPin(i, LOW);
+        isPulseOn[i] = false;
+        lastPulseTime[i] = currentMillis;
+        output_indicator[i] = false;
+        if (i == 0)
+        {
+          digitalWrite(LED_BUILTIN, LOW);
+        }
+#ifdef IN_SIMULATOR
+        digitalWrite(outputPins[i], LOW); // For simulator
+#endif
+        disp_refresh = 1;
+      }
+    }
   }
 }
 
@@ -571,11 +563,6 @@ void setup()
   // Initialize the pins
   pinMode(CLK_IN_PIN, INPUT_PULLDOWN); // CLK in
   pinMode(LED_BUILTIN, OUTPUT);        // LED
-
-  // inits the clock library
-  uClock.init();
-  uClock.setPPQN(PPQN);
-  uClock.setOnPPQN(onPPQNCallback);
 
   // Initialize the DAC
   if (!dac.begin(0x60))
@@ -610,17 +597,14 @@ void setup()
 
   attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), onClockReceived, RISING);
 
-  // ADC settings. These increase ADC reading stability but at the cost of cycle time. Takes around 0.7ms for one reading with these
+  // ADC settings
   REG_ADC_AVGCTRL |= ADC_AVGCTRL_SAMPLENUM_1;
   ADC->AVGCTRL.reg = ADC_AVGCTRL_SAMPLENUM_128 | ADC_AVGCTRL_ADJRES(4);
 
-  // read stored data (before setting the clock BPM)
+  // read stored data
   load();
 
   updateBPM();
-
-  // Starts clock
-  uClock.start();
 }
 
 void loop()
@@ -634,4 +618,6 @@ void loop()
   handleOLEDDisplay();
 
   handleExternalClock();
+
+  handleOutputs();
 }
