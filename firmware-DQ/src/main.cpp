@@ -38,6 +38,8 @@ void load();
 
 ////////////////////////////////////////////
 // ADC calibration. Change these according to your resistor values to make readings more accurate
+// Inject 5V into each CV input and measure the voltage in the ADC pin for each channel (D7 for channel 1 and D8 for channel 2)
+// Divide 3.3 by the measured voltage and multiply by 1000 to get the calibration value below:
 float AD_CH1_calb = 0.99728; // reduce resistance error
 float AD_CH2_calb = 0.99728; // reduce resistance error
 /////////////////////////////////////////
