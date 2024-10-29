@@ -1,4 +1,4 @@
-#include <FlashAsEEPROM.h>//flash memory use as eeprom
+#include <FlashAsEEPROM_SAMD.h>//flash memory use as eeprom
 //Display setting
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
