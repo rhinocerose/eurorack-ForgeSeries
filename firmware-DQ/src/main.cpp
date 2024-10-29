@@ -60,7 +60,7 @@ bool SW = 1;
 bool old_SW = 0;
 bool CLK_in = 0;
 bool old_CLK_in = 0;
-byte mode = 0; // 0=select,1=atk1,2=dcy1,3=atk2,4=dcy2
+byte mode = 0; // 0=select,1=atk1,2=dcy1,3=atk2,4=dcy2, 5=scale, 6=note
 
 float AD_CH1, old_AD_CH1, AD_CH2, old_AD_CH2;
 
@@ -77,9 +77,9 @@ int ad1 = 0; // PWM DUTY reference
 int ad2 = 0; // PWM DUTY reference
 bool ad_trg1 = 0;
 bool ad_trg2 = 0;
-int atk1, atk2, dcy1, dcy2;                       // attack time,decay time
-bool sync1, sync2;                                // 0=sync with trig , 1=sync with note change
-int sensitivity_ch1, sensitivity_ch2, oct1, oct2; // sens = AD input attn,amp.oct=octave shift
+u_int8_t atk1, atk2, dcy1, dcy2;                       // attack time,decay time
+u_int8_t sync1, sync2;                                 // 0=sync with trig , 1=sync with note change
+u_int8_t sensitivity_ch1, sensitivity_ch2, oct1, oct2; // sens = AD input attn,amp.oct=octave shift
 
 // CV setting
 int cv_qnt_thr_buf1[62]; // input quantize
@@ -95,24 +95,11 @@ byte note_str1, note_str11, note_str2, note_str22;
 // display
 bool disp_refresh = 1; // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
 
-// Initialize the quantizer buffer
+// Build the quantizer buffer
 // Inputs:
 //   note: array of 12 booleans, one for each note in an octave
 // Outputs:
 //   buff: array of 62 integers, the quantizer buffer
-void initializeQuantBuffer(bool note[], int buff[])
-{
-  int k = 0;
-  for (byte j = 0; j <= 62; j++)
-  {
-    if (note[j % 12] == 1)
-    {
-      buff[k] = 17 * j - 8;
-      k++;
-    }
-  }
-};
-
 void buildQuantBuffer(bool note[], int buff[])
 {
   int k = 0;
@@ -151,7 +138,7 @@ void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, 
     // Serial.print("Input Note: ");
     // Serial.print(AD_CH);
     // Serial.print(" Quantized to: ");
-    Serial.println((cv_qnt_thr_buf[search_qnt + 1] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25);
+    // Serial.println((cv_qnt_thr_buf[search_qnt + 1] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25);
   }
   else if (cmp2 > cmp1)
   { // Detect closest note
@@ -160,7 +147,7 @@ void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, 
     // Serial.print("Input Note: ");
     // Serial.print(AD_CH);
     // Serial.print(" Quantized to: ");
-    Serial.println((cv_qnt_thr_buf[search_qnt] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25);
+    // Serial.println((cv_qnt_thr_buf[search_qnt] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25);
   }
 }
 
@@ -194,8 +181,8 @@ void setup()
   load();
 
   // initial quantizer setting
-  initializeQuantBuffer(note1, cv_qnt_thr_buf1);
-  initializeQuantBuffer(note2, cv_qnt_thr_buf2);
+  buildQuantBuffer(note1, cv_qnt_thr_buf1);
+  buildQuantBuffer(note2, cv_qnt_thr_buf2);
 }
 
 void loop()
@@ -234,6 +221,19 @@ void loop()
     case 4:
       dcy2--;
       break;
+    case 5:
+      scale_load--;
+      if (scale_load < 0)
+      {
+        scale_load = numScales - 1;
+      }
+      break;
+    case 6:
+      note_load--;
+      if (note_load < 0)
+      {
+        note_load = 11;
+      }
     }
     Serial.println("Menu index: " + String(i));
   }
@@ -262,6 +262,20 @@ void loop()
     case 4:
       dcy2++;
       break;
+    case 5:
+      scale_load++;
+      if (scale_load > numScales - 1)
+      {
+        scale_load = 0;
+      }
+      break;
+    case 6:
+      note_load++;
+      if (note_load > 11)
+      {
+        note_load = 0;
+      }
+      break;
     }
     Serial.println("Menu index: " + String(i));
   }
@@ -269,8 +283,21 @@ void loop()
   atk1 = constrain(atk1, 1, 26);
   dcy1 = constrain(dcy1, 1, 26);
   atk2 = constrain(atk2, 1, 26);
-  atk2 = constrain(atk2, 1, 26);
   dcy2 = constrain(dcy2, 1, 26);
+  // DEBUG
+  // Print note settings
+  // Serial.print("Note 1: ");
+  // for (int j = 0; j < 12; j++)
+  // {
+  //   Serial.print(note1[j]);
+  // }
+  // Serial.println("");
+  // Serial.print("Note 2: ");
+  // for (int j = 0; j < 12; j++)
+  // {
+  //   Serial.print(note2[j]);
+  // }
+  // Serial.println("");
   // Serial.println("Attack 1: " + String(atk1) + " Decay 1: " + String(dcy1) + " Attack 2: " + String(atk2) + " Decay 2: " + String(dcy2));
 
   //-----------------PUSH SW------------------------------------
@@ -364,21 +391,21 @@ void loop()
       save();
     }
 
-    else if (i == 35)
-    { // Set Scale for loading avoiding overflow of numScales
-      scale_load++;
-      if (scale_load > numScales - 1)
-      {
-        scale_load = 0;
-      }
+    else if (i == 35 && mode == 0) // Scale setting
+    {
+      mode = 5;
     }
-    else if (i == 36)
-    { // Set Note for Loading avoiding overflow of 12 notes
-      note_load++;
-      if (note_load > 11)
-      {
-        note_load = 0;
-      }
+    else if (i == 35 && mode == 5)
+    {
+      mode = 0;
+    }
+    else if (i == 36 && mode == 0) // Note setting
+    {
+      mode = 6;
+    }
+    else if (i == 36 && mode == 6)
+    {
+      mode = 0;
     }
     else if (i == 37)
     { // Load Scale into quantizer 1
@@ -731,7 +758,26 @@ void OLED_display()
     display.setCursor(10, 36);
     display.print("SAVE");
     // Draw triangles
-    display.fillTriangle(1, (i - 35) * 9, 1, (i - 35) * 9 + 8, 5, (i - 35) * 9 + 4, WHITE);
+    if (i == 35 && mode == 5)
+    {
+      display.fillTriangle(1, (i - 35) * 9, 1, (i - 35) * 9 + 8, 5, (i - 35) * 9 + 4, WHITE);
+    }
+    else if (i == 35 && mode == 0)
+    {
+      display.drawTriangle(1, (i - 35) * 9, 1, (i - 35) * 9 + 8, 5, (i - 35) * 9 + 4, WHITE);
+    }
+    else if (i == 36 && mode == 6)
+    {
+      display.fillTriangle(1, (i - 35) * 9, 1, (i - 35) * 9 + 8, 5, (i - 35) * 9 + 4, WHITE);
+    }
+    else if (i == 36 && mode == 0)
+    {
+      display.drawTriangle(1, (i - 35) * 9, 1, (i - 35) * 9 + 8, 5, (i - 35) * 9 + 4, WHITE);
+    }
+    else
+    {
+      display.fillTriangle(1, (i - 35) * 9, 1, (i - 35) * 9 + 8, 5, (i - 35) * 9 + 4, WHITE);
+    }
   }
   display.display();
 }
@@ -762,9 +808,8 @@ void PWM2(int duty2)
 // Load data from flash memory
 void load()
 {
-  // read stored data
   if (EEPROM.isValid() == 1)
-  { // already writed eeprom
+  {
     note_str1 = EEPROM.read(1);
     note_str11 = EEPROM.read(2);
     note_str2 = EEPROM.read(3);
@@ -780,7 +825,7 @@ void load()
     sensitivity_ch1 = EEPROM.read(13);
     sensitivity_ch2 = EEPROM.read(14);
   }
-  else if (EEPROM.isValid() == 0)
+  else
   { // no eeprom data , setting any number to eeprom
     note_str1 = 0;
     note_str11 = 0;

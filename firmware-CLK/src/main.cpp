@@ -105,12 +105,12 @@ void MCP(int MCP_OUT)
 
 void PWM1(int duty1)
 {
-  // Implement PWM if needed
+  pwm(OUT_1, 46000, duty1);
 }
 
 void PWM2(int duty2)
 {
-  // Implement PWM if needed
+  pwm(OUT_2, 46000, duty2);
 }
 
 // Set the output pins to HIGH or LOW
@@ -130,7 +130,7 @@ void setPin(int pin, int value)
   }
   else if (pin == 3) // MCP DAC Output
   {
-    value ? MCP(4095) : MCP(0); // TODO: Fix this
+    value ? MCP(4095) : MCP(0);
   }
 }
 
