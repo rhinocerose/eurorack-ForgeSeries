@@ -1,3 +1,5 @@
+// Updated main.cpp
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_MCP4725.h>
@@ -80,17 +82,20 @@ unsigned long lastPulseTime[NUM_OUTPUTS] = {0};
 bool isPulseOn[NUM_OUTPUTS] = {false};
 
 // Menu variables
-int menuItems = 8; // BPM, div1, div2, div3, div4, duty cycle, tap tempo, save
-int menu_index = 1;
+int menuItems = 9; // BPM, Play/Pause, div1, div2, div3, div4, duty cycle, tap tempo, save
+int menu_index = 2;
 bool SW = 1;
 bool old_SW = 0;
-byte mode = 0;                                          // 0=menu select, 1=bpm, 2=div1, ..., 6=dutyCycle
+byte mode = 0;                                          // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=duty cycle, 7=tap tempo, 8=save
 bool disp_refresh = 1;                                  // Display refresh flag
 bool output_indicator[] = {false, false, false, false}; // Pulse status for indicator
 
 // External clock variables
 volatile unsigned long clockInterval = 0;
 volatile unsigned long lastClockInterruptTime = 0;
+
+// Play/Pause state
+bool paused = false; // New variable to track play/pause state
 
 // OUTPUTS
 void intDAC(int intDAC_OUT)
@@ -185,6 +190,7 @@ void load()
     dividers[2] = EEPROM.read(3);
     dividers[3] = EEPROM.read(4);
     dutyCycle = EEPROM.read(5);
+    paused = EEPROM.read(6);
   }
 }
 
@@ -197,6 +203,7 @@ void save()
   EEPROM.write(3, dividers[2]);
   EEPROM.write(4, dividers[3]);
   EEPROM.write(5, dutyCycle);
+  EEPROM.write(6, paused);
   EEPROM.commit();
   display.clearDisplay(); // clear display
   display.setTextSize(2);
@@ -215,7 +222,7 @@ void handleEncoderClick()
   if (SW == 1 && old_SW == 0)
   {
     disp_refresh = 1;
-    if (menu_index == 0 && mode == 0)
+    if (menu_index == 0 && mode == 0) // Set BPM
     {
       mode = 1;
     }
@@ -225,13 +232,17 @@ void handleEncoderClick()
     }
     else if (menu_index == 1 && mode == 0)
     {
+      paused = !paused; // Toggle paused state
+    }
+    else if (menu_index == 2 && mode == 0)
+    {
       mode = 2;
     }
     else if (mode == 2)
     {
       mode = 0;
     }
-    else if (menu_index == 2 && mode == 0)
+    else if (menu_index == 3 && mode == 0)
     {
       mode = 3;
     }
@@ -239,7 +250,7 @@ void handleEncoderClick()
     {
       mode = 0;
     }
-    else if (menu_index == 3 && mode == 0)
+    else if (menu_index == 4 && mode == 0)
     {
       mode = 4;
     }
@@ -247,7 +258,7 @@ void handleEncoderClick()
     {
       mode = 0;
     }
-    else if (menu_index == 4 && mode == 0)
+    else if (menu_index == 5 && mode == 0)
     {
       mode = 5;
     }
@@ -255,7 +266,7 @@ void handleEncoderClick()
     {
       mode = 0;
     }
-    else if (menu_index == 5 && mode == 0)
+    else if (menu_index == 6 && mode == 0)
     {
       mode = 6;
     }
@@ -264,12 +275,12 @@ void handleEncoderClick()
       mode = 0;
     }
     // Tap tempo
-    else if (menu_index == 6 && mode == 0)
+    else if (menu_index == 7 && mode == 0)
     {
       setTapTempo();
     }
     // Save settings
-    else if (menu_index == 7 && mode == 0)
+    else if (menu_index == 8 && mode == 0)
     {
       save();
     }
@@ -377,7 +388,7 @@ void handleOLEDDisplay()
     display.setTextColor(WHITE);
 
     // Draw the menu
-    if (menu_index == 0)
+    if (menu_index == 0 || menu_index == 1)
     {
       display.setCursor(10, 0);
       display.setTextSize(3);
@@ -391,29 +402,58 @@ void handleOLEDDisplay()
         display.print("E");
       }
       // Draw selection triangle
-      if (mode == 0)
+      if (mode == 0 && menu_index == 0)
       {
-        display.drawTriangle(0, 2, 0, 18, 8, 10, WHITE);
+        display.drawTriangle(2, 6, 2, 14, 6, 10, 1);
       }
       else if (mode == 1)
       {
-        display.fillTriangle(0, 2, 0, 18, 8, 10, WHITE);
+        display.fillTriangle(2, 6, 2, 14, 6, 10, 1);
+      }
+
+      if (mode == 0 || mode == 1)
+      {
+        if (paused)
+        {
+          display.drawRect(23, 26, 16, 16, 1);
+          display.setCursor(42, 27);
+          display.setTextSize(2);
+          display.print("PAUSED");
+          if (menu_index == 1)
+          {
+            display.drawLine(40, 42, 112, 42, 1);
+          }
+        }
+        else // Playing
+        {
+          display.fillTriangle(23, 26, 23, 42, 38, 34, 1);
+          display.setCursor(42, 27);
+          display.setTextSize(2);
+          display.print("PLAY");
+          if (menu_index == 1)
+          {
+            display.drawLine(40, 42, 88, 42, 1);
+          }
+        }
       }
 
       // Sync small boxes to each output to show the pulse status
       display.setTextSize(1);
       for (int i = 0; i < NUM_OUTPUTS; i++)
       {
-        display.setCursor(i * 32, 30);
+        display.setCursor((i * 30) + 17, 46);
         display.print(i + 1);
-        display.drawRect(i * 32, 40, 8, 8, WHITE);
         if (output_indicator[i])
         {
-          display.fillRect(i * 32, 40, 8, 8, WHITE);
+          display.fillRect((i * 30) + 16, 56, 8, 8, WHITE);
+        }
+        else
+        {
+          display.drawRect((i * 30) + 16, 56, 8, 8, WHITE);
         }
       }
     }
-    else if (menu_index >= 1 && menu_index <= 4)
+    else if (menu_index >= 2 && menu_index <= 5)
     {
       display.setTextSize(1);
       display.setCursor(10, 1);
@@ -430,7 +470,7 @@ void handleOLEDDisplay()
         display.setCursor(70, 20 + (i * 9));
         display.print(dividers_desc[dividers[i]]);
 
-        if (menu_index == i + 1)
+        if (menu_index == i + 2)
         {
           if (mode == 0)
           {
@@ -443,14 +483,14 @@ void handleOLEDDisplay()
         }
       }
     }
-    else if (menu_index >= 5 && menu_index <= 7)
+    else if (menu_index >= 6 && menu_index <= 9)
     {
       display.setTextSize(1);
       display.setCursor(10, 1);
       display.println("DUTY CYCLE(%):");
       display.setCursor(100, 1);
       display.print(dutyCycle);
-      if (mode == 0 && menu_index == 5)
+      if (menu_index == 6 && mode == 0)
       {
         display.drawTriangle(1, 0, 1, 8, 5, 4, 1);
       }
@@ -461,20 +501,15 @@ void handleOLEDDisplay()
       // Tap tempo menu item
       display.setCursor(10, 30);
       display.print("TAP TEMPO");
-      if (menu_index == 6)
+      if (menu_index == 7)
       {
         display.drawTriangle(1, 29, 1, 37, 5, 33, 1);
       }
-
       display.setCursor(10, 50);
       display.print("SAVE");
-      if (mode == 0 && menu_index == 7)
+      if (menu_index == 8)
       {
         display.drawTriangle(1, 49, 1, 57, 5, 53, 1);
-      }
-      else if (mode == 7)
-      {
-        display.fillTriangle(1, 49, 1, 57, 5, 53, 1);
       }
     }
     display.display();
@@ -511,6 +546,21 @@ void handleExternalClock()
 // Handle the outputs
 void handleOutputs()
 {
+  if (paused)
+  {
+    // If paused, ensure all outputs are off
+    for (int i = 0; i < NUM_OUTPUTS; i++)
+    {
+      if (isPulseOn[i])
+      {
+        setPin(i, LOW);
+        isPulseOn[i] = false;
+        output_indicator[i] = false;
+      }
+    }
+    return; // Skip output handling
+  }
+
   unsigned long currentMillis = millis();
   for (int i = 0; i < NUM_OUTPUTS; i++)
   {
@@ -581,8 +631,6 @@ void setup()
     for (;;)
       ; // Don't proceed, loop forever
   }
-  display.display();
-  delay(2000); // wait for initializing
   display.clearDisplay();
   analogWriteResolution(10);
   analogReadResolution(12);
