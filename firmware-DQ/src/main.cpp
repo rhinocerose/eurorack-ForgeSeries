@@ -63,6 +63,8 @@ bool old_CLK_in = 0;
 byte mode = 0; // 0=select,1=atk1,2=dcy1,3=atk2,4=dcy2, 5=scale, 6=note
 
 float AD_CH1, old_AD_CH1, AD_CH2, old_AD_CH2;
+int quant_note1_idx, quant_note2_idx = 0;
+int last_quant_note1_idx, last_quant_note2_idx = 0;
 
 float CV_out1, CV_out2, old_CV_out1, old_CV_out2;
 long gate_timer1, gate_timer2; // EG curve progress speed
@@ -72,14 +74,16 @@ int k = 0;
 // envelope curve setting
 int ad[200] = { // envelope table
     0, 15, 30, 44, 59, 73, 87, 101, 116, 130, 143, 157, 170, 183, 195, 208, 220, 233, 245, 257, 267, 279, 290, 302, 313, 324, 335, 346, 355, 366, 376, 386, 397, 405, 415, 425, 434, 443, 452, 462, 470, 479, 488, 495, 504, 513, 520, 528, 536, 544, 552, 559, 567, 573, 581, 589, 595, 602, 609, 616, 622, 629, 635, 642, 648, 654, 660, 666, 672, 677, 683, 689, 695, 700, 706, 711, 717, 722, 726, 732, 736, 741, 746, 751, 756, 760, 765, 770, 774, 778, 783, 787, 791, 796, 799, 803, 808, 811, 815, 818, 823, 826, 830, 834, 837, 840, 845, 848, 851, 854, 858, 861, 864, 866, 869, 873, 876, 879, 881, 885, 887, 890, 893, 896, 898, 901, 903, 906, 909, 911, 913, 916, 918, 920, 923, 925, 927, 929, 931, 933, 936, 938, 940, 942, 944, 946, 948, 950, 952, 954, 955, 957, 960, 961, 963, 965, 966, 968, 969, 971, 973, 975, 976, 977, 979, 980, 981, 983, 984, 986, 988, 989, 990, 991, 993, 994, 995, 996, 997, 999, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1012, 1013, 1014, 1014, 1015, 1016, 1017, 1018, 1019, 1020};
-
+// int ad[200] = { // Hagiwo's envelope table
+// 0, 30, 44, 59, 73, 87, 101, 116, 130, 143, 157, 170, 183, 195, 208, 220, 233, 245, 257, 267, 279, 290, 302, 313, 324, 335, 346, 355, 366, 376, 386, 397, 405, 415, 425, 434, 443, 452, 462, 470, 479, 488, 495, 504, 513, 520, 528, 536, 544, 552, 559, 567, 573, 581, 589, 595, 602, 609, 616, 622, 629, 635, 642, 648, 654, 660, 666, 672, 677, 683, 689, 695, 700, 706, 711, 717, 722, 726, 732, 736, 741, 746, 751, 756, 760, 765, 770, 774, 778, 783, 787, 791, 796, 799, 803, 808, 811, 815, 818, 823, 826, 830, 834, 837, 840, 845, 848, 851, 854, 858, 861, 864, 866, 869, 873, 876, 879, 881, 885, 887, 890, 893, 896, 898, 901, 903, 906, 909, 911, 913, 916, 918, 920, 923, 925, 927, 929, 931, 933, 936, 938, 940, 942, 944, 946, 948, 950, 952, 954, 955, 957, 960, 961, 963, 965, 966, 968, 969, 971, 973, 975, 976, 977, 979, 980, 981, 983, 984, 986, 988, 989, 990, 991, 993, 994, 995, 996, 997, 999, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1012, 1013, 1014, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 1021};
 int ad1 = 0; // PWM DUTY reference
 int ad2 = 0; // PWM DUTY reference
 bool ad_trg1 = 0;
 bool ad_trg2 = 0;
-u_int8_t atk1, atk2, dcy1, dcy2;                       // attack time,decay time
-u_int8_t sync1, sync2;                                 // 0=sync with trig , 1=sync with note change
-u_int8_t sensitivity_ch1, sensitivity_ch2, oct1, oct2; // sens = AD input attn,amp.oct=octave shift
+u_int8_t atk1, atk2, dcy1, dcy2 = 1;           // attack time,decay time
+u_int8_t sync1, sync2 = 1;                     // 0=sync with trig , 1=sync with note change
+u_int8_t oct1, oct2 = 2;                       // sens = AD input attn,amp.oct=octave shift
+u_int8_t sensitivity_ch1, sensitivity_ch2 = 4; // sens = AD input attn,amp.oct=octave shift
 
 // CV setting
 int cv_qnt_thr_buf1[62]; // input quantize
@@ -112,6 +116,14 @@ void buildQuantBuffer(bool note[], int buff[])
     }
   }
 };
+
+// Identify the closest note index to the input CV
+// Note indexes are 0 to 11, corresponding to C to B
+void getNote(float CV_OUT, int *note_index)
+{
+  int note = CV_OUT / 68.25;
+  *note_index = note % 12;
+}
 
 void quantizeCV(float AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, float *CV_out)
 {
@@ -193,6 +205,8 @@ void loop()
   old_CV_out2 = CV_out2;
   old_AD_CH1 = AD_CH1;
   old_AD_CH2 = AD_CH2;
+  last_quant_note1_idx = quant_note1_idx;
+  last_quant_note2_idx = quant_note2_idx;
 
   //-------------------------------rotary encoder--------------------------
   newPosition = myEnc.read();
@@ -544,6 +558,14 @@ void loop()
     MCP(CV_out2);
   }
 
+  // Get the note from the CV output
+  getNote(CV_out1, &quant_note1_idx);
+  getNote(CV_out2, &quant_note2_idx);
+  if ((last_quant_note1_idx != quant_note1_idx) || (last_quant_note2_idx != quant_note2_idx))
+  {
+    disp_refresh = 1;
+  }
+
   // display out
   if (disp_refresh == 1)
   {
@@ -552,7 +574,7 @@ void loop()
   }
 }
 
-void noteDisp(int x0, int y0, boolean on)
+void noteDisp(int x0, int y0, boolean on, boolean playing)
 {
   int width = 11;
   int height = 13;
@@ -560,7 +582,15 @@ void noteDisp(int x0, int y0, boolean on)
   int color = WHITE;
   if (on)
   {
-    display.fillRoundRect(x0, y0, width, height, radius, color);
+    if (playing)
+    {
+      display.drawRoundRect(x0, y0, width, height, radius, color);
+      display.fillRoundRect(x0 + 3, y0 + 3, width - 6, height - 6, radius, color);
+    }
+    else
+    {
+      display.fillRoundRect(x0, y0, width, height, radius, color);
+    }
   }
   else
   {
@@ -578,33 +608,42 @@ void OLED_display()
   // Draw the keyboard scale 1
   if (i <= 27)
   {
-    note1[1] == 0 ? noteDisp(7, 0, 0) : noteDisp(7, 0, 1);
-    note1[3] == 0 ? noteDisp(7 + 14 * 1, 0, 0) : noteDisp(7 + 14 * 1, 0, 1);
-    note1[6] == 0 ? noteDisp(8 + 14 * 3, 0, 0) : noteDisp(8 + 14 * 3, 0, 1);
-    note1[8] == 0 ? noteDisp(8 + 14 * 4, 0, 0) : noteDisp(8 + 14 * 4, 0, 1);
-    note1[10] == 0 ? noteDisp(8 + 14 * 5, 0, 0) : noteDisp(8 + 14 * 5, 0, 1);
-    note1[0] == 0 ? noteDisp(0, 15, 0) : noteDisp(0, 15, 1);
-    note1[2] == 0 ? noteDisp(0 + 14 * 1, 15, 0) : noteDisp(0 + 14 * 1, 15, 1);
-    note1[4] == 0 ? noteDisp(0 + 14 * 2, 15, 0) : noteDisp(0 + 14 * 2, 15, 1);
-    note1[5] == 0 ? noteDisp(0 + 14 * 3, 15, 0) : noteDisp(0 + 14 * 3, 15, 1);
-    note1[7] == 0 ? noteDisp(0 + 14 * 4, 15, 0) : noteDisp(0 + 14 * 4, 15, 1);
-    note1[9] == 0 ? noteDisp(0 + 14 * 5, 15, 0) : noteDisp(0 + 14 * 5, 15, 1);
-    note1[11] == 0 ? noteDisp(0 + 14 * 6, 15, 0) : noteDisp(0 + 14 * 6, 15, 1);
+    noteDisp(7, 0, note1[1] == 1, quant_note1_idx == 1);
+    noteDisp(7 + 14 * 1, 0, note1[3] == 1, quant_note1_idx == 3);
+    noteDisp(8 + 14 * 3, 0, note1[6] == 1, quant_note1_idx == 6);
+    noteDisp(8 + 14 * 4, 0, note1[8] == 1, quant_note1_idx == 8);
+    noteDisp(8 + 14 * 5, 0, note1[10] == 1, quant_note1_idx == 10);
+    noteDisp(0, 15, note1[0] == 1, quant_note1_idx == 0);
+    noteDisp(0 + 14 * 1, 15, note1[2] == 1, quant_note1_idx == 2);
+    noteDisp(0 + 14 * 2, 15, note1[4] == 1, quant_note1_idx == 4);
+    noteDisp(0 + 14 * 3, 15, note1[5] == 1, quant_note1_idx == 5);
+    noteDisp(0 + 14 * 4, 15, note1[7] == 1, quant_note1_idx == 7);
+    noteDisp(0 + 14 * 5, 15, note1[9] == 1, quant_note1_idx == 9);
+    noteDisp(0 + 14 * 6, 15, note1[11] == 1, quant_note1_idx == 11);
 
     // Draw the keyboard scale 2
-    note2[1] == 0 ? noteDisp(7, 0 + 34, 0) : noteDisp(7, 0 + 34, 1);
-    note2[3] == 0 ? noteDisp(7 + 14 * 1, 0 + 34, 0) : noteDisp(7 + 14 * 1, 0 + 34, 1);
-    note2[6] == 0 ? noteDisp(8 + 14 * 3, 0 + 34, 0) : noteDisp(8 + 14 * 3, 0 + 34, 1);
-    note2[8] == 0 ? noteDisp(8 + 14 * 4, 0 + 34, 0) : noteDisp(8 + 14 * 4, 0 + 34, 1);
-    note2[10] == 0 ? noteDisp(8 + 14 * 5, 0 + 34, 0) : noteDisp(8 + 14 * 5, 0 + 34, 1);
-    note2[0] == 0 ? noteDisp(0, 15 + 34, 0) : noteDisp(0, 15 + 34, 1);
-    note2[2] == 0 ? noteDisp(0 + 14 * 1, 15 + 34, 0) : noteDisp(0 + 14 * 1, 15 + 34, 1);
-    note2[4] == 0 ? noteDisp(0 + 14 * 2, 15 + 34, 0) : noteDisp(0 + 14 * 2, 15 + 34, 1);
-    note2[5] == 0 ? noteDisp(0 + 14 * 3, 15 + 34, 0) : noteDisp(0 + 14 * 3, 15 + 34, 1);
-    note2[7] == 0 ? noteDisp(0 + 14 * 4, 15 + 34, 0) : noteDisp(0 + 14 * 4, 15 + 34, 1);
-    note2[9] == 0 ? noteDisp(0 + 14 * 5, 15 + 34, 0) : noteDisp(0 + 14 * 5, 15 + 34, 1);
-    note2[11] == 0 ? noteDisp(0 + 14 * 6, 15 + 34, 0) : noteDisp(0 + 14 * 6, 15 + 34, 1);
+    noteDisp(7, 0 + 34, note2[1] == 1, quant_note2_idx == 1);
+    noteDisp(7 + 14 * 1, 0 + 34, note2[3] == 1, quant_note2_idx == 3);
+    noteDisp(8 + 14 * 3, 0 + 34, note2[6] == 1, quant_note2_idx == 6);
+    noteDisp(8 + 14 * 4, 0 + 34, note2[8] == 1, quant_note2_idx == 8);
+    noteDisp(8 + 14 * 5, 0 + 34, note2[10] == 1, quant_note2_idx == 10);
+    noteDisp(0, 15 + 34, note2[0] == 1, quant_note2_idx == 0);
+    noteDisp(0 + 14 * 1, 15 + 34, note2[2] == 1, quant_note2_idx == 2);
+    noteDisp(0 + 14 * 2, 15 + 34, note2[4] == 1, quant_note2_idx == 4);
+    noteDisp(0 + 14 * 3, 15 + 34, note2[5] == 1, quant_note2_idx == 5);
+    noteDisp(0 + 14 * 4, 15 + 34, note2[7] == 1, quant_note2_idx == 7);
+    noteDisp(0 + 14 * 5, 15 + 34, note2[9] == 1, quant_note2_idx == 9);
+    noteDisp(0 + 14 * 6, 15 + 34, note2[11] == 1, quant_note2_idx == 11);
 
+    // display.setTextSize(1);
+    // display.setTextColor(WHITE);
+    // display.setCursor(0, 0);
+    // display.print(noteNames[quant_note1_idx]);
+    // display.setCursor(0, 34);
+    // display.print(noteNames[quant_note2_idx]);
+
+    Serial.print("Note 1: " + String(noteNames[quant_note1_idx]) + " index: " + String(quant_note1_idx) + "Input CV: " + String(AD_CH1) + " Quantized CV: " + String(CV_out1) + "\n");
+    Serial.print("Note 2: " + String(noteNames[quant_note2_idx]) + " index: " + String(quant_note2_idx) + "Input CV: " + String(AD_CH2) + " Quantized CV: " + String(CV_out2) + "\n");
     // Draw the selection triangle
     if (i <= 4)
     {
@@ -808,8 +847,9 @@ void PWM2(int duty2)
 // Load data from flash memory
 void load()
 {
-  if (EEPROM.isValid() == 1)
+  if (EEPROM.isValid())
   {
+    Serial.println("EEPROM data found, loading values");
     note_str1 = EEPROM.read(1);
     note_str11 = EEPROM.read(2);
     note_str2 = EEPROM.read(3);
@@ -827,6 +867,7 @@ void load()
   }
   else
   { // no eeprom data , setting any number to eeprom
+    Serial.println("No EEPROM data found, setting default values");
     note_str1 = 0;
     note_str11 = 0;
     note_str2 = 2;
