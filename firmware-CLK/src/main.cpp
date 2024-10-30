@@ -1,671 +1,453 @@
-// Updated main.cpp
-
 #include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_MCP4725.h>
-#include <Adafruit_GFX.h>
-#define SSD1306_NO_SPLASH
-#include <Adafruit_SSD1306.h>
-#define ENCODER_OPTIMIZE_INTERRUPTS
+// Rotary encoder setting
+#define ENCODER_OPTIMIZE_INTERRUPTS  // counter measure of noise
 #include <Encoder.h>
-#include <FlashAsEEPROM.h>
+// Use flash memory as eeprom
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-// #define IN_SIMULATOR
+// Load local libraries
+#include "boardIO.cpp"
+#include "loadsave.cpp"
+#include "pinouts.h"
 
-// Pin definitions
-#ifndef IN_SIMULATOR
-#define CLK_IN_PIN 7  // Clock input pin
-#define CV_1_IN_PIN 8 // channel 1 analog in
-#define CV_2_IN_PIN 9 // channel 2 analog in
-#define ENC_PIN_1 3   // rotary encoder left pin
-#define ENC_PIN_2 6   // rotary encoder right pin
-#define ENCODER_SW 10 // pin for encoder switch
-#define OUT_1 2
-#define OUT_2 1
-#define DAC_INTERNAL_PIN A0 // DAC output pin (internal). Second DAC output goes to MCP4725 via I2C
+// Define the amount of clock outputs
 #define NUM_OUTPUTS 4
-// const int outputPins[NUM_OUTPUTS] = {LED_BUILTIN};
-#else
-// Pin definitions for simulator
-#define CLK_IN_PIN 12
-#define ENC_PIN_1 4
-#define ENC_PIN_2 3
-#define ENCODER_SW 2
-#define NUM_OUTPUTS 4
-const int outputPins[NUM_OUTPUTS] = {5, 6, 7, 8};
-#endif
 
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
-////////////////////////////////////////////
-// ADC calibration. Change these according to your resistor values to make readings more accurate
-float AD_CH1_calb = 0.98; // reduce resistance error
-float AD_CH2_calb = 0.98; // reduce resistance error
-/////////////////////////////////////////
-float AD_CH1, old_AD_CH1, AD_CH2, old_AD_CH2;
+// Assign ADC calibration value for each channel based on the actual measurement
+float ADCalibration[2] = {0.99728, 0.99728};
 
 // OLED display initialization
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-// Rotary encoder initialization
-Encoder myEnc(ENC_PIN_1, ENC_PIN_2);
-float oldPosition = -999;
-float newPosition = -999;
+// Rotary encoder creation
+Encoder encoder1(ENC_PIN_1, ENC_PIN_2);  // rotary encoder library setting
+float oldPosition = -999;                // rotary encoder library setting
+float newPosition = -999;                // rotary encoder library setting
 
-// Create the MCP4725 object
-Adafruit_MCP4725 dac;
-#define DAC_RESOLUTION (12)
+// ADC input variables
+float channelADC[2], oldChannelADC[2];
 
 // Valid dividers and multipliers
-float valid_dividers[] = {0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0};
-int const numDividers = (sizeof(valid_dividers) / sizeof(valid_dividers[0])) - 1;
-const char *dividers_desc[] = {"1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16", "32"};
-int dividers[] = {5, 5, 5, 5};
+float clockDividers[] = {0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0};
+int const dividerCount = (sizeof(clockDividers) / sizeof(clockDividers[0])) - 1;
+const char *dividerDescripion[] = {"1/32", "1/16", "1/8", "1/4", "1/2", "1", "2", "4", "8", "16", "32"};
+int dividerValues[] = {5, 5, 5, 5};
 
 // BPM and clock settings
-float bpm = 120;
+float BPM = 120;
 unsigned int const minBPM = 10;
 unsigned int const maxBPM = 300;
 
-unsigned int dutyCycle = 50; // Duty cycle percentage (0-100%)
+// Clock output settings
+unsigned int dutyCycle = 50;  // Duty cycle percentage (0-100%)
 unsigned long pulseInterval[NUM_OUTPUTS];
 unsigned long pulseHighTime[NUM_OUTPUTS];
 unsigned long pulseLowTime[NUM_OUTPUTS];
 
+// External clock variables
+volatile unsigned long clockInterval = 0;
+volatile unsigned long lastClockInterruptTime = 0;
 volatile bool usingExternalClock = false;
-unsigned long lastClockTime = 0;
 
 // Timing for outputs
 unsigned long lastPulseTime[NUM_OUTPUTS] = {0};
 bool isPulseOn[NUM_OUTPUTS] = {false};
 
 // Menu variables
-int menuItems = 9; // BPM, Play/Pause, div1, div2, div3, div4, duty cycle, tap tempo, save
-int menu_index = 2;
-bool SW = 1;
-bool old_SW = 0;
-byte mode = 0;                                          // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=duty cycle, 7=tap tempo, 8=save
-bool disp_refresh = 1;                                  // Display refresh flag
-bool output_indicator[] = {false, false, false, false}; // Pulse status for indicator
-
-// External clock variables
-volatile unsigned long clockInterval = 0;
-volatile unsigned long lastClockInterruptTime = 0;
+int menuItems = 9;  // BPM, Play/Pause, div1, div2, div3, div4, duty cycle, tap tempo, save
+int menuItem = 2;
+bool switchState = 1;
+bool oldSwitchState = 0;
+byte menuMode = 0;                                      // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=duty cycle, 7=tap tempo, 8=save
+bool displayRefresh = 1;                                // Display refresh flag
+bool outputIndicator[] = {false, false, false, false};  // Pulse status for indicator
 
 // Play/Pause state
-bool paused = false; // New variable to track play/pause state
-
-// OUTPUTS
-void intDAC(int intDAC_OUT)
-{
-  analogWrite(DAC_INTERNAL_PIN, intDAC_OUT / 4); // "/4" -> 12bit to 10bit
-}
-
-void MCP(int MCP_OUT)
-{
-  dac.setVoltage(MCP_OUT, false);
-}
-
-void PWM1(int duty1)
-{
-  pwm(OUT_1, 46000, duty1);
-}
-
-void PWM2(int duty2)
-{
-  pwm(OUT_2, 46000, duty2);
-}
-
-// Set the output pins to HIGH or LOW
-void setPin(int pin, int value)
-{
-  if (pin == 0) // Gate Output 1
-  {
-    value ? digitalWrite(OUT_2, LOW) : digitalWrite(OUT_2, HIGH);
-  }
-  else if (pin == 1) // Gate Output 2
-  {
-    value ? digitalWrite(OUT_1, LOW) : digitalWrite(OUT_1, HIGH);
-  }
-  else if (pin == 2) // Internal DAC Output
-  {
-    value ? intDAC(4095) : intDAC(0);
-  }
-  else if (pin == 3) // MCP DAC Output
-  {
-    value ? MCP(4095) : MCP(0);
-  }
-}
+bool paused = false;  // New variable to track play/pause state
 
 // Update the BPM value and recalculate pulse intervals and times
-void updateBPM()
-{
-  bpm = constrain(bpm, minBPM, maxBPM);
-  for (int i = 0; i < NUM_OUTPUTS; i++)
-  {
-    pulseInterval[i] = (60000.0 / bpm) * valid_dividers[dividers[i]];
-    pulseHighTime[i] = pulseInterval[i] * (dutyCycle / 100.0);
-    pulseLowTime[i] = pulseInterval[i] - pulseHighTime[i];
-  }
+void UpdateBPM() {
+    BPM = constrain(BPM, minBPM, maxBPM);
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        pulseInterval[i] = (60000.0 / BPM) * clockDividers[dividerValues[i]];
+        pulseHighTime[i] = pulseInterval[i] * (dutyCycle / 100.0);
+        pulseLowTime[i] = pulseInterval[i] - pulseHighTime[i];
+    }
 }
 
 // Tap tempo function
 static unsigned long lastTapTime = 0;
 static unsigned long tapTimes[3] = {0, 0, 0};
 static int tapIndex = 0;
-void setTapTempo()
-{
-  unsigned long currentMillis = millis();
-  if (currentMillis - lastTapTime > 2000)
-  {
-    tapIndex = 0;
-  }
-  if (tapIndex < 3)
-  {
-    tapTimes[tapIndex] = currentMillis;
-    tapIndex++;
-    lastTapTime = currentMillis;
-  }
-  if (tapIndex == 3)
-  {
-    unsigned long averageTime = (tapTimes[2] - tapTimes[0]) / 2;
-    bpm = 60000.0 / averageTime;
-    tapIndex++;
-    updateBPM();
-  }
+void SetTapTempo() {
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastTapTime > 2000) {
+        tapIndex = 0;
+    }
+    if (tapIndex < 3) {
+        tapTimes[tapIndex] = currentMillis;
+        tapIndex++;
+        lastTapTime = currentMillis;
+    }
+    if (tapIndex == 3) {
+        unsigned long averageTime = (tapTimes[2] - tapTimes[0]) / 2;
+        BPM = 60000.0 / averageTime;
+        tapIndex++;
+        UpdateBPM();
+    }
 }
 
-//-----------------------------store data----------------------------------------
-void load()
-{
-  // load setting data from flash memory
-  if (EEPROM.isValid() == 1)
-  {
-    delay(100);
-    bpm = EEPROM.read(0);
-    dividers[0] = EEPROM.read(1);
-    dividers[1] = EEPROM.read(2);
-    dividers[2] = EEPROM.read(3);
-    dividers[3] = EEPROM.read(4);
-    dutyCycle = EEPROM.read(5);
-    paused = EEPROM.read(6);
-  }
-}
-
-void save()
-{ // save setting data to flash memory
-  delay(100);
-  EEPROM.write(0, bpm);
-  EEPROM.write(1, dividers[0]);
-  EEPROM.write(2, dividers[1]);
-  EEPROM.write(3, dividers[2]);
-  EEPROM.write(4, dividers[3]);
-  EEPROM.write(5, dutyCycle);
-  EEPROM.write(6, paused);
-  EEPROM.commit();
-  display.clearDisplay(); // clear display
-  display.setTextSize(2);
-  display.setTextColor(BLACK, WHITE);
-  display.setCursor(10, 40);
-  display.print("SAVED");
-  display.display();
-  delay(1000);
-}
-
-void handleEncoderClick()
-{
-  old_SW = SW;
-  // Handle encoder button
-  SW = digitalRead(ENCODER_SW);
-  if (SW == 1 && old_SW == 0)
-  {
-    disp_refresh = 1;
-    if (menu_index == 0 && mode == 0) // Set BPM
-    {
-      mode = 1;
-    }
-    else if (mode == 1)
-    {
-      mode = 0;
-    }
-    else if (menu_index == 1 && mode == 0)
-    {
-      paused = !paused; // Toggle paused state
-    }
-    else if (menu_index == 2 && mode == 0)
-    {
-      mode = 2;
-    }
-    else if (mode == 2)
-    {
-      mode = 0;
-    }
-    else if (menu_index == 3 && mode == 0)
-    {
-      mode = 3;
-    }
-    else if (mode == 3)
-    {
-      mode = 0;
-    }
-    else if (menu_index == 4 && mode == 0)
-    {
-      mode = 4;
-    }
-    else if (mode == 4)
-    {
-      mode = 0;
-    }
-    else if (menu_index == 5 && mode == 0)
-    {
-      mode = 5;
-    }
-    else if (mode == 5)
-    {
-      mode = 0;
-    }
-    else if (menu_index == 6 && mode == 0)
-    {
-      mode = 6;
-    }
-    else if (mode == 6)
-    {
-      mode = 0;
-    }
-    // Tap tempo
-    else if (menu_index == 7 && mode == 0)
-    {
-      setTapTempo();
-    }
-    // Save settings
-    else if (menu_index == 8 && mode == 0)
-    {
-      save();
-    }
-  }
-}
-
-void handleEncoderPosition()
-{
-  newPosition = myEnc.read();
-  if ((newPosition - 3) / 4 > oldPosition / 4)
-  { // Decrease
-    oldPosition = newPosition;
-    disp_refresh = 1;
-    switch (mode)
-    {
-    case 0:
-      menu_index--;
-      if (menu_index < 0)
-        menu_index = menuItems - 1;
-      break;
-    case 1: // Set BPM
-      bpm = bpm - 1;
-      updateBPM();
-      break;
-    case 2: // Set div1
-      dividers[0] = constrain(dividers[0] - 1, 0, numDividers);
-      updateBPM();
-      break;
-    case 3: // Set div2
-      dividers[1] = constrain(dividers[1] - 1, 0, numDividers);
-      updateBPM();
-      break;
-    case 4: // Set div3
-      dividers[2] = constrain(dividers[2] - 1, 0, numDividers);
-      updateBPM();
-      break;
-    case 5: // Set div4
-      dividers[3] = constrain(dividers[3] - 1, 0, numDividers);
-      updateBPM();
-      break;
-    case 6: // Set duty cycle
-      dutyCycle = constrain(dutyCycle - 1, 1, 99);
-      updateBPM();
-      break;
-    }
-  }
-  else if ((newPosition + 3) / 4 < oldPosition / 4)
-  { // Increase
-    oldPosition = newPosition;
-    disp_refresh = 1;
-    switch (mode)
-    {
-    case 0:
-      menu_index++;
-      if (menu_index > menuItems - 1)
-        menu_index = 0;
-      break;
-    case 1: // Set BPM
-      bpm = bpm + 1;
-      updateBPM();
-      break;
-    case 2:
-      // Set div1
-      dividers[0] = constrain(dividers[0] + 1, 0, numDividers);
-      updateBPM();
-      break;
-    case 3:
-      // Set div2
-      dividers[1] = constrain(dividers[1] + 1, 0, numDividers);
-      updateBPM();
-      break;
-    case 4:
-      // Set div3
-      dividers[2] = constrain(dividers[2] + 1, 0, numDividers);
-      updateBPM();
-      break;
-    case 5:
-      // Set div4
-      dividers[3] = constrain(dividers[3] + 1, 0, numDividers);
-      updateBPM();
-      break;
-    case 6:
-      // Set duty cycle
-      dutyCycle = constrain(dutyCycle + 1, 1, 99);
-      updateBPM();
-      break;
-    }
-  }
-}
-
-void handleCVInputs()
-{
-  old_AD_CH1 = AD_CH1;
-  old_AD_CH2 = AD_CH2;
-  AD_CH1 = analogRead(CV_1_IN_PIN) / AD_CH1_calb;
-  AD_CH2 = analogRead(CV_2_IN_PIN) / AD_CH2_calb;
-}
-
-//-----------------------------DISPLAY----------------------------------------
-void handleOLEDDisplay()
-{
-  if (disp_refresh == 1)
-  {
-    display.clearDisplay();
-    display.setTextColor(WHITE);
-
-    // Draw the menu
-    if (menu_index == 0 || menu_index == 1)
-    {
-      display.setCursor(10, 0);
-      display.setTextSize(3);
-      display.print("BPM");
-      display.setCursor(70, 0);
-      display.print(int(bpm));
-      if (usingExternalClock)
-      {
-        display.setTextSize(1);
-        display.setCursor(120, 24);
-        display.print("E");
-      }
-      // Draw selection triangle
-      if (mode == 0 && menu_index == 0)
-      {
-        display.drawTriangle(2, 6, 2, 14, 6, 10, 1);
-      }
-      else if (mode == 1)
-      {
-        display.fillTriangle(2, 6, 2, 14, 6, 10, 1);
-      }
-
-      if (mode == 0 || mode == 1)
-      {
-        if (paused)
+// Handle encoder button click
+void HandleEncoderClick() {
+    oldSwitchState = switchState;
+    switchState = digitalRead(ENCODER_SW);
+    if (switchState == 1 && oldSwitchState == 0) {
+        displayRefresh = 1;
+        if (menuItem == 0 && menuMode == 0)  // Set BPM
         {
-          display.drawRect(23, 26, 16, 16, 1);
-          display.setCursor(42, 27);
-          display.setTextSize(2);
-          display.print("PAUSED");
-          if (menu_index == 1)
-          {
-            display.drawLine(40, 42, 112, 42, 1);
-          }
+            menuMode = 1;
+        } else if (menuMode == 1) {
+            menuMode = 0;
+        } else if (menuItem == 1 && menuMode == 0) {
+            paused = !paused;  // Toggle paused state
+        } else if (menuItem == 2 && menuMode == 0) {
+            menuMode = 2;
+        } else if (menuMode == 2) {
+            menuMode = 0;
+        } else if (menuItem == 3 && menuMode == 0) {
+            menuMode = 3;
+        } else if (menuMode == 3) {
+            menuMode = 0;
+        } else if (menuItem == 4 && menuMode == 0) {
+            menuMode = 4;
+        } else if (menuMode == 4) {
+            menuMode = 0;
+        } else if (menuItem == 5 && menuMode == 0) {
+            menuMode = 5;
+        } else if (menuMode == 5) {
+            menuMode = 0;
+        } else if (menuItem == 6 && menuMode == 0) {
+            menuMode = 6;
+        } else if (menuMode == 6) {
+            menuMode = 0;
         }
-        else // Playing
-        {
-          display.fillTriangle(23, 26, 23, 42, 38, 34, 1);
-          display.setCursor(42, 27);
-          display.setTextSize(2);
-          display.print("PLAY");
-          if (menu_index == 1)
-          {
-            display.drawLine(40, 42, 88, 42, 1);
-          }
+        // Tap tempo
+        else if (menuItem == 7 && menuMode == 0) {
+            SetTapTempo();
         }
-      }
-
-      // Sync small boxes to each output to show the pulse status
-      display.setTextSize(1);
-      for (int i = 0; i < NUM_OUTPUTS; i++)
-      {
-        display.setCursor((i * 30) + 17, 46);
-        display.print(i + 1);
-        if (output_indicator[i])
-        {
-          display.fillRect((i * 30) + 16, 56, 8, 8, WHITE);
+        // Save settings
+        else if (menuItem == 8 && menuMode == 0) {
+            LoadSaveParams p = {
+                &BPM, &dividerValues[0], &dividerValues[1], &dividerValues[2], &dividerValues[3], &dutyCycle, &paused};
+            Save(p);
+            display.clearDisplay();  // clear display
+            display.setTextSize(2);
+            display.setTextColor(BLACK, WHITE);
+            display.setCursor(10, 40);
+            display.print("SAVED");
+            display.display();
+            delay(1000);
         }
-        else
-        {
-          display.drawRect((i * 30) + 16, 56, 8, 8, WHITE);
-        }
-      }
     }
-    else if (menu_index >= 2 && menu_index <= 5)
-    {
-      display.setTextSize(1);
-      display.setCursor(10, 1);
-      display.println("CLOCK DIVIDERS");
-      for (int i = 0; i < NUM_OUTPUTS; i++)
-      {
-        // Display the clock divider for each output
-        display.setCursor(10, 20 + (i * 9));
-        display.print("DIV");
-        display.setCursor(30, 20 + (i * 9));
-        display.print(i + 1);
-        display.setCursor(35, 20 + (i * 9));
-        display.print(":");
-        display.setCursor(70, 20 + (i * 9));
-        display.print(dividers_desc[dividers[i]]);
-
-        if (menu_index == i + 2)
-        {
-          if (mode == 0)
-          {
-            display.drawTriangle(1, 19 + (i * 9), 1, 27 + (i * 9), 5, 23 + (i * 9), 1);
-          }
-          else if (mode == i + 2)
-          {
-            display.fillTriangle(1, 19 + (i * 9), 1, 27 + (i * 9), 5, 23 + (i * 9), 1);
-          }
-        }
-      }
-    }
-    else if (menu_index >= 6 && menu_index <= 9)
-    {
-      display.setTextSize(1);
-      display.setCursor(10, 1);
-      display.println("DUTY CYCLE(%):");
-      display.setCursor(100, 1);
-      display.print(dutyCycle);
-      if (menu_index == 6 && mode == 0)
-      {
-        display.drawTriangle(1, 0, 1, 8, 5, 4, 1);
-      }
-      else if (mode == 6)
-      {
-        display.fillTriangle(1, 0, 1, 8, 5, 4, 1);
-      }
-      // Tap tempo menu item
-      display.setCursor(10, 30);
-      display.print("TAP TEMPO");
-      if (menu_index == 7)
-      {
-        display.drawTriangle(1, 29, 1, 37, 5, 33, 1);
-      }
-      display.setCursor(10, 50);
-      display.print("SAVE");
-      if (menu_index == 8)
-      {
-        display.drawTriangle(1, 49, 1, 57, 5, 53, 1);
-      }
-    }
-    display.display();
-    disp_refresh = 0;
-  }
 }
 
-// Clock in expects a 24PPQN signal
-void onClockReceived()
-{
-  unsigned long interruptTime = micros();
-  clockInterval = interruptTime - lastClockInterruptTime;
-  lastClockInterruptTime = interruptTime;
-  usingExternalClock = true;
-  // Recalculate BPM based on external clock
-  bpm = 60000000.0 / clockInterval;
-  updateBPM();
+void HandleEncoderPosition() {
+    newPosition = encoder1.read();
+    if ((newPosition - 3) / 4 > oldPosition / 4) {  // Decrease
+        oldPosition = newPosition;
+        displayRefresh = 1;
+        switch (menuMode) {
+            case 0:
+                menuItem--;
+                if (menuItem < 0)
+                    menuItem = menuItems - 1;
+                break;
+            case 1:  // Set BPM
+                BPM = BPM - 1;
+                UpdateBPM();
+                break;
+            case 2:  // Set div1
+                dividerValues[0] = constrain(dividerValues[0] - 1, 0, dividerCount);
+                UpdateBPM();
+                break;
+            case 3:  // Set div2
+                dividerValues[1] = constrain(dividerValues[1] - 1, 0, dividerCount);
+                UpdateBPM();
+                break;
+            case 4:  // Set div3
+                dividerValues[2] = constrain(dividerValues[2] - 1, 0, dividerCount);
+                UpdateBPM();
+                break;
+            case 5:  // Set div4
+                dividerValues[3] = constrain(dividerValues[3] - 1, 0, dividerCount);
+                UpdateBPM();
+                break;
+            case 6:  // Set duty cycle
+                dutyCycle = constrain(dutyCycle - 1, 1, 99);
+                UpdateBPM();
+                break;
+        }
+    } else if ((newPosition + 3) / 4 < oldPosition / 4) {  // Increase
+        oldPosition = newPosition;
+        displayRefresh = 1;
+        switch (menuMode) {
+            case 0:
+                menuItem++;
+                if (menuItem > menuItems - 1)
+                    menuItem = 0;
+                break;
+            case 1:  // Set BPM
+                BPM = BPM + 1;
+                UpdateBPM();
+                break;
+            case 2:
+                // Set div1
+                dividerValues[0] = constrain(dividerValues[0] + 1, 0, dividerCount);
+                UpdateBPM();
+                break;
+            case 3:
+                // Set div2
+                dividerValues[1] = constrain(dividerValues[1] + 1, 0, dividerCount);
+                UpdateBPM();
+                break;
+            case 4:
+                // Set div3
+                dividerValues[2] = constrain(dividerValues[2] + 1, 0, dividerCount);
+                UpdateBPM();
+                break;
+            case 5:
+                // Set div4
+                dividerValues[3] = constrain(dividerValues[3] + 1, 0, dividerCount);
+                UpdateBPM();
+                break;
+            case 6:
+                // Set duty cycle
+                dutyCycle = constrain(dutyCycle + 1, 1, 99);
+                UpdateBPM();
+                break;
+        }
+    }
+}
+
+void HandleCVInputs() {
+    oldChannelADC[0] = channelADC[0];
+    oldChannelADC[1] = channelADC[1];
+    channelADC[0] = analogRead(CV_1_IN_PIN) / ADCalibration[0];
+    channelADC[1] = analogRead(CV_2_IN_PIN) / ADCalibration[1];
+}
+
+void HandleOLED() {
+    if (displayRefresh == 1) {
+        display.clearDisplay();
+        display.setTextColor(WHITE);
+
+        // Draw the menu
+        if (menuItem == 0 || menuItem == 1) {
+            display.setCursor(10, 0);
+            display.setTextSize(3);
+            display.print("BPM");
+            display.setCursor(70, 0);
+            display.print(int(BPM));
+            if (usingExternalClock) {
+                display.setTextSize(1);
+                display.setCursor(120, 24);
+                display.print("E");
+            }
+            // Draw selection triangle
+            if (menuMode == 0 && menuItem == 0) {
+                display.drawTriangle(2, 6, 2, 14, 6, 10, 1);
+            } else if (menuMode == 1) {
+                display.fillTriangle(2, 6, 2, 14, 6, 10, 1);
+            }
+
+            if (menuMode == 0 || menuMode == 1) {
+                if (paused) {
+                    display.drawRect(23, 26, 16, 16, 1);
+                    display.setCursor(42, 27);
+                    display.setTextSize(2);
+                    display.print("PAUSED");
+                    if (menuItem == 1) {
+                        display.drawLine(40, 42, 112, 42, 1);
+                    }
+                } else  // Playing
+                {
+                    display.fillTriangle(23, 26, 23, 42, 38, 34, 1);
+                    display.setCursor(42, 27);
+                    display.setTextSize(2);
+                    display.print("PLAY");
+                    if (menuItem == 1) {
+                        display.drawLine(40, 42, 88, 42, 1);
+                    }
+                }
+            }
+
+            // Sync small boxes to each output to show the pulse status
+            display.setTextSize(1);
+            for (int i = 0; i < NUM_OUTPUTS; i++) {
+                display.setCursor((i * 30) + 17, 46);
+                display.print(i + 1);
+                if (outputIndicator[i]) {
+                    display.fillRect((i * 30) + 16, 56, 8, 8, WHITE);
+                } else {
+                    display.drawRect((i * 30) + 16, 56, 8, 8, WHITE);
+                }
+            }
+        } else if (menuItem >= 2 && menuItem <= 5) {
+            display.setTextSize(1);
+            display.setCursor(10, 1);
+            display.println("CLOCK DIVIDERS");
+            for (int i = 0; i < NUM_OUTPUTS; i++) {
+                // Display the clock divider for each output
+                display.setCursor(10, 20 + (i * 9));
+                display.print("DIV");
+                display.setCursor(30, 20 + (i * 9));
+                display.print(i + 1);
+                display.setCursor(35, 20 + (i * 9));
+                display.print(":");
+                display.setCursor(70, 20 + (i * 9));
+                display.print(dividerDescripion[dividerValues[i]]);
+
+                if (menuItem == i + 2) {
+                    if (menuMode == 0) {
+                        display.drawTriangle(1, 19 + (i * 9), 1, 27 + (i * 9), 5, 23 + (i * 9), 1);
+                    } else if (menuMode == i + 2) {
+                        display.fillTriangle(1, 19 + (i * 9), 1, 27 + (i * 9), 5, 23 + (i * 9), 1);
+                    }
+                }
+            }
+        } else if (menuItem >= 6 && menuItem <= 9) {
+            display.setTextSize(1);
+            display.setCursor(10, 1);
+            display.println("DUTY CYCLE(%):");
+            display.setCursor(100, 1);
+            display.print(dutyCycle);
+            if (menuItem == 6 && menuMode == 0) {
+                display.drawTriangle(1, 0, 1, 8, 5, 4, 1);
+            } else if (menuMode == 6) {
+                display.fillTriangle(1, 0, 1, 8, 5, 4, 1);
+            }
+            // Tap tempo menu item
+            display.setCursor(10, 30);
+            display.print("TAP TEMPO");
+            if (menuItem == 7) {
+                display.drawTriangle(1, 29, 1, 37, 5, 33, 1);
+            }
+            display.setCursor(10, 50);
+            display.print("SAVE");
+            if (menuItem == 8) {
+                display.drawTriangle(1, 49, 1, 57, 5, 53, 1);
+            }
+        }
+        display.display();
+        displayRefresh = 0;
+    }
+}
+
+void ClockReceived() {
+    unsigned long interruptTime = micros();
+    clockInterval = interruptTime - lastClockInterruptTime;
+    lastClockInterruptTime = interruptTime;
+    usingExternalClock = true;
+    // Recalculate BPM based on external clock
+    BPM = 60000000.0 / clockInterval;
+    UpdateBPM();
 }
 
 // Handle external clock
-void handleExternalClock()
-{
-  unsigned long currentTime = millis();
-  if (usingExternalClock)
-  {
-    usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 500;
-    if (!usingExternalClock)
-    {
-      updateBPM();
+void HandleExternalClock() {
+    unsigned long currentTime = millis();
+    if (usingExternalClock) {
+        usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 500;
+        if (!usingExternalClock) {
+            UpdateBPM();
+        }
     }
-  }
 }
 
 // Handle the outputs
-void handleOutputs()
-{
-  if (paused)
-  {
-    // If paused, ensure all outputs are off
-    for (int i = 0; i < NUM_OUTPUTS; i++)
-    {
-      if (isPulseOn[i])
-      {
-        setPin(i, LOW);
-        isPulseOn[i] = false;
-        output_indicator[i] = false;
-      }
+void HandleOutputs() {
+    if (paused) {
+        // If paused, ensure all outputs are off
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            if (isPulseOn[i]) {
+                SetPin(i, LOW);
+                isPulseOn[i] = false;
+                outputIndicator[i] = false;
+            }
+        }
+        return;  // Skip output handling
     }
-    return; // Skip output handling
-  }
 
-  unsigned long currentMillis = millis();
-  for (int i = 0; i < NUM_OUTPUTS; i++)
-  {
-    if (!isPulseOn[i])
-    {
-      if ((currentMillis - lastPulseTime[i]) >= pulseLowTime[i])
-      {
-        // Start pulse
-        setPin(i, HIGH);
-        isPulseOn[i] = true;
-        lastPulseTime[i] = currentMillis;
-        output_indicator[i] = true;
-        if (i == 0)
-        {
-          digitalWrite(LED_BUILTIN, HIGH);
+    unsigned long currentMillis = millis();
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        if (!isPulseOn[i]) {
+            if ((currentMillis - lastPulseTime[i]) >= pulseLowTime[i]) {
+                // Start pulse
+                SetPin(i, HIGH);
+                isPulseOn[i] = true;
+                lastPulseTime[i] = currentMillis;
+                outputIndicator[i] = true;
+                if (i == 0) {
+                    digitalWrite(LED_BUILTIN, HIGH);
+                }
+                displayRefresh = 1;
+            }
+        } else {
+            if ((currentMillis - lastPulseTime[i]) >= pulseHighTime[i]) {
+                // End pulse
+                SetPin(i, LOW);
+                isPulseOn[i] = false;
+                lastPulseTime[i] = currentMillis;
+                outputIndicator[i] = false;
+                if (i == 0) {
+                    digitalWrite(LED_BUILTIN, LOW);
+                }
+                displayRefresh = 1;
+            }
         }
-#ifdef IN_SIMULATOR
-        digitalWrite(outputPins[i], HIGH); // For simulator
-#endif
-        disp_refresh = 1;
-      }
     }
-    else
-    {
-      if ((currentMillis - lastPulseTime[i]) >= pulseHighTime[i])
-      {
-        // End pulse
-        setPin(i, LOW);
-        isPulseOn[i] = false;
-        lastPulseTime[i] = currentMillis;
-        output_indicator[i] = false;
-        if (i == 0)
-        {
-          digitalWrite(LED_BUILTIN, LOW);
-        }
-#ifdef IN_SIMULATOR
-        digitalWrite(outputPins[i], LOW); // For simulator
-#endif
-        disp_refresh = 1;
-      }
-    }
-  }
 }
 
-void setup()
-{
-  // Initialize serial port
-  Serial.begin(115200);
+void setup() {
+    // Initialize serial port
+    Serial.begin(115200);
 
-  // Initialize the pins
-  pinMode(CLK_IN_PIN, INPUT_PULLDOWN); // CLK in
-  pinMode(LED_BUILTIN, OUTPUT);        // LED
+    // Initialize I/O (DAC, pins, etc.)
+    InitIO();
 
-  // Initialize the DAC
-  if (!dac.begin(0x60))
-  { // 0x60 is the default I2C address for MCP4725
-    Serial.println("MCP4725 not found!");
-    while (1)
-      ;
-  }
-  Serial.println("MCP4725 initialized.");
-  MCP(0); // Set the DAC output to 0
+    // Initialize OLED display with address 0x3C for 128x64
+    if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+        Serial.println(F("SSD1306 allocation failed"));
+        for (;;);  // Don't proceed, loop forever
+    }
+    display.clearDisplay();
 
-  // initialize OLED display with address 0x3C for 128x64
-  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS))
-  {
-    Serial.println(F("SSD1306 allocation failed"));
-    for (;;)
-      ; // Don't proceed, loop forever
-  }
-  display.clearDisplay();
-  analogWriteResolution(10);
-  analogReadResolution(12);
+    // Attach interrupt for external clock
+    attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, RISING);
 
-  pinMode(CLK_IN_PIN, INPUT_PULLDOWN); // CLK in
-  pinMode(CV_1_IN_PIN, INPUT);         // IN1
-  pinMode(CV_2_IN_PIN, INPUT);         // IN2
-  pinMode(ENCODER_SW, INPUT_PULLUP);   // push sw
-  pinMode(OUT_1, OUTPUT);              // CH1 out
-  pinMode(OUT_2, OUTPUT);              // CH2 out
-  pinMode(LED_BUILTIN, OUTPUT);        // LED
+    // Load settings from flash memory
+    LoadSaveParams p = {
+        &BPM, &dividerValues[0], &dividerValues[1], &dividerValues[2], &dividerValues[3], &dutyCycle, &paused};
+    Load(p);
 
-  attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), onClockReceived, RISING);
-
-  // ADC settings
-  REG_ADC_AVGCTRL |= ADC_AVGCTRL_SAMPLENUM_1;
-  ADC->AVGCTRL.reg = ADC_AVGCTRL_SAMPLENUM_128 | ADC_AVGCTRL_ADJRES(4);
-
-  // read stored data
-  load();
-
-  updateBPM();
+    UpdateBPM();
 }
 
-void loop()
-{
-  handleEncoderClick();
+void loop() {
+    HandleEncoderClick();
 
-  handleEncoderPosition();
+    HandleEncoderPosition();
 
-  handleCVInputs();
+    HandleCVInputs();
 
-  handleOLEDDisplay();
+    HandleOLED();
 
-  handleExternalClock();
+    HandleExternalClock();
 
-  handleOutputs();
+    HandleOutputs();
 }
