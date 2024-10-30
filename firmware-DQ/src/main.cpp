@@ -1,10 +1,11 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <Adafruit_MCP4725.h>
 // Rotary encoder setting
 #define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
 #include <Encoder.h>
 // Use flash memory as eeprom
-#include <FlashAsEEPROM_SAMD.h>
+#include <FlashAsEEPROM.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
@@ -15,33 +16,22 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
-#define CLK_IN_PIN 7     // Clock input pin
-#define CV_1_IN_PIN 8    // channel 1 analog in
-#define CV_2_IN_PIN 9    // channel 2 analog in
-#define ENC_PIN_1 3      // rotary encoder left pin
-#define ENC_PIN_2 6      // rotary encoder right pin
-#define ENC_CLICK_PIN 10 // pin for encoder switch
-#define ENV_OUT_PIN_1 1
-#define ENV_OUT_PIN_2 2
+#define CLK_IN_PIN 7  // Clock input pin
+#define CV_1_IN_PIN 8 // channel 1 analog in
+#define CV_2_IN_PIN 9 // channel 2 analog in
+#define ENC_PIN_1 3   // rotary encoder left pin
+#define ENC_PIN_2 6   // rotary encoder right pin
+#define ENCODER_SW 10 // pin for encoder switch
+#define OUT_1 1
+#define OUT_2 2
 #define DAC_INTERNAL_PIN A0 // DAC output pin (internal)
-// Second DAC output goes to MCP4725 via I2C
-
-// Declare function prototypes
-void noteDisp(int, int, boolean);
-void OLED_display();
-void intDAC(int);
-void MCP(int);
-void PWM1(int);
-void PWM2(int);
-void save();
-void load();
 
 ////////////////////////////////////////////
 // ADC calibration. Change these according to your resistor values to make readings more accurate
 // Inject 5V into each CV input and measure the voltage in the ADC pin for each channel (D7 for channel 1 and D8 for channel 2)
 // Divide 3.3 by the measured voltage and multiply by 1000 to get the calibration value below:
-float AD_CH1_calb = 0.99728; // reduce resistance error
-float AD_CH2_calb = 0.99728; // reduce resistance error
+// assign calibration value for each channel
+float AD_CALIB[2] = {0.99728, 0.99728};
 /////////////////////////////////////////
 
 // OLED display initialization
@@ -51,49 +41,49 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 Encoder myEnc(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
 float oldPosition = -999;            // rotary encoder library setting
 float newPosition = -999;            // rotary encoder library setting
-// Amount of menu items
-int menuItems = 39;
-// i is the current position of the encoder
-int i = 1;
 
-bool SW = 1;
-bool old_SW = 0;
-bool CLK_in = 0;
-bool old_CLK_in = 0;
-byte mode = 0; // 0=select,1=atk1,2=dcy1,3=atk2,4=dcy2, 5=scale, 6=note
+// Create the MCP4725 object
+Adafruit_MCP4725 dac;
+#define DAC_RESOLUTION (12)
 
-float AD_CH1, old_AD_CH1, AD_CH2, old_AD_CH2;
-int quant_note1_idx, quant_note2_idx = 0;
-int last_quant_note1_idx, last_quant_note2_idx = 0;
+int menuItems = 39; // Amount of menu items
 
-float CV_out1, CV_out2, old_CV_out1, old_CV_out2;
-long gate_timer1, gate_timer2; // EG curve progress speed
+int i = 1; // i is the current position of the encoder
 
-int k = 0;
+bool SW = 1;         // Encoder switch state
+bool old_SW = 0;     // Encoder switch state on last cycle
+bool CLK_in = 0;     // Clock input state
+bool old_CLK_in = 0; // Clock input state on last cycle
+byte mode = 0;       // 0=select,1=atk[0],2=dcy[0],3=atk[1],4=dcy[1], 5=scale, 6=note
+
+float AD_CH[2], AD_CH_old[2];
+int quant_note_idx[2] = {0, 0};
+int last_quant_note_idx[2] = {0, 0};
+
+float CV_OUT[2] = {0, 0};     // CV output
+float CV_OUT_old[2] = {0, 0}; // CV output on last cycle
+long gate_timer[2] = {0, 0};  // EG curve progress speed
 
 // envelope curve setting
-int ad[200] = { // envelope table
+int ad_env_table[200] = { // envelope table
     0, 15, 30, 44, 59, 73, 87, 101, 116, 130, 143, 157, 170, 183, 195, 208, 220, 233, 245, 257, 267, 279, 290, 302, 313, 324, 335, 346, 355, 366, 376, 386, 397, 405, 415, 425, 434, 443, 452, 462, 470, 479, 488, 495, 504, 513, 520, 528, 536, 544, 552, 559, 567, 573, 581, 589, 595, 602, 609, 616, 622, 629, 635, 642, 648, 654, 660, 666, 672, 677, 683, 689, 695, 700, 706, 711, 717, 722, 726, 732, 736, 741, 746, 751, 756, 760, 765, 770, 774, 778, 783, 787, 791, 796, 799, 803, 808, 811, 815, 818, 823, 826, 830, 834, 837, 840, 845, 848, 851, 854, 858, 861, 864, 866, 869, 873, 876, 879, 881, 885, 887, 890, 893, 896, 898, 901, 903, 906, 909, 911, 913, 916, 918, 920, 923, 925, 927, 929, 931, 933, 936, 938, 940, 942, 944, 946, 948, 950, 952, 954, 955, 957, 960, 961, 963, 965, 966, 968, 969, 971, 973, 975, 976, 977, 979, 980, 981, 983, 984, 986, 988, 989, 990, 991, 993, 994, 995, 996, 997, 999, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1012, 1013, 1014, 1014, 1015, 1016, 1017, 1018, 1019, 1020};
 
-int ad1 = 0; // PWM DUTY reference
-int ad2 = 0; // PWM DUTY reference
-bool ad_trg1 = 0;
-bool ad_trg2 = 0;
-u_int8_t atk1, atk2, dcy1, dcy2 = 1;           // attack time,decay time
-u_int8_t sync1, sync2 = 1;                     // 0=sync with trig , 1=sync with note change
-u_int8_t oct1, oct2 = 2;                       // oct=octave shift
-u_int8_t sensitivity_ch1, sensitivity_ch2 = 4; // sens = AD input attn,amp
+int ad[2] = {0, 0}; // PWM DUTY reference
+bool ad_trg[2] = {0, 0};
+u_int8_t atk[2], dcy[2] = {1, 1};    // attack time,decay time
+u_int8_t sync[2] = {1, 1};           // 0=sync with trig , 1=sync with note change
+u_int8_t oct[2] = {2, 2};            // oct=octave shift
+u_int8_t sensitivity_ch[2] = {4, 4}; // sens = AD input attn,amp
 
 // CV setting
-int cv_qnt_thr_buf1[62]; // input quantize
-int cv_qnt_thr_buf2[62]; // input quantize
+int cv_qnt_thr_buf[2][62]; // input quantize
+
 // Scale and Note loading indexes
 int scale_load = 1;
 int note_load = 0;
-// Note storage
-bool note1[12]; // 1=note valid,0=note invalid
-bool note2[12];
-byte note_str1, note_str11, note_str2, note_str22;
+
+// Note Storage
+bool note[2][12]; // 1=note valid,0=note invalid
 
 // display
 bool disp_refresh = 1; // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
@@ -106,7 +96,7 @@ bool disp_refresh = 1; // 0=not refresh display , 1= refresh display , counterme
 void buildQuantBuffer(bool note[], int buff[])
 {
   int k = 0;
-  for (byte j = 0; j <= 62; j++)
+  for (byte j = 0; j < 62; j++)
   {
     if (note[j % 12] == 1)
     {
@@ -124,7 +114,7 @@ void getNote(float CV_OUT, int *note_index)
   *note_index = note % 12;
 }
 
-void quantizeCV(float AD_CH, float OLD_AD_CH, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, float *CV_out)
+void quantizeCV(float AD_CH, float AD_CH_old, int cv_qnt_thr_buf[], int sensitivity_ch, int oct, float *CV_out)
 {
   int cmp1 = 0, cmp2 = 0; // Detect closest note
   byte search_qnt = 0;
@@ -133,7 +123,7 @@ void quantizeCV(float AD_CH, float OLD_AD_CH, int cv_qnt_thr_buf[], int sensitiv
   {
     AD_CH = 4095;
   }
-  if (abs(OLD_AD_CH - AD_CH) > 10) // counter measure for AD error , ignore small changes
+  if (abs(AD_CH_old - AD_CH) > 10) // counter measure for AD error , ignore small changes
   {
     for (search_qnt = 0; search_qnt <= 61; search_qnt++)
     { // quantize
@@ -154,417 +144,6 @@ void quantizeCV(float AD_CH, float OLD_AD_CH, int cv_qnt_thr_buf[], int sensitiv
       *CV_out = (cv_qnt_thr_buf[search_qnt] + 8) / 17 * 68.25 + (oct - 2) * 12 * 68.25;
       *CV_out = constrain(*CV_out, 0, 4095);
     }
-  }
-}
-
-//-------------------------------Initial setting--------------------------
-void setup()
-{
-  // Initialize Serial Monitor
-  Serial.begin(115200);
-
-  analogWriteResolution(10);
-  analogReadResolution(12);
-  pinMode(CLK_IN_PIN, INPUT_PULLDOWN);  // CLK in
-  pinMode(CV_1_IN_PIN, INPUT);          // IN1
-  pinMode(CV_2_IN_PIN, INPUT);          // IN2
-  pinMode(ENC_CLICK_PIN, INPUT_PULLUP); // push sw
-  pinMode(ENV_OUT_PIN_1, OUTPUT);       // CH1 EG out
-  pinMode(ENV_OUT_PIN_2, OUTPUT);       // CH2 EG out
-
-  // OLED initialize
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  display.clearDisplay();
-
-  // Load scale and note settings from flash memory
-  load();
-
-  // I2C connect
-  Wire.begin();
-
-  // ADC settings. These increase ADC reading stability but at the cost of cycle time. Takes around 0.7ms for one reading with these
-  REG_ADC_AVGCTRL |= ADC_AVGCTRL_SAMPLENUM_1;
-  ADC->AVGCTRL.reg = ADC_AVGCTRL_SAMPLENUM_128 | ADC_AVGCTRL_ADJRES(4);
-
-  // initial quantizer setting
-  buildQuantBuffer(note1, cv_qnt_thr_buf1);
-  buildQuantBuffer(note2, cv_qnt_thr_buf2);
-}
-
-void loop()
-{
-  old_SW = SW;
-  old_CLK_in = CLK_in;
-  old_CV_out1 = CV_out1;
-  old_CV_out2 = CV_out2;
-  old_AD_CH1 = AD_CH1;
-  old_AD_CH2 = AD_CH2;
-  last_quant_note1_idx = quant_note1_idx;
-  last_quant_note2_idx = quant_note2_idx;
-
-  //-------------------------------rotary encoder--------------------------
-  newPosition = myEnc.read();
-  if ((newPosition - 3) / 4 > oldPosition / 4)
-  { // 4 is resolution of encoder
-    oldPosition = newPosition;
-    disp_refresh = 1;
-    switch (mode)
-    {
-    case 0:
-      i = i - 1;
-      if (i < 0)
-      {
-        i = menuItems;
-      }
-      break;
-    case 1:
-      atk1--;
-      break;
-    case 2:
-      dcy1--;
-      break;
-    case 3:
-      atk2--;
-      break;
-    case 4:
-      dcy2--;
-      break;
-    case 5:
-      scale_load--;
-      if (scale_load < 0)
-      {
-        scale_load = numScales - 1;
-      }
-      break;
-    case 6:
-      note_load--;
-      if (note_load < 0)
-      {
-        note_load = 11;
-      }
-    }
-    Serial.println("Menu index: " + String(i));
-  }
-  else if ((newPosition + 3) / 4 < oldPosition / 4)
-  { // 4 is resolution of encoder
-    oldPosition = newPosition;
-    disp_refresh = 1;
-    switch (mode)
-    {
-    case 0:
-      i = i + 1;
-      if (i > menuItems)
-      {
-        i = 0;
-      }
-      break;
-    case 1:
-      atk1++;
-      break;
-    case 2:
-      dcy1++;
-      break;
-    case 3:
-      atk2++;
-      break;
-    case 4:
-      dcy2++;
-      break;
-    case 5:
-      scale_load++;
-      if (scale_load > numScales - 1)
-      {
-        scale_load = 0;
-      }
-      break;
-    case 6:
-      note_load++;
-      if (note_load > 11)
-      {
-        note_load = 0;
-      }
-      break;
-    }
-    Serial.println("Menu index: " + String(i));
-  }
-  i = constrain(i, 0, menuItems);
-  atk1 = constrain(atk1, 1, 26);
-  dcy1 = constrain(dcy1, 1, 26);
-  atk2 = constrain(atk2, 1, 26);
-  dcy2 = constrain(dcy2, 1, 26);
-  // DEBUG
-  // Print note settings
-  // Serial.print("Note 1: ");
-  // for (int j = 0; j < 12; j++)
-  // {
-  //   Serial.print(note1[j]);
-  // }
-  // Serial.println("");
-  // Serial.print("Note 2: ");
-  // for (int j = 0; j < 12; j++)
-  // {
-  //   Serial.print(note2[j]);
-  // }
-  // Serial.println("");
-  // Serial.println("Attack 1: " + String(atk1) + " Decay 1: " + String(dcy1) + " Attack 2: " + String(atk2) + " Decay 2: " + String(dcy2));
-
-  //-----------------PUSH SW------------------------------------
-  SW = digitalRead(ENC_CLICK_PIN);
-  if (SW == 1 && old_SW != 1)
-  {
-    Serial.println("SW pushed at index: " + String(i));
-    disp_refresh = 1;
-    if (i <= 11 && i >= 0 && mode == 0)
-    {
-      note1[i] = !note1[i];
-    }
-    else if (i >= 14 && i <= 25 && mode == 0)
-    {
-      note2[i - 14] = !note2[i - 14];
-    }
-    else if (i == 12 && mode == 0)
-    {           // CH1 atk setting
-      mode = 1; // atk1 setting
-    }
-    else if (i == 12 && mode == 1)
-    { // CH1 atk setting
-      mode = 0;
-    }
-    else if (i == 13 && mode == 0)
-    {           // CH1 dcy setting
-      mode = 2; // dcy1 setting
-    }
-    else if (i == 13 && mode == 2)
-    { // CH1 dcy setting
-      mode = 0;
-    }
-    else if (i == 26 && mode == 0)
-    {           // CH2 atk setting
-      mode = 3; // atk2 setting
-    }
-    else if (i == 26 && mode == 3)
-    { // CH2 atk setting
-      mode = 0;
-    }
-    else if (i == 27 && mode == 0)
-    {           // CH2 dcy setting
-      mode = 4; // dcy2 setting
-    }
-    else if (i == 27 && mode == 4)
-    { // CH2 dcy setting
-      mode = 0;
-    }
-    else if (i == 28)
-    { // CH1 sync setting
-      sync1 = !sync1;
-    }
-    else if (i == 29)
-    { // CH2 sync setting
-      sync2 = !sync2;
-    }
-    else if (i == 30)
-    { // CH1 oct setting
-      oct1++;
-      if (oct1 > 4)
-      {
-        oct1 = 0;
-      }
-    }
-    else if (i == 31)
-    { // CH2 oct setting
-      oct2++;
-      if (oct2 > 4)
-      {
-        oct2 = 0;
-      }
-    }
-    else if (i == 32)
-    { // CH1 sens setting
-      sensitivity_ch1++;
-      if (sensitivity_ch1 > 8)
-      {
-        sensitivity_ch1 = 0;
-      }
-    }
-    else if (i == 33)
-    { // CH2 sens setting
-      sensitivity_ch2++;
-      if (sensitivity_ch2 > 8)
-      {
-        sensitivity_ch2 = 0;
-      }
-    }
-    else if (i == 34)
-    { // Save settings
-      save();
-    }
-
-    else if (i == 35 && mode == 0) // Scale setting
-    {
-      mode = 5;
-    }
-    else if (i == 35 && mode == 5)
-    {
-      mode = 0;
-    }
-    else if (i == 36 && mode == 0) // Note setting
-    {
-      mode = 6;
-    }
-    else if (i == 36 && mode == 6)
-    {
-      mode = 0;
-    }
-    else if (i == 37)
-    { // Load Scale into quantizer 1
-      Serial.println("Loading scale " + String(scale_load) + "  for note " + String(note_load) + " into quantizer 1");
-      buildScale(scale_load, note_load, note1);
-    }
-    else if (i == 38)
-    { // Load Scale into quantizer 2
-      Serial.println("Loading scale " + String(scale_load) + "  for note " + String(note_load) + " into quantizer 2");
-      buildScale(scale_load, note_load, note2);
-    }
-    else if (i == 39)
-    { // Save settings
-      save();
-    }
-
-    // select note set
-    buildQuantBuffer(note1, cv_qnt_thr_buf1);
-    buildQuantBuffer(note2, cv_qnt_thr_buf2);
-  }
-
-  //-------------------------------Analog read and qnt setting--------------------------
-  AD_CH1 = analogRead(CV_1_IN_PIN) / AD_CH1_calb;
-  quantizeCV(AD_CH1, old_AD_CH1, cv_qnt_thr_buf1, sensitivity_ch1, oct1, &CV_out1);
-
-  AD_CH2 = analogRead(CV_2_IN_PIN) / AD_CH2_calb;
-  quantizeCV(AD_CH2, old_AD_CH2, cv_qnt_thr_buf2, sensitivity_ch2, oct2, &CV_out2);
-
-  //-------------------------------OUTPUT SETTING--------------------------
-  CLK_in = digitalRead(CLK_IN_PIN);
-
-  // trig sync trigger detect
-  if (CLK_in == 1 && old_CLK_in == 0)
-  {
-    if (sync1 == 0)
-    {
-      ad1 = 0;
-      ad_trg1 = 1;
-      gate_timer1 = micros();
-      if (atk1 == 1)
-      {
-        ad1 = 200; // no attack time
-      }
-    }
-    if (sync2 == 0)
-      ad2 = 0;
-    ad_trg2 = 1;
-    gate_timer2 = micros();
-    if (atk2 == 1)
-    {
-      ad2 = 200; // no attack time
-    }
-  }
-
-  // note sync trigger detect
-  if (sync1 == 1 && old_CV_out1 != CV_out1)
-  {
-    ad1 = 0;
-    ad_trg1 = 1;
-    gate_timer1 = micros();
-    if (atk1 == 1)
-    {
-      ad1 = 200; // no attack time
-    }
-  }
-  if (sync2 == 1 && old_CV_out2 != CV_out2)
-  {
-    ad2 = 0;
-    ad_trg2 = 1;
-    gate_timer2 = micros();
-    if (atk2 == 1)
-    {
-      ad2 = 200; // no attack time
-    }
-  }
-
-  // envelope ch1 out
-  if (gate_timer1 + (atk1 - 1) * 200 <= static_cast<long>(micros()) && ad_trg1 == 1 && ad1 <= 199)
-  {
-    ad1++;
-    gate_timer1 = micros();
-  }
-  else if (gate_timer1 + (dcy1 - 1) * 600 <= static_cast<long>(micros()) && ad_trg1 == 1 && ad1 > 199)
-  {
-    ad1++;
-    gate_timer1 = micros();
-  }
-
-  if (ad1 <= 199)
-  {
-    PWM1(1021 - ad[ad1]);
-  }
-  else if (ad1 > 199 && ad1 < 399)
-  {
-    PWM1(ad[ad1 - 200]);
-  }
-  else if (ad1 >= 399)
-  {
-    PWM1(1023);
-    ad_trg1 = 0;
-  }
-
-  // envelope ch2 out
-  if (gate_timer2 + (atk2 - 1) * 200 <= static_cast<long>(micros()) && ad_trg2 == 1 && ad2 <= 199)
-  {
-    ad2++;
-    gate_timer2 = micros();
-  }
-  else if (gate_timer2 + (dcy2 - 1) * 600 <= static_cast<long>(micros()) && ad_trg2 == 1 && ad2 > 199)
-  {
-    ad2++;
-    gate_timer2 = micros();
-  }
-
-  if (ad2 <= 199)
-  {
-    PWM2(1021 - ad[ad2]);
-  }
-  else if (ad2 > 199 && ad2 < 399)
-  {
-    PWM2(ad[ad2 - 200]);
-  }
-  else if (ad2 >= 399)
-  {
-    PWM2(1023);
-    ad_trg2 = 0;
-  }
-
-  // DAC OUT
-  if (old_CV_out1 != CV_out1)
-  {
-    intDAC(CV_out1);
-  }
-  if (old_CV_out2 != CV_out2)
-  {
-    MCP(CV_out2);
-  }
-
-  // Get the note from the CV output
-  getNote(CV_out1, &quant_note1_idx);
-  getNote(CV_out2, &quant_note2_idx);
-  if ((last_quant_note1_idx != quant_note1_idx) || (last_quant_note2_idx != quant_note2_idx))
-  {
-    disp_refresh = 1;
-  }
-
-  // display out
-  if (disp_refresh == 1)
-  {
-    OLED_display(); // refresh display
-    disp_refresh = 0;
   }
 }
 
@@ -602,36 +181,36 @@ void OLED_display()
   if (i <= 27)
   {
     // Draw the keyboard scale 1
-    noteDisp(7, 0, note1[1] == 1, quant_note1_idx == 1);             // C#
-    noteDisp(7 + 14 * 1, 0, note1[3] == 1, quant_note1_idx == 3);    // D#
-    noteDisp(8 + 14 * 3, 0, note1[6] == 1, quant_note1_idx == 6);    // F#
-    noteDisp(8 + 14 * 4, 0, note1[8] == 1, quant_note1_idx == 8);    // G#
-    noteDisp(8 + 14 * 5, 0, note1[10] == 1, quant_note1_idx == 10);  // A#
-    noteDisp(0, 15, note1[0] == 1, quant_note1_idx == 0);            // C
-    noteDisp(0 + 14 * 1, 15, note1[2] == 1, quant_note1_idx == 2);   // D
-    noteDisp(0 + 14 * 2, 15, note1[4] == 1, quant_note1_idx == 4);   // E
-    noteDisp(0 + 14 * 3, 15, note1[5] == 1, quant_note1_idx == 5);   // F
-    noteDisp(0 + 14 * 4, 15, note1[7] == 1, quant_note1_idx == 7);   // G
-    noteDisp(0 + 14 * 5, 15, note1[9] == 1, quant_note1_idx == 9);   // A
-    noteDisp(0 + 14 * 6, 15, note1[11] == 1, quant_note1_idx == 11); // B
+    noteDisp(7, 0, note[0][1] == 1, quant_note_idx[0] == 1);             // C#
+    noteDisp(7 + 14 * 1, 0, note[0][3] == 1, quant_note_idx[0] == 3);    // D#
+    noteDisp(8 + 14 * 3, 0, note[0][6] == 1, quant_note_idx[0] == 6);    // F#
+    noteDisp(8 + 14 * 4, 0, note[0][8] == 1, quant_note_idx[0] == 8);    // G#
+    noteDisp(8 + 14 * 5, 0, note[0][10] == 1, quant_note_idx[0] == 10);  // A#
+    noteDisp(0, 15, note[0][0] == 1, quant_note_idx[0] == 0);            // C
+    noteDisp(0 + 14 * 1, 15, note[0][2] == 1, quant_note_idx[0] == 2);   // D
+    noteDisp(0 + 14 * 2, 15, note[0][4] == 1, quant_note_idx[0] == 4);   // E
+    noteDisp(0 + 14 * 3, 15, note[0][5] == 1, quant_note_idx[0] == 5);   // F
+    noteDisp(0 + 14 * 4, 15, note[0][7] == 1, quant_note_idx[0] == 7);   // G
+    noteDisp(0 + 14 * 5, 15, note[0][9] == 1, quant_note_idx[0] == 9);   // A
+    noteDisp(0 + 14 * 6, 15, note[0][11] == 1, quant_note_idx[0] == 11); // B
 
     // Draw the keyboard scale 2
-    noteDisp(7, 0 + 34, note2[1] == 1, quant_note2_idx == 1);             // C#
-    noteDisp(7 + 14 * 1, 0 + 34, note2[3] == 1, quant_note2_idx == 3);    // D#
-    noteDisp(8 + 14 * 3, 0 + 34, note2[6] == 1, quant_note2_idx == 6);    // F#
-    noteDisp(8 + 14 * 4, 0 + 34, note2[8] == 1, quant_note2_idx == 8);    // G#
-    noteDisp(8 + 14 * 5, 0 + 34, note2[10] == 1, quant_note2_idx == 10);  // A#
-    noteDisp(0, 15 + 34, note2[0] == 1, quant_note2_idx == 0);            // C
-    noteDisp(0 + 14 * 1, 15 + 34, note2[2] == 1, quant_note2_idx == 2);   // D
-    noteDisp(0 + 14 * 2, 15 + 34, note2[4] == 1, quant_note2_idx == 4);   // E
-    noteDisp(0 + 14 * 3, 15 + 34, note2[5] == 1, quant_note2_idx == 5);   // F
-    noteDisp(0 + 14 * 4, 15 + 34, note2[7] == 1, quant_note2_idx == 7);   // G
-    noteDisp(0 + 14 * 5, 15 + 34, note2[9] == 1, quant_note2_idx == 9);   // A
-    noteDisp(0 + 14 * 6, 15 + 34, note2[11] == 1, quant_note2_idx == 11); // B
+    noteDisp(7, 0 + 34, note[1][1] == 1, quant_note_idx[1] == 1);             // C#
+    noteDisp(7 + 14 * 1, 0 + 34, note[1][3] == 1, quant_note_idx[1] == 3);    // D#
+    noteDisp(8 + 14 * 3, 0 + 34, note[1][6] == 1, quant_note_idx[1] == 6);    // F#
+    noteDisp(8 + 14 * 4, 0 + 34, note[1][8] == 1, quant_note_idx[1] == 8);    // G#
+    noteDisp(8 + 14 * 5, 0 + 34, note[1][10] == 1, quant_note_idx[1] == 10);  // A#
+    noteDisp(0, 15 + 34, note[1][0] == 1, quant_note_idx[1] == 0);            // C
+    noteDisp(0 + 14 * 1, 15 + 34, note[1][2] == 1, quant_note_idx[1] == 2);   // D
+    noteDisp(0 + 14 * 2, 15 + 34, note[1][4] == 1, quant_note_idx[1] == 4);   // E
+    noteDisp(0 + 14 * 3, 15 + 34, note[1][5] == 1, quant_note_idx[1] == 5);   // F
+    noteDisp(0 + 14 * 4, 15 + 34, note[1][7] == 1, quant_note_idx[1] == 7);   // G
+    noteDisp(0 + 14 * 5, 15 + 34, note[1][9] == 1, quant_note_idx[1] == 9);   // A
+    noteDisp(0 + 14 * 6, 15 + 34, note[1][11] == 1, quant_note_idx[1] == 11); // B
 
     // Debug print
-    Serial.print("Note 1: " + String(noteNames[quant_note1_idx]) + " index: " + String(quant_note1_idx) + "| Input CV: " + String(AD_CH1) + " Quantized CV: " + String(CV_out1) + "\n");
-    Serial.print("Note 2: " + String(noteNames[quant_note2_idx]) + " index: " + String(quant_note2_idx) + "| Input CV: " + String(AD_CH2) + " Quantized CV: " + String(CV_out2) + "\n");
+    Serial.print("Note 1: " + String(noteNames[quant_note_idx[0]]) + " index: " + String(quant_note_idx[0]) + "| Input CV: " + String(AD_CH[0]) + " Quantized CV: " + String(CV_OUT[0]) + "\n");
+    Serial.print("Note 2: " + String(noteNames[quant_note_idx[1]]) + " index: " + String(quant_note_idx[1]) + "| Input CV: " + String(AD_CH[1]) + " Quantized CV: " + String(CV_OUT[1]) + "\n");
     // Draw the selection triangle
     if (i <= 4)
     {
@@ -704,10 +283,10 @@ void OLED_display()
     display.print("ATK");
     display.setCursor(100, 48); // effect param3
     display.print("DCY");
-    display.fillRoundRect(100, 9, atk1 + 1, 4, 1, WHITE);
-    display.fillRoundRect(100, 25, dcy1 + 1, 4, 1, WHITE);
-    display.fillRoundRect(100, 41, atk2 + 1, 4, 1, WHITE);
-    display.fillRoundRect(100, 57, dcy2 + 1, 4, 1, WHITE);
+    display.fillRoundRect(100, 9, atk[0] + 1, 4, 1, WHITE);
+    display.fillRoundRect(100, 25, dcy[0] + 1, 4, 1, WHITE);
+    display.fillRoundRect(100, 41, atk[1] + 1, 4, 1, WHITE);
+    display.fillRoundRect(100, 57, dcy[1] + 1, 4, 1, WHITE);
   }
 
   // Draw config settings
@@ -717,22 +296,22 @@ void OLED_display()
     display.setCursor(10, 0);
     display.print("SYNC CH1:");
     display.setCursor(72, 0);
-    if (sync1 == 0)
+    if (sync[0] == 0)
     {
       display.print("TRIG");
     }
-    else if (sync1 == 1)
+    else if (sync[0] == 1)
     {
       display.print("NOTE");
     }
     display.setCursor(10, 9);
     display.print("     CH2:");
     display.setCursor(72, 9);
-    if (sync2 == 0)
+    if (sync[1] == 0)
     {
       display.print("TRIG");
     }
-    else if (sync2 == 1)
+    else if (sync[1] == 1)
     {
       display.print("NOTE");
     }
@@ -742,9 +321,9 @@ void OLED_display()
     display.setCursor(10, 27);
     display.print("     CH2:");
     display.setCursor(72, 18);
-    display.print(oct1 - 2);
+    display.print(oct[0] - 2);
     display.setCursor(72, 27);
-    display.print(oct2 - 2);
+    display.print(oct[1] - 2);
 
     // draw sensitivity
     display.setCursor(10, 36);
@@ -752,9 +331,9 @@ void OLED_display()
     display.setCursor(10, 45);
     display.print("     CH2:");
     display.setCursor(72, 36);
-    display.print(sensitivity_ch1 - 4);
+    display.print(sensitivity_ch[0] - 4);
     display.setCursor(72, 45);
-    display.print(sensitivity_ch2 - 4);
+    display.print(sensitivity_ch[1] - 4);
 
     // draw save
     display.setCursor(10, 54);
@@ -817,103 +396,131 @@ void intDAC(int intDAC_OUT)
 
 void MCP(int MCP_OUT)
 {
-  Wire.beginTransmission(0x60);
-  Wire.write((MCP_OUT >> 8) & 0x0F);
-  Wire.write(MCP_OUT);
-  Wire.endTransmission();
+  dac.setVoltage(MCP_OUT, false);
+}
+
+void writeDAC(int ch, int DAC_OUT)
+{
+  if (ch == 1)
+  {
+    intDAC(DAC_OUT);
+  }
+  else if (ch == 2)
+  {
+    MCP(DAC_OUT);
+  }
 }
 
 void PWM1(int duty1)
 {
-  pwm(ENV_OUT_PIN_1, 46000, duty1);
+  pwm(OUT_1, 46000, duty1);
 }
 void PWM2(int duty2)
 {
-  pwm(ENV_OUT_PIN_2, 46000, duty2);
+  pwm(OUT_2, 46000, duty2);
+}
+
+void writePWM(int ch, int duty)
+{
+  if (ch == 1)
+  {
+    PWM1(duty);
+  }
+  else if (ch == 2)
+  {
+    PWM2(duty);
+  }
 }
 
 // Load data from flash memory
 void load()
 {
   Serial.println("Loading settings from EEPROM");
+  byte note1_str_pg1 = 0, note1_str_pg2 = 0;
+  byte note2_str_pg1 = 0, note2_str_pg2 = 0;
   if (EEPROM.isValid())
   {
     Serial.println("EEPROM data found, loading values");
-    note_str1 = EEPROM.read(1);
-    note_str11 = EEPROM.read(2);
-    note_str2 = EEPROM.read(3);
-    note_str22 = EEPROM.read(4);
-    atk1 = EEPROM.read(5);
-    dcy1 = EEPROM.read(6);
-    atk2 = EEPROM.read(7);
-    dcy2 = EEPROM.read(8);
-    sync1 = EEPROM.read(9);
-    sync2 = EEPROM.read(10);
-    oct1 = EEPROM.read(11);
-    oct2 = EEPROM.read(12);
-    sensitivity_ch1 = EEPROM.read(13);
-    sensitivity_ch2 = EEPROM.read(14);
+    note1_str_pg1 = EEPROM.read(1);
+    note1_str_pg2 = EEPROM.read(2);
+    note2_str_pg1 = EEPROM.read(3);
+    note2_str_pg2 = EEPROM.read(4);
+    atk[0] = EEPROM.read(5);
+    dcy[0] = EEPROM.read(6);
+    atk[1] = EEPROM.read(7);
+    dcy[1] = EEPROM.read(8);
+    sync[0] = EEPROM.read(9);
+    sync[1] = EEPROM.read(10);
+    oct[0] = EEPROM.read(11);
+    oct[1] = EEPROM.read(12);
+    sensitivity_ch[0] = EEPROM.read(13);
+    sensitivity_ch[1] = EEPROM.read(14);
   }
   else
   { // no eeprom data , setting any number to eeprom
     Serial.println("No EEPROM data found, setting default values");
-    note_str1 = 0;
-    note_str11 = 0;
-    note_str2 = 2;
-    note_str22 = 2;
-    atk1 = 1;
-    dcy1 = 4;
-    atk2 = 2;
-    dcy2 = 6;
-    sync1 = 1;
-    sync2 = 1;
-    oct1 = 2;
-    oct2 = 2;
-    sensitivity_ch1 = 4;
-    sensitivity_ch2 = 4;
+    note1_str_pg1 = B11111111;
+    note1_str_pg2 = B11111111;
+    note2_str_pg1 = B00000111;
+    note2_str_pg2 = B00000111;
+    atk[0] = 1;
+    dcy[0] = 4;
+    atk[1] = 2;
+    dcy[1] = 6;
+    sync[0] = 1;
+    sync[1] = 1;
+    oct[0] = 2;
+    oct[1] = 2;
+    sensitivity_ch[0] = 4;
+    sensitivity_ch[1] = 4;
   }
   // setting stored note data
   for (int j = 0; j <= 7; j++)
   {
-    note1[j] = bitRead(note_str1, j);
-    note2[j] = bitRead(note_str2, j);
+    note[0][j] = bitRead(note1_str_pg1, j);
+    note[1][j] = bitRead(note2_str_pg1, j);
   }
   for (int j = 0; j <= 3; j++)
   {
-    note1[j + 8] = bitRead(note_str11, j);
-    note2[j + 8] = bitRead(note_str22, j);
+    note[0][j + 8] = bitRead(note1_str_pg2, j);
+    note[1][j + 8] = bitRead(note2_str_pg2, j);
   }
+
+  buildQuantBuffer(note[0], cv_qnt_thr_buf[0]);
+  buildQuantBuffer(note[1], cv_qnt_thr_buf[1]);
 }
 
 // Save data to flash memory
 void save()
 { // save setting data to flash memory
-  delay(100);
+  byte note1_str_pg1 = 0, note1_str_pg2 = 0;
+  byte note2_str_pg1 = 0, note2_str_pg2 = 0;
+
   for (int j = 0; j <= 7; j++)
   { // Convert note setting to bits
-    bitWrite(note_str1, j, note1[j]);
-    bitWrite(note_str2, j, note2[j]);
+    bitWrite(note1_str_pg1, j, note[0][j]);
+    bitWrite(note2_str_pg1, j, note[1][j]);
   }
   for (int j = 0; j <= 3; j++)
   {
-    bitWrite(note_str11, j, note1[j + 8]);
-    bitWrite(note_str22, j, note2[j + 8]);
+    bitWrite(note1_str_pg2, j, note[0][j + 8]);
+    bitWrite(note2_str_pg2, j, note[1][j + 8]);
   }
 
-  EEPROM.write(1, note_str1);  // ch1 select note
-  EEPROM.write(2, note_str11); // ch1 select note
-  EEPROM.write(3, note_str2);  // ch2 select note
-  EEPROM.write(4, note_str22); // ch2 select note
-  EEPROM.write(5, atk1);
-  EEPROM.write(6, dcy1);
-  EEPROM.write(7, atk2);
-  EEPROM.write(8, dcy2);
-  EEPROM.write(9, sync1);
-  EEPROM.write(10, sync2);
-  EEPROM.write(11, oct1);
-  EEPROM.write(12, oct2);
-  EEPROM.write(13, sensitivity_ch1);
-  EEPROM.write(14, sensitivity_ch2);
+  EEPROM.write(1, note1_str_pg1); // ch1 select note
+  EEPROM.write(2, note1_str_pg2); // ch1 select note
+  EEPROM.write(3, note2_str_pg1); // ch2 select note
+  EEPROM.write(4, note2_str_pg2); // ch2 select note
+  EEPROM.write(5, atk[0]);
+  EEPROM.write(6, dcy[0]);
+  EEPROM.write(7, atk[1]);
+  EEPROM.write(8, dcy[1]);
+  EEPROM.write(9, sync[0]);
+  EEPROM.write(10, sync[1]);
+  EEPROM.write(11, oct[0]);
+  EEPROM.write(12, oct[1]);
+  EEPROM.write(13, sensitivity_ch[0]);
+  EEPROM.write(14, sensitivity_ch[1]);
   EEPROM.commit();
   display.clearDisplay(); // clear display
   display.setTextSize(2);
@@ -922,4 +529,383 @@ void save()
   display.print("SAVED");
   display.display();
   delay(1000);
+}
+
+//-------------------------------Initial setting--------------------------
+void setup()
+{
+  // Initialize Serial Monitor
+  Serial.begin(115200);
+
+  analogWriteResolution(10);
+  analogReadResolution(12);
+  pinMode(CLK_IN_PIN, INPUT_PULLDOWN); // CLK in
+  pinMode(CV_1_IN_PIN, INPUT);         // IN1
+  pinMode(CV_2_IN_PIN, INPUT);         // IN2
+  pinMode(ENCODER_SW, INPUT_PULLUP);   // push sw
+  pinMode(OUT_1, OUTPUT);              // CH1 EG out
+  pinMode(OUT_2, OUTPUT);              // CH2 EG out
+
+  // Initialize the DAC
+  if (!dac.begin(0x60))
+  { // 0x60 is the default I2C address for MCP4725
+    Serial.println("MCP4725 not found!");
+    while (1)
+      ;
+  }
+  Serial.println("MCP4725 initialized.");
+  MCP(0); // Set the DAC output to 0
+
+  // OLED initialize
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.clearDisplay();
+
+  // Load scale and note settings from flash memory
+  load();
+
+  // ADC settings. These increase ADC reading stability but at the cost of cycle time. Takes around 0.7ms for one reading with these
+  REG_ADC_AVGCTRL |= ADC_AVGCTRL_SAMPLENUM_1;
+  ADC->AVGCTRL.reg = ADC_AVGCTRL_SAMPLENUM_128 | ADC_AVGCTRL_ADJRES(4);
+}
+
+void loop()
+{
+  old_SW = SW;
+  old_CLK_in = CLK_in;
+  CV_OUT_old[0] = CV_OUT[0];
+  CV_OUT_old[1] = CV_OUT[1];
+  AD_CH_old[0] = AD_CH[0];
+  AD_CH_old[1] = AD_CH[1];
+  last_quant_note_idx[0] = quant_note_idx[0];
+  last_quant_note_idx[1] = quant_note_idx[1];
+
+  //-------------------------------rotary encoder--------------------------
+  newPosition = myEnc.read();
+  if ((newPosition - 3) / 4 > oldPosition / 4)
+  { // 4 is resolution of encoder
+    oldPosition = newPosition;
+    disp_refresh = 1;
+    switch (mode)
+    {
+    case 0:
+      i = i - 1;
+      if (i < 0)
+      {
+        i = menuItems;
+      }
+      break;
+    case 1:
+      atk[0]--;
+      break;
+    case 2:
+      dcy[0]--;
+      break;
+    case 3:
+      atk[1]--;
+      break;
+    case 4:
+      dcy[1]--;
+      break;
+    case 5:
+      scale_load--;
+      if (scale_load < 0)
+      {
+        scale_load = numScales - 1;
+      }
+      break;
+    case 6:
+      note_load--;
+      if (note_load < 0)
+      {
+        note_load = 11;
+      }
+    }
+    Serial.println("Menu index: " + String(i));
+  }
+  else if ((newPosition + 3) / 4 < oldPosition / 4)
+  { // 4 is resolution of encoder
+    oldPosition = newPosition;
+    disp_refresh = 1;
+    switch (mode)
+    {
+    case 0:
+      i = i + 1;
+      if (i > menuItems)
+      {
+        i = 0;
+      }
+      break;
+    case 1:
+      atk[0]++;
+      break;
+    case 2:
+      dcy[0]++;
+      break;
+    case 3:
+      atk[1]++;
+      break;
+    case 4:
+      dcy[1]++;
+      break;
+    case 5:
+      scale_load++;
+      if (scale_load > numScales - 1)
+      {
+        scale_load = 0;
+      }
+      break;
+    case 6:
+      note_load++;
+      if (note_load > 11)
+      {
+        note_load = 0;
+      }
+      break;
+    }
+    Serial.println("Menu index: " + String(i));
+  }
+  i = constrain(i, 0, menuItems);
+  atk[0] = constrain(atk[0], 1, 26);
+  dcy[0] = constrain(dcy[0], 1, 26);
+  atk[1] = constrain(atk[1], 1, 26);
+  dcy[1] = constrain(dcy[1], 1, 26);
+  // DEBUG
+  // Print note settings
+  // Serial.print("Note 1: ");
+  // for (int j = 0; j < 12; j++)
+  // {
+  //   Serial.print(note[0][j]);
+  // }
+  // Serial.println("");
+  // Serial.print("Note 2: ");
+  // for (int j = 0; j < 12; j++)
+  // {
+  //   Serial.print(note[1][j]);
+  // }
+  // Serial.println("");
+  // Serial.println("Attack 1: " + String(atk[0]) + " Decay 1: " + String(dcy[0]) + " Attack 2: " + String(atk[1]) + " Decay 2: " + String(dcy[1]));
+
+  //-----------------PUSH SW------------------------------------
+  SW = digitalRead(ENCODER_SW);
+  if (SW == 1 && old_SW != 1)
+  {
+    Serial.println("SW pushed at index: " + String(i));
+    disp_refresh = 1;
+    if (i <= 11 && i >= 0 && mode == 0)
+    {
+      note[0][i] = !note[0][i];
+    }
+    else if (i >= 14 && i <= 25 && mode == 0)
+    {
+      note[1][i - 14] = !note[1][i - 14];
+    }
+    else if (i == 12 && mode == 0)
+    {           // CH1 atk setting
+      mode = 1; // atk[0] setting
+    }
+    else if (i == 12 && mode == 1)
+    { // CH1 atk setting
+      mode = 0;
+    }
+    else if (i == 13 && mode == 0)
+    {           // CH1 dcy setting
+      mode = 2; // dcy[0] setting
+    }
+    else if (i == 13 && mode == 2)
+    { // CH1 dcy setting
+      mode = 0;
+    }
+    else if (i == 26 && mode == 0)
+    {           // CH2 atk setting
+      mode = 3; // atk[1] setting
+    }
+    else if (i == 26 && mode == 3)
+    { // CH2 atk setting
+      mode = 0;
+    }
+    else if (i == 27 && mode == 0)
+    {           // CH2 dcy setting
+      mode = 4; // dcy[1] setting
+    }
+    else if (i == 27 && mode == 4)
+    { // CH2 dcy setting
+      mode = 0;
+    }
+    else if (i == 28)
+    { // CH1 sync setting
+      sync[0] = !sync[0];
+    }
+    else if (i == 29)
+    { // CH2 sync setting
+      sync[1] = !sync[1];
+    }
+    else if (i == 30)
+    { // CH1 oct setting
+      oct[0]++;
+      if (oct[0] > 4)
+      {
+        oct[0] = 0;
+      }
+    }
+    else if (i == 31)
+    { // CH2 oct setting
+      oct[1]++;
+      if (oct[1] > 4)
+      {
+        oct[1] = 0;
+      }
+    }
+    else if (i == 32)
+    { // CH1 sens setting
+      sensitivity_ch[0]++;
+      if (sensitivity_ch[0] > 8)
+      {
+        sensitivity_ch[0] = 0;
+      }
+    }
+    else if (i == 33)
+    { // CH2 sens setting
+      sensitivity_ch[1]++;
+      if (sensitivity_ch[1] > 8)
+      {
+        sensitivity_ch[1] = 0;
+      }
+    }
+    else if (i == 34)
+    { // Save settings
+      save();
+    }
+
+    else if (i == 35 && mode == 0) // Scale setting
+    {
+      mode = 5;
+    }
+    else if (i == 35 && mode == 5)
+    {
+      mode = 0;
+    }
+    else if (i == 36 && mode == 0) // Note setting
+    {
+      mode = 6;
+    }
+    else if (i == 36 && mode == 6)
+    {
+      mode = 0;
+    }
+    else if (i == 37)
+    { // Load Scale into quantizer 1
+      Serial.println("Loading scale " + String(scale_load) + "  for note " + String(note_load) + " into quantizer 1");
+      buildScale(scale_load, note_load, note[0]);
+      buildQuantBuffer(note[0], cv_qnt_thr_buf[0]);
+    }
+    else if (i == 38)
+    { // Load Scale into quantizer 2
+      Serial.println("Loading scale " + String(scale_load) + "  for note " + String(note_load) + " into quantizer 2");
+      buildScale(scale_load, note_load, note[1]);
+      buildQuantBuffer(note[1], cv_qnt_thr_buf[1]);
+    }
+    else if (i == 39)
+    { // Save settings
+      save();
+    }
+  }
+
+  //-------------------------------Analog read and qnt setting--------------------------
+  AD_CH[0] = analogRead(CV_1_IN_PIN) / AD_CALIB[0];
+  quantizeCV(AD_CH[0], AD_CH_old[0], cv_qnt_thr_buf[0], sensitivity_ch[0], oct[0], &CV_OUT[0]);
+
+  AD_CH[1] = analogRead(CV_2_IN_PIN) / AD_CALIB[1];
+  quantizeCV(AD_CH[1], AD_CH_old[1], cv_qnt_thr_buf[1], sensitivity_ch[1], oct[1], &CV_OUT[1]);
+
+  //-------------------------------OUTPUT SETTING--------------------------
+  CLK_in = digitalRead(CLK_IN_PIN);
+
+  // trig sync trigger detect
+  if (CLK_in == 1 && old_CLK_in == 0)
+  {
+
+    // Loop for both channels
+    for (int ch = 0; ch < 2; ch++)
+    {
+      // If the sync mode is set to trigger
+      if (sync[ch] == 0)
+      {
+        ad[ch] = 0;
+        ad_trg[ch] = 1;
+        gate_timer[ch] = micros();
+        if (atk[ch] == 1)
+        {
+          ad[ch] = 200; // no attack time
+        }
+      }
+    }
+  }
+
+  // note sync trigger detect
+  for (int ch = 0; ch < 2; ch++)
+  {
+    if (sync[ch] == 1 && CV_OUT_old[ch] != CV_OUT[ch])
+    {
+      ad[ch] = 0;
+      ad_trg[ch] = 1;
+      gate_timer[ch] = micros();
+      if (atk[ch] == 1)
+      {
+        ad[ch] = 200; // no attack time
+      }
+    }
+  }
+
+  // envelope ch out
+  for (int ch = 0; ch < 2; ch++)
+  {
+    if (gate_timer[ch] + (atk[ch] - 1) * 200 <= static_cast<long>(micros()) && ad_trg[ch] == 1 && ad[ch] <= 199)
+    {
+      ad[ch]++;
+      gate_timer[ch] = micros();
+    }
+    else if (gate_timer[ch] + (dcy[ch] - 1) * 600 <= static_cast<long>(micros()) && ad_trg[ch] == 1 && ad[ch] > 199)
+    {
+      ad[ch]++;
+      gate_timer[ch] = micros();
+    }
+
+    if (ad[ch] <= 199)
+    {
+      writePWM(ch + 1, 1021 - ad_env_table[ad[ch]]);
+    }
+    else if (ad[ch] > 199 && ad[ch] < 399)
+    {
+      writePWM(ch + 1, ad_env_table[ad[ch] - 200]);
+    }
+    else if (ad[ch] >= 399)
+    {
+      writePWM(ch + 1, 1023);
+      ad_trg[ch] = 0;
+    }
+  }
+
+  for (int ch = 0; ch < 2; ch++)
+  {
+    if (CV_OUT_old[ch] != CV_OUT[ch])
+    {
+      // DAC OUT
+      writeDAC(ch + 1, CV_OUT[ch]);
+    }
+    // Get the note from the CV output
+    getNote(CV_OUT[ch], &quant_note_idx[ch]);
+  }
+
+  // Trigger display refresh if the note has changed
+  if ((last_quant_note_idx[0] != quant_note_idx[0]) || (last_quant_note_idx[1] != quant_note_idx[1]))
+  {
+    disp_refresh = 1;
+  }
+
+  // display out
+  if (disp_refresh == 1)
+  {
+    OLED_display(); // refresh display
+    disp_refresh = 0;
+  }
 }
