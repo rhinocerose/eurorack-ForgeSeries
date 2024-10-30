@@ -6,14 +6,14 @@
 u_int8_t atk1, atk2, dcy1, dcy2, sync1, sync2, sensitivity_ch1, sensitivity_ch2, oct1, oct2;
 
 // Struct to hold params that are saved/loaded to/from EEPROM
-struct Params {
+struct LoadSaveParams {
     u_int8_t *atk1, *atk2, *dcy1, *dcy2, *sync1, *sync2, *sensitivity_ch1, *sensitivity_ch2, *oct1, *oct2;
 };
 
 byte note_str1, note_str11, note_str2, note_str22;
 
 // Save data to flash memory
-void Save(Params p, bool note1[], bool note2[]) {
+void Save(LoadSaveParams p, bool note1[], bool note2[]) {
     byte note1_str_pg1 = 0, note1_str_pg2 = 0;
     byte note2_str_pg1 = 0, note2_str_pg2 = 0;
 
@@ -26,10 +26,10 @@ void Save(Params p, bool note1[], bool note2[]) {
         bitWrite(note2_str_pg2, j, note2[j + 8]);
     }
 
-    EEPROM.write(1, note1_str_pg1);  // ch1 select note
-    EEPROM.write(2, note1_str_pg2);  // ch1 select note
-    EEPROM.write(3, note2_str_pg1);  // ch2 select note
-    EEPROM.write(4, note2_str_pg2);  // ch2 select note
+    EEPROM.write(1, note1_str_pg1);
+    EEPROM.write(2, note1_str_pg2);
+    EEPROM.write(3, note2_str_pg1);
+    EEPROM.write(4, note2_str_pg2);
     EEPROM.write(5, *p.atk1);
     EEPROM.write(6, *p.dcy1);
     EEPROM.write(7, *p.atk2);
@@ -44,7 +44,7 @@ void Save(Params p, bool note1[], bool note2[]) {
 }
 
 // Load data from flash memory
-void Load(Params p, bool note1[], bool note2[]) {
+void Load(LoadSaveParams p, bool note1[], bool note2[]) {
     byte note1_str_pg1 = 0, note1_str_pg2 = 0;
     byte note2_str_pg1 = 0, note2_str_pg2 = 0;
     if (EEPROM.isValid() == 1) {
@@ -62,11 +62,11 @@ void Load(Params p, bool note1[], bool note2[]) {
         *p.oct2 = EEPROM.read(12);
         *p.sensitivity_ch1 = EEPROM.read(13);
         *p.sensitivity_ch2 = EEPROM.read(14);
-    } else {  // no eeprom data , setting any number to eeprom
-        note1_str_pg1 = 0;
-        note1_str_pg2 = 0;
-        note2_str_pg1 = 2;
-        note2_str_pg2 = 2;
+    } else {                        // No eeprom data , setting defaults
+        note1_str_pg1 = B11111111;  // Initialize with chromatic scale
+        note1_str_pg2 = B00001111;
+        note2_str_pg1 = B10110101;  // Iniitialize with C major scale
+        note2_str_pg2 = B00001010;
         *p.atk1 = 1;
         *p.dcy1 = 4;
         *p.atk2 = 2;
