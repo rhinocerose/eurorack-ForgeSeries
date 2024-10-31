@@ -82,7 +82,8 @@ void PWMWrite(int pin, int value) {
     }
 }
 
-// Set the output pins to HIGH or LOW
+// Set the output pins. Value can be from 0 to 4095.
+// For pins 0 and 1, 0 is low and anything else is high
 void SetPin(int pin, int value) {
     if (pin == 0)  // Gate Output 1
     {
@@ -92,9 +93,9 @@ void SetPin(int pin, int value) {
         value ? digitalWrite(OUT_PIN_2, LOW) : digitalWrite(OUT_PIN_2, HIGH);
     } else if (pin == 2)  // Internal DAC Output
     {
-        value ? InternalDAC(4095) : InternalDAC(0);
+        InternalDAC(value);
     } else if (pin == 3)  // MCP DAC Output
     {
-        value ? MCP(4095) : MCP(0);
+        MCP(value);
     }
 }

@@ -59,16 +59,22 @@ unsigned long lastPulseTime[NUM_OUTPUTS] = {0};
 bool isPulseOn[NUM_OUTPUTS] = {false};
 
 // Menu variables
-int menuItems = 9;  // BPM, Play/Pause, div1, div2, div3, div4, duty cycle, tap tempo, save
+int menuItems = 11;
 int menuItem = 2;
 bool switchState = 1;
 bool oldSwitchState = 0;
-byte menuMode = 0;                                      // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=duty cycle, 7=tap tempo, 8=save
+byte menuMode = 0;                                      // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=duty cycle, 7=tap tempo, 8=save, 9=level3, 10=level4
 bool displayRefresh = 1;                                // Display refresh flag
 bool outputIndicator[] = {false, false, false, false};  // Pulse status for indicator
 
 // Play/Pause state
 bool paused = false;  // New variable to track play/pause state
+
+// Level values for outputs
+int levelValues[NUM_OUTPUTS] = {100, 100, 100, 100};  // Initialize levels to 100%
+
+// Max DAC value (Assuming 12-bit DAC)
+const int MaxDACValue = 4095;
 
 void ResetOutputs() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
@@ -118,8 +124,7 @@ void HandleEncoderClick() {
     switchState = digitalRead(ENCODER_SW);
     if (switchState == 1 && oldSwitchState == 0) {
         displayRefresh = 1;
-        if (menuItem == 0 && menuMode == 0)  // Set BPM
-        {
+        if (menuItem == 0 && menuMode == 0) {  // Set BPM
             menuMode = 1;
         } else if (menuMode == 1) {
             menuMode = 0;
@@ -146,14 +151,26 @@ void HandleEncoderClick() {
         } else if (menuMode == 6) {
             menuMode = 0;
         }
-        // Tap tempo
+        // Level control for output 3
         else if (menuItem == 7 && menuMode == 0) {
+            menuMode = 7;
+        } else if (menuMode == 7) {
+            menuMode = 0;
+        }
+        // Level control for output 4
+        else if (menuItem == 8 && menuMode == 0) {
+            menuMode = 8;
+        } else if (menuMode == 8) {
+            menuMode = 0;
+        }
+        // Tap tempo
+        else if (menuItem == 9 && menuMode == 0) {
             SetTapTempo();
         }
         // Save settings
-        else if (menuItem == 8 && menuMode == 0) {
+        else if (menuItem == 10 && menuMode == 0) {
             LoadSaveParams p = {
-                &BPM, &dividerValues[0], &dividerValues[1], &dividerValues[2], &dividerValues[3], &dutyCycle, &paused};
+                &BPM, &dividerValues[0], &dividerValues[1], &dividerValues[2], &dividerValues[3], &dutyCycle, &paused, &levelValues[2], &levelValues[3]};
             Save(p);
             display.clearDisplay();  // clear display
             display.setTextSize(2);
@@ -201,6 +218,12 @@ void HandleEncoderPosition() {
                 dutyCycle = constrain(dutyCycle - 1, 1, 99);
                 UpdateBPM();
                 break;
+            case 7:  // Set level for output 3
+                levelValues[2] = constrain(levelValues[2] - 1, 0, 100);
+                break;
+            case 8:  // Set level for output 4
+                levelValues[3] = constrain(levelValues[3] - 1, 0, 100);
+                break;
         }
     } else if ((newPosition + 3) / 4 < oldPosition / 4) {  // Increase
         oldPosition = newPosition;
@@ -239,6 +262,12 @@ void HandleEncoderPosition() {
                 // Set duty cycle
                 dutyCycle = constrain(dutyCycle + 1, 1, 99);
                 UpdateBPM();
+                break;
+            case 7:  // Set level for output 3
+                levelValues[2] = constrain(levelValues[2] + 1, 0, 100);
+                break;
+            case 8:  // Set level for output 4
+                levelValues[3] = constrain(levelValues[3] + 1, 0, 100);
                 break;
         }
     }
@@ -330,27 +359,54 @@ void HandleOLED() {
                     }
                 }
             }
-        } else if (menuItem >= 6 && menuItem <= 9) {
+        } else if (menuItem >= 6 && menuItem <= 10) {
             display.setTextSize(1);
-            display.setCursor(10, 1);
+            int yPosition = 0;
+            // Duty Cycle
+            display.setCursor(10, yPosition);
             display.println("DUTY CYCLE(%):");
-            display.setCursor(100, 1);
+            display.setCursor(100, yPosition);
             display.print(dutyCycle);
             if (menuItem == 6 && menuMode == 0) {
-                display.drawTriangle(1, 0, 1, 8, 5, 4, 1);
+                display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
             } else if (menuMode == 6) {
-                display.fillTriangle(1, 0, 1, 8, 5, 4, 1);
+                display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
             }
-            // Tap tempo menu item
-            display.setCursor(10, 30);
+            yPosition += 9;
+            // Level 3
+            display.setCursor(10, yPosition);
+            display.print("LVL OUT 3(%):");
+            display.setCursor(100, yPosition);
+            display.print(levelValues[2]);
+            if (menuItem == 7 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == 7) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            // Level 4
+            display.setCursor(10, yPosition);
+            display.print("LVL OUT 4(%):");
+            display.setCursor(100, yPosition);
+            display.print(levelValues[3]);
+            if (menuItem == 8 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == 8) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 15;
+            // Tap tempo
+            display.setCursor(10, yPosition);
             display.print("TAP TEMPO");
-            if (menuItem == 7) {
-                display.drawTriangle(1, 29, 1, 37, 5, 33, 1);
+            if (menuItem == 9) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
-            display.setCursor(10, 50);
+            yPosition += 15;
+            // Save
+            display.setCursor(10, yPosition);
             display.print("SAVE");
-            if (menuItem == 8) {
-                display.drawTriangle(1, 49, 1, 57, 5, 53, 1);
+            if (menuItem == 10) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
         }
         display.display();
@@ -399,7 +455,13 @@ void HandleOutputs() {
         if (!isPulseOn[i]) {
             if ((currentMillis - lastPulseTime[i]) >= pulseLowTime[i]) {
                 // Start pulse
-                SetPin(i, HIGH);
+                if (i == 2 || i == 3) {
+                    // Outputs 3 and 4, use DAC output
+                    int dacValue = levelValues[i] * MaxDACValue / 100;
+                    SetPin(i, dacValue);  // Assuming outputs 3 and 4 correspond to DAC channels 0 and 1
+                } else {
+                    SetPin(i, HIGH);
+                }
                 isPulseOn[i] = true;
                 lastPulseTime[i] = currentMillis;
                 outputIndicator[i] = true;
@@ -443,7 +505,7 @@ void setup() {
 
     // Load settings from flash memory
     LoadSaveParams p = {
-        &BPM, &dividerValues[0], &dividerValues[1], &dividerValues[2], &dividerValues[3], &dutyCycle, &paused};
+        &BPM, &dividerValues[0], &dividerValues[1], &dividerValues[2], &dividerValues[3], &dutyCycle, &paused, &levelValues[2], &levelValues[3]};
     Load(p);
 
     UpdateBPM();
