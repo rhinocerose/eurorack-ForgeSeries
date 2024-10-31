@@ -70,6 +70,15 @@ bool outputIndicator[] = {false, false, false, false};  // Pulse status for indi
 // Play/Pause state
 bool paused = false;  // New variable to track play/pause state
 
+void ResetOutputs() {
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        SetPin(i, LOW);
+        isPulseOn[i] = false;
+        lastPulseTime[i] = 0;
+        outputIndicator[i] = false;
+    }
+}
+
 // Update the BPM value and recalculate pulse intervals and times
 void UpdateBPM() {
     BPM = constrain(BPM, minBPM, maxBPM);
@@ -78,6 +87,7 @@ void UpdateBPM() {
         pulseHighTime[i] = pulseInterval[i] * (dutyCycle / 100.0);
         pulseLowTime[i] = pulseInterval[i] - pulseHighTime[i];
     }
+    ResetOutputs();
 }
 
 // Tap tempo function
@@ -362,7 +372,8 @@ void ClockReceived() {
 void HandleExternalClock() {
     unsigned long currentTime = millis();
     if (usingExternalClock) {
-        usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 500;
+        // Return to internal clock if no external clock for 3 seconds (20BPM)
+        usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 3000;
         if (!usingExternalClock) {
             UpdateBPM();
         }
