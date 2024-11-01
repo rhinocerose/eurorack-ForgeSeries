@@ -53,6 +53,7 @@ unsigned long pulseLowTime[NUM_OUTPUTS];
 volatile unsigned long clockInterval = 0;
 volatile unsigned long lastClockInterruptTime = 0;
 volatile bool usingExternalClock = false;
+int externalDividerIndex = 5;
 
 // Timing for outputs
 unsigned long lastPulseTime[NUM_OUTPUTS] = {0};
@@ -60,7 +61,7 @@ bool isPulseOn[NUM_OUTPUTS] = {false};
 bool paused[NUM_OUTPUTS] = {false};
 
 // Menu variables
-int menuItems = 15;
+int menuItems = 16;
 int menuItem = 2;
 bool switchState = 1;
 bool oldSwitchState = 0;
@@ -78,22 +79,26 @@ int levelValues[NUM_OUTPUTS] = {100, 100, 100, 100};  // Initialize levels to 10
 const int MaxDACValue = 4095;
 
 void ResetOutputs() {
+    unsigned long currentMillis = millis();
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        SetPin(i, LOW);
-        isPulseOn[i] = false;
-        lastPulseTime[i] = 0;
-        outputIndicator[i] = false;
+        lastPulseTime[i] = currentMillis;
     }
 }
 
-// Update the BPM value and recalculate pulse intervals and times
-void UpdateBPM() {
-    BPM = constrain(BPM, minBPM, maxBPM);
+// Calculate new pulse intervals for current BPM
+void CalculatePulseIntervals() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         pulseInterval[i] = (60000 / BPM) * clockDividers[dividerIndex[i]];
         pulseHighTime[i] = pulseInterval[i] * (dutyCycle / 100.0);
         pulseLowTime[i] = pulseInterval[i] - pulseHighTime[i];
     }
+}
+
+// Update the BPM value and recalculate pulse intervals and times
+unsigned long lastBPMChange = 0;
+void UpdateBPM() {
+    BPM = constrain(BPM, minBPM, maxBPM);
+    CalculatePulseIntervals();
     ResetOutputs();
 }
 
@@ -130,48 +135,52 @@ void HandleEncoderClick() {
         } else if (menuMode == 1) {
             menuMode = 0;
         } else if (menuItem == 1 && menuMode == 0) {
-            masterPause = !masterPause;  // Toggle paused state
-        } else if (menuItem == 2 && menuMode == 0) {
+            masterPause = !masterPause;               // Toggle paused state
+        } else if (menuItem == 2 && menuMode == 0) {  // Set div1
             menuMode = 2;
         } else if (menuMode == 2) {
             menuMode = 0;
-        } else if (menuItem == 3 && menuMode == 0) {
+        } else if (menuItem == 3 && menuMode == 0) {  // Set div2
             menuMode = 3;
         } else if (menuMode == 3) {
             menuMode = 0;
-        } else if (menuItem == 4 && menuMode == 0) {
+        } else if (menuItem == 4 && menuMode == 0) {  // Set div3
             menuMode = 4;
         } else if (menuMode == 4) {
             menuMode = 0;
-        } else if (menuItem == 5 && menuMode == 0) {
+        } else if (menuItem == 5 && menuMode == 0) {  // Set div4
             menuMode = 5;
         } else if (menuMode == 5) {
             menuMode = 0;
-        } else if (menuItem == 6 && menuMode == 0) {
+        } else if (menuItem == 6 && menuMode == 0) {  // Set external clock divider
             menuMode = 6;
         } else if (menuMode == 6) {
             menuMode = 0;
-        }
-        // Level control for output 3
-        else if (menuItem == 7 && menuMode == 0) {
+        } else if (menuItem == 7 && menuMode == 0) {  // Set duty cycle
             menuMode = 7;
         } else if (menuMode == 7) {
             menuMode = 0;
         }
-        // Level control for output 4
+        // Level control for output 3
         else if (menuItem == 8 && menuMode == 0) {
             menuMode = 8;
         } else if (menuMode == 8) {
             menuMode = 0;
         }
-        // Tap tempo
+        // Level control for output 4
         else if (menuItem == 9 && menuMode == 0) {
+            menuMode = 9;
+        } else if (menuMode == 9) {
+            menuMode = 0;
+        }
+        // Tap tempo
+        else if (menuItem == 10 && menuMode == 0) {
             SetTapTempo();
         }
         // Save settings
-        else if (menuItem == 10 && menuMode == 0) {
+        else if (menuItem == 11 && menuMode == 0) {
             LoadSaveParams p = {
-                &BPM, &dividerIndex[0], &dividerIndex[1], &dividerIndex[2], &dividerIndex[3], &dutyCycle, &masterPause, &levelValues[2], &levelValues[3]};
+                &BPM, &dividerIndex[0], &dividerIndex[1], &dividerIndex[2], &dividerIndex[3], &dutyCycle, &masterPause, &levelValues[2], &levelValues[3], &externalDividerIndex};
             Save(p);
             display.clearDisplay();  // clear display
             display.setTextSize(2);
@@ -180,13 +189,13 @@ void HandleEncoderClick() {
             display.print("SAVED");
             display.display();
             delay(1000);
-        } else if (menuItem == 11 && menuMode == 0) {
-            paused[0] = !paused[0];
         } else if (menuItem == 12 && menuMode == 0) {
-            paused[1] = !paused[1];
+            paused[0] = !paused[0];
         } else if (menuItem == 13 && menuMode == 0) {
-            paused[2] = !paused[2];
+            paused[1] = !paused[1];
         } else if (menuItem == 14 && menuMode == 0) {
+            paused[2] = !paused[2];
+        } else if (menuItem == 15 && menuMode == 0) {
             paused[3] = !paused[3];
         }
     }
@@ -209,28 +218,32 @@ void HandleEncoderPosition() {
                 break;
             case 2:  // Set div1
                 dividerIndex[0] = constrain(dividerIndex[0] - 1, 0, dividerCount);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
             case 3:  // Set div2
                 dividerIndex[1] = constrain(dividerIndex[1] - 1, 0, dividerCount);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
             case 4:  // Set div3
                 dividerIndex[2] = constrain(dividerIndex[2] - 1, 0, dividerCount);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
             case 5:  // Set div4
                 dividerIndex[3] = constrain(dividerIndex[3] - 1, 0, dividerCount);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
-            case 6:  // Set duty cycle
+            case 6:  // Set external clock divider
+                externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerCount);
+                CalculatePulseIntervals();
+                break;
+            case 7:  // Set duty cycle
                 dutyCycle = constrain(dutyCycle - 1, 1, 99);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
-            case 7:  // Set level for output 3
+            case 8:  // Set level for output 3
                 levelValues[2] = constrain(levelValues[2] - 1, 0, 100);
                 break;
-            case 8:  // Set level for output 4
+            case 9:  // Set level for output 4
                 levelValues[3] = constrain(levelValues[3] - 1, 0, 100);
                 break;
         }
@@ -250,32 +263,36 @@ void HandleEncoderPosition() {
             case 2:
                 // Set div1
                 dividerIndex[0] = constrain(dividerIndex[0] + 1, 0, dividerCount);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
             case 3:
                 // Set div2
                 dividerIndex[1] = constrain(dividerIndex[1] + 1, 0, dividerCount);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
             case 4:
                 // Set div3
                 dividerIndex[2] = constrain(dividerIndex[2] + 1, 0, dividerCount);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
             case 5:
                 // Set div4
                 dividerIndex[3] = constrain(dividerIndex[3] + 1, 0, dividerCount);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
-            case 6:
+            case 6:  // Set external clock divider
+                externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerCount);
+                CalculatePulseIntervals();
+                break;
+            case 7:
                 // Set duty cycle
                 dutyCycle = constrain(dutyCycle + 1, 1, 99);
-                UpdateBPM();
+                CalculatePulseIntervals();
                 break;
-            case 7:  // Set level for output 3
+            case 8:  // Set level for output 3
                 levelValues[2] = constrain(levelValues[2] + 1, 0, 100);
                 break;
-            case 8:  // Set level for output 4
+            case 9:  // Set level for output 4
                 levelValues[3] = constrain(levelValues[3] + 1, 0, 100);
                 break;
         }
@@ -345,7 +362,7 @@ void HandleOLED() {
                     display.drawRect((i * 30) + 16, 56, 8, 8, WHITE);
                 }
             }
-        } else if (menuItem >= 2 && menuItem <= 5) {
+        } else if (menuItem >= 2 && menuItem <= 6) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("CLOCK DIVIDERS");
@@ -356,7 +373,6 @@ void HandleOLED() {
                 display.setCursor(70, 20 + (i * 9));
                 display.print(dividerDescripion[dividerIndex[i]]);
                 display.print("x");
-
                 if (menuItem == i + 2) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, 19 + (i * 9), 1, 27 + (i * 9), 5, 23 + (i * 9), 1);
@@ -365,7 +381,16 @@ void HandleOLED() {
                     }
                 }
             }
-        } else if (menuItem >= 6 && menuItem <= 10) {
+            display.setCursor(10, 56);
+            display.print("EXT CLK DIV: ");
+            display.print(dividerDescripion[externalDividerIndex]);
+            display.print("x");
+            if (menuItem == 6 && menuMode == 0) {
+                display.drawTriangle(1, 55, 1, 63, 5, 59, 1);
+            } else if (menuMode == 6) {
+                display.fillTriangle(1, 55, 1, 63, 5, 59, 1);
+            }
+        } else if (menuItem >= 7 && menuItem <= 11) {
             display.setTextSize(1);
             int yPosition = 0;
             // Duty Cycle
@@ -374,9 +399,9 @@ void HandleOLED() {
             display.setCursor(100, yPosition);
             display.print(dutyCycle);
             display.print("%");
-            if (menuItem == 6 && menuMode == 0) {
+            if (menuItem == 7 && menuMode == 0) {
                 display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
-            } else if (menuMode == 6) {
+            } else if (menuMode == 7) {
                 display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
             }
             yPosition += 9;
@@ -386,9 +411,9 @@ void HandleOLED() {
             display.setCursor(100, yPosition);
             display.print(levelValues[2]);
             display.print("%");
-            if (menuItem == 7 && menuMode == 0) {
+            if (menuItem == 8 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == 7) {
+            } else if (menuMode == 8) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
@@ -398,9 +423,9 @@ void HandleOLED() {
             display.setCursor(100, yPosition);
             display.print(levelValues[3]);
             display.print("%");
-            if (menuItem == 8 && menuMode == 0) {
+            if (menuItem == 9 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == 8) {
+            } else if (menuMode == 9) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 15;
@@ -408,17 +433,17 @@ void HandleOLED() {
             display.setCursor(10, yPosition);
             display.print("TAP TEMPO");
             display.print(" (" + String(BPM) + " BPM)");
-            if (menuItem == 9) {
+            if (menuItem == 10) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 15;
             // Save
             display.setCursor(10, yPosition);
             display.print("SAVE");
-            if (menuItem == 10) {
+            if (menuItem == 11) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
-        } else if (menuItem >= 11 && menuItem <= 14) {
+        } else if (menuItem >= 12 && menuItem <= 15) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("OUTPUT STATUS");
@@ -429,10 +454,10 @@ void HandleOLED() {
                 display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
                 display.print(paused[i] ? "OFF" : "ON");
-                if (menuItem == i + 11) {
+                if (menuItem == i + 12) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == i + 11) {
+                    } else if (menuMode == i + 12) {
                         display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     }
                 }
@@ -446,12 +471,14 @@ void HandleOLED() {
 
 void ClockReceived() {
     unsigned long interruptTime = micros();
-    clockInterval = interruptTime - lastClockInterruptTime;
+    unsigned long rawInterval = interruptTime - lastClockInterruptTime;
     lastClockInterruptTime = interruptTime;
     usingExternalClock = true;
+    // Apply external clock divider/multiplier
+    clockInterval = rawInterval * clockDividers[externalDividerIndex];
     // Recalculate BPM based on external clock
     BPM = 60000000 / clockInterval;
-    UpdateBPM();
+    CalculatePulseIntervals();
 }
 
 // Handle external clock
@@ -461,31 +488,19 @@ void HandleExternalClock() {
         // Return to internal clock if no external clock for 3 seconds (20BPM)
         usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 3000;
         if (!usingExternalClock) {
-            UpdateBPM();
+            CalculatePulseIntervals();
         }
     }
 }
 
 // Handle the outputs
 void HandleOutputs() {
-    if (masterPause) {
-        // If paused, ensure all outputs are off
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
-            if (isPulseOn[i]) {
-                SetPin(i, LOW);
-                isPulseOn[i] = false;
-                outputIndicator[i] = false;
-            }
-        }
-        return;  // Skip output handling
-    }
-
     unsigned long currentMillis = millis();
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (!isPulseOn[i]) {
             if ((currentMillis - lastPulseTime[i]) >= pulseLowTime[i]) {
                 // Start pulse
-                if (!paused[i]) {
+                if (!masterPause && !paused[i]) {
                     // Only output if not paused
                     if (i == 2 || i == 3) {
                         // Outputs 3 and 4, use DAC output
@@ -539,10 +554,10 @@ void setup() {
 
     // Load settings from flash memory
     LoadSaveParams p = {
-        &BPM, &dividerIndex[0], &dividerIndex[1], &dividerIndex[2], &dividerIndex[3], &dutyCycle, &masterPause, &levelValues[2], &levelValues[3]};
+        &BPM, &dividerIndex[0], &dividerIndex[1], &dividerIndex[2], &dividerIndex[3], &dutyCycle, &masterPause, &levelValues[2], &levelValues[3], &externalDividerIndex};
     Load(p);
 
-    UpdateBPM();
+    CalculatePulseIntervals();
 }
 
 void loop() {

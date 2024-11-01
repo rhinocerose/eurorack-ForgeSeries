@@ -9,6 +9,7 @@ struct LoadSaveParams {
     unsigned int *dutyCycle;
     bool *paused;
     int *level3, *level4;
+    int *extDivIdx;
 };
 
 // Save data to flash memory
@@ -23,6 +24,7 @@ void Save(LoadSaveParams p) {  // save setting data to flash memory
     EEPROM.write(6, *p.paused);
     EEPROM.write(7, *p.level3);
     EEPROM.write(8, *p.level4);
+    EEPROM.write(9, *p.extDivIdx);
     EEPROM.commit();
 }
 
@@ -39,6 +41,7 @@ void Load(LoadSaveParams p) {
         *p.paused = EEPROM.read(6);
         *p.level3 = EEPROM.read(7);
         *p.level4 = EEPROM.read(8);
+        *p.extDivIdx = EEPROM.read(9);
     } else {
         // If no eeprom data, set default values
         *p.BPM = 120;
@@ -50,5 +53,6 @@ void Load(LoadSaveParams p) {
         *p.paused = false;
         *p.level3 = 100;
         *p.level4 = 100;
+        *p.extDivIdx = 5;
     }
 }
