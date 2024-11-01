@@ -486,7 +486,7 @@ void HandleExternalClock() {
     unsigned long currentTime = millis();
     if (usingExternalClock) {
         // Return to internal clock if no external clock for 3 seconds (20BPM)
-        usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 3000;
+        usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 500;
         if (!usingExternalClock) {
             CalculatePulseIntervals();
         }
