@@ -82,6 +82,7 @@ void ResetOutputs() {
     unsigned long currentMillis = millis();
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         lastPulseTime[i] = currentMillis;
+        isPulseOn[i] = false;
     }
 }
 
@@ -92,6 +93,7 @@ void CalculatePulseIntervals() {
         pulseHighTime[i] = pulseInterval[i] * (dutyCycle / 100.0);
         pulseLowTime[i] = pulseInterval[i] - pulseHighTime[i];
     }
+    ResetOutputs();
 }
 
 // Update the BPM value and recalculate pulse intervals and times
@@ -99,7 +101,6 @@ unsigned long lastBPMChange = 0;
 void UpdateBPM() {
     BPM = constrain(BPM, minBPM, maxBPM);
     CalculatePulseIntervals();
-    ResetOutputs();
 }
 
 // Tap tempo function
