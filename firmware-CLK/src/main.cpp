@@ -352,14 +352,10 @@ void HandleOLED() {
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 // Display the clock divider for each output
                 display.setCursor(10, 20 + (i * 9));
-                display.print("OUT ");
-                display.setCursor(30, 20 + (i * 9));
-                display.print(i + 1);
-                display.setCursor(35, 20 + (i * 9));
-                display.print(":");
+                display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, 20 + (i * 9));
                 display.print(dividerDescripion[dividerIndex[i]]);
-                display.print(" x");
+                display.print("x");
 
                 if (menuItem == i + 2) {
                     if (menuMode == 0) {
@@ -384,7 +380,7 @@ void HandleOLED() {
                 display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
             }
             yPosition += 9;
-            // Level 3
+            // Level output 3
             display.setCursor(10, yPosition);
             display.print("LVL OUT 3:");
             display.setCursor(100, yPosition);
@@ -396,7 +392,7 @@ void HandleOLED() {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
-            // Level 4
+            // Level output 4
             display.setCursor(10, yPosition);
             display.print("LVL OUT 4:");
             display.setCursor(100, yPosition);
