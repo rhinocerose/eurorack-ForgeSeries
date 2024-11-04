@@ -80,10 +80,12 @@ const int MaxDACValue = 4095;
 
 void ResetOutputs() {
     unsigned long currentMillis = millis();
+    noInterrupts();
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         lastPulseTime[i] = currentMillis;
         isPulseOn[i] = false;
     }
+    interrupts();
 }
 
 // Calculate new pulse intervals for current BPM
@@ -479,7 +481,7 @@ void ClockReceived() {
     clockInterval = rawInterval * clockDividers[externalDividerIndex];
     // Recalculate BPM based on external clock
     BPM = 60000000 / clockInterval;
-    CalculatePulseIntervals();
+    UpdateBPM();
 }
 
 // Handle external clock
@@ -489,7 +491,7 @@ void HandleExternalClock() {
         // Return to internal clock if no external clock for 3 seconds (20BPM)
         usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 500;
         if (!usingExternalClock) {
-            CalculatePulseIntervals();
+            UpdateBPM();
         }
     }
 }
@@ -497,6 +499,7 @@ void HandleExternalClock() {
 // Handle the outputs
 void HandleOutputs() {
     unsigned long currentMillis = millis();
+    noInterrupts();
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (!isPulseOn[i]) {
             if ((currentMillis - lastPulseTime[i]) >= pulseLowTime[i]) {
@@ -534,6 +537,7 @@ void HandleOutputs() {
             }
         }
     }
+    interrupts();
 }
 
 void setup() {
