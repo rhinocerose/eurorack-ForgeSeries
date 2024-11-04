@@ -506,16 +506,8 @@ void HandleOutputs() {
                 // Start pulse
                 if (!masterPause && !paused[i]) {
                     // Only output if not paused
-                    if (i == 2 || i == 3) {
-                        // Outputs 3 and 4, use DAC output
-                        int dacValue = levelValues[i] * MaxDACValue / 100;
-                        SetPin(i, dacValue);  // Assuming outputs 3 and 4 correspond to DAC channels 0 and 1
-                    } else {
-                        SetPin(i, HIGH);
-                    }
-                    if (i == 0) {
-                        digitalWrite(LED_BUILTIN, HIGH);
-                    }
+                    int level = levelValues[i] * MaxDACValue / 100;
+                    SetPin(i, level);
                     outputIndicator[i] = true;
                 }
                 // Keep track of pulse state
@@ -530,9 +522,6 @@ void HandleOutputs() {
                 isPulseOn[i] = false;
                 lastPulseTime[i] = currentMillis;
                 outputIndicator[i] = false;
-                if (i == 0) {
-                    digitalWrite(LED_BUILTIN, LOW);
-                }
                 displayRefresh = 1;
             }
         }

@@ -66,6 +66,12 @@ void DACWrite(int pin, int value) {
 // Handle PWM Outputs
 void PWM1(int duty1) {
     pwm(OUT_PIN_1, 46000, duty1);
+    // Debug using LED on board
+    if (duty1 > 0) {
+        digitalWrite(LED_BUILTIN, HIGH);
+    } else {
+        digitalWrite(LED_BUILTIN, LOW);
+    }
 }
 
 void PWM2(int duty2) {
@@ -87,10 +93,12 @@ void PWMWrite(int pin, int value) {
 void SetPin(int pin, int value) {
     if (pin == 0)  // Gate Output 1
     {
-        value ? digitalWrite(OUT_PIN_1, LOW) : digitalWrite(OUT_PIN_1, HIGH);
+        int val = map(value, 0, 4095, 1023, 0);
+        PWMWrite(1, val);
     } else if (pin == 1)  // Gate Output 2
     {
-        value ? digitalWrite(OUT_PIN_2, LOW) : digitalWrite(OUT_PIN_2, HIGH);
+        int val = map(value, 0, 4095, 1023, 0);
+        PWMWrite(2, val);
     } else if (pin == 2)  // Internal DAC Output
     {
         InternalDAC(value);
