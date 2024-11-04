@@ -45,12 +45,12 @@ void InitIO() {
 }
 
 // Handle DAC Outputs
-void InternalDAC(int intDAC_OUT) {
-    analogWrite(DAC_INTERNAL_PIN, intDAC_OUT / 4);  // "/4" -> 12bit to 10bit
+void InternalDAC(int value) {
+    analogWrite(DAC_INTERNAL_PIN, value / 4);  // "/4" -> 12bit to 10bit
 }
 
-void MCP(int MCP_OUT) {
-    dac.setVoltage(MCP_OUT, false);
+void MCP(int value) {
+    dac.setVoltage(value, false);
 }
 
 void DACWrite(int pin, int value) {
@@ -93,12 +93,18 @@ void PWMWrite(int pin, int value) {
 void SetPin(int pin, int value) {
     if (pin == 0)  // Gate Output 1
     {
-        int val = map(value, 0, 4095, 1023, 0);
-        PWMWrite(1, val);
+        if (value > 0) {
+            digitalWrite(OUT_PIN_1, LOW);
+        } else {
+            digitalWrite(OUT_PIN_1, HIGH);
+        }
     } else if (pin == 1)  // Gate Output 2
     {
-        int val = map(value, 0, 4095, 1023, 0);
-        PWMWrite(2, val);
+        if (value > 0) {
+            digitalWrite(OUT_PIN_2, LOW);
+        } else {
+            digitalWrite(OUT_PIN_2, HIGH);
+        }
     } else if (pin == 2)  // Internal DAC Output
     {
         InternalDAC(value);
