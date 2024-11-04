@@ -40,6 +40,7 @@ int dividerIndex[] = {5, 5, 5, 5};
 
 // BPM and clock settings
 unsigned int BPM = 120;
+unsigned int lastInternalBPM = 120;
 unsigned int const minBPM = 10;
 unsigned int const maxBPM = 300;
 
@@ -110,6 +111,9 @@ static unsigned long lastTapTime = 0;
 static unsigned long tapTimes[3] = {0, 0, 0};
 static int tapIndex = 0;
 void SetTapTempo() {
+    if (usingExternalClock) {
+        return;
+    }
     unsigned long currentMillis = millis();
     if (currentMillis - lastTapTime > 2000) {
         tapIndex = 0;
@@ -472,25 +476,51 @@ void HandleOLED() {
     }
 }
 
+const unsigned long TAP_TIMEOUT_MS = 1500;
+const int MAX_TAPS = 3;
+const unsigned int BPM_THRESHOLD = 3;
+
 void ClockReceived() {
-    unsigned long interruptTime = micros();
-    unsigned long rawInterval = interruptTime - lastClockInterruptTime;
-    lastClockInterruptTime = interruptTime;
-    usingExternalClock = true;
-    // Apply external clock divider/multiplier
-    clockInterval = rawInterval * clockDividers[externalDividerIndex];
-    // Recalculate BPM based on external clock
-    BPM = 60000000 / clockInterval;
-    UpdateBPM();
+    lastClockInterruptTime = millis();
+
+    if (lastClockInterruptTime - lastTapTime > TAP_TIMEOUT_MS) {
+        tapIndex = 0;
+    }
+
+    if (tapIndex < MAX_TAPS) {
+        tapTimes[tapIndex++] = lastClockInterruptTime;
+        lastTapTime = lastClockInterruptTime;
+    }
+
+    if (tapIndex == MAX_TAPS) {
+        unsigned long timeDiff1 = tapTimes[1] - tapTimes[0];
+        unsigned long timeDiff2 = tapTimes[2] - tapTimes[1];
+        unsigned long averageTime = (timeDiff1 + timeDiff2) / 2;
+
+        unsigned int calculatedBPM = (60000 / averageTime) * clockDividers[externalDividerIndex];
+        tapIndex++;
+
+        if (abs(calculatedBPM - BPM) > BPM_THRESHOLD) {
+            if (usingExternalClock == false) {
+                lastInternalBPM = BPM;
+            }
+            usingExternalClock = true;
+            BPM = calculatedBPM;
+            UpdateBPM();
+        }
+    }
 }
 
 // Handle external clock
 void HandleExternalClock() {
     unsigned long currentTime = millis();
+
     if (usingExternalClock) {
-        // Return to internal clock if no external clock for 3 seconds (20BPM)
-        usingExternalClock = (currentTime - (lastClockInterruptTime / 1000)) < 500;
+        bool externalActive = (currentTime - lastClockInterruptTime) < TAP_TIMEOUT_MS;
+        usingExternalClock = externalActive;
+
         if (!usingExternalClock) {
+            BPM = lastInternalBPM;
             UpdateBPM();
         }
     }
