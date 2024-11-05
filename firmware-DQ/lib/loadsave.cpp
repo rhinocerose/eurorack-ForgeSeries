@@ -2,9 +2,6 @@
 // Use flash memory as eeprom
 #include <FlashAsEEPROM.h>
 
-// Temporary variables to hold the settings
-u_int8_t atk1, atk2, dcy1, dcy2, sync1, sync2, sensitivity_ch1, sensitivity_ch2, oct1, oct2;
-
 // Struct to hold params that are saved/loaded to/from EEPROM
 struct LoadSaveParams {
     u_int8_t *atk1, *atk2, *dcy1, *dcy2, *sync1, *sync2, *sensitivity_ch1, *sensitivity_ch2, *oct1, *oct2;

@@ -5,6 +5,7 @@
 // Use flash memory as eeprom
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <FlashAsEEPROM.h>
 
 // Load local libraries
 #include "boardIO.cpp"
@@ -17,41 +18,41 @@
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
+////////////////////////////////////////////
 // Assign ADC calibration value for each channel based on the actual measurement
 float ADCalibration[2] = {0.99728, 0.99728};
+/////////////////////////////////////////
 
-// OLED display creation
+// OLED display initialization
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-// Rotary encoder creation
+// Rotary encoder initialization
 Encoder encoder1(ENC_PIN_1, ENC_PIN_2);  // rotary encoder library setting
 float oldPosition = -999;                // rotary encoder library setting
 float newPosition = -999;                // rotary encoder library setting
 
-int menuItems = 39;  // Amount of menu items
+int menuItems = 38;  // Amount of menu items
 int menuItem = 1;    // i is the current position of the encoder
 
 bool switchState = 1;     // Encoder switch state
 bool oldSwitchState = 0;  // Encoder switch state on last cycle
 bool clockInput = 0;      // Clock input state
 bool oldClockInput = 0;   // Clock input state on last cycle
-byte menuMode = 0;        // 0=select,1=atk[0],2=dcy[0],3=atk[1],4=dcy[1], 5=scale, 6=note
+int menuMode = 0;         // 0=select,1=atk[0],2=dcy[0],3=atk[1],4=dcy[1], 5=scale, 6=note
 
 // ADC input variables
 float channelADC[2], oldChannelADC[2];
-int quantizedNode[2] = {0, 0};
-int oldQuantizedNode[2] = {0, 0};
+int quantizedNoteIdx[2], oldQuantizedNoteIdx[2] = {0, 0};
 
-float CVOutput[2] = {0, 0};     // CV output
-float oldCVOutput[2] = {0, 0};  // CV output on last cycle
-long gateTimer[2] = {0, 0};     // EG curve progress speed
+float CVOutput[2], oldCVOutput[2] = {0, 0};  // CV output
+long gateTimer[2] = {0, 0};                  // EG curve progress speed
 
 // envelope curve setting
 int ADEnvelopeTable[200] = {  // envelope table
     0, 15, 30, 44, 59, 73, 87, 101, 116, 130, 143, 157, 170, 183, 195, 208, 220, 233, 245, 257, 267, 279, 290, 302, 313, 324, 335, 346, 355, 366, 376, 386, 397, 405, 415, 425, 434, 443, 452, 462, 470, 479, 488, 495, 504, 513, 520, 528, 536, 544, 552, 559, 567, 573, 581, 589, 595, 602, 609, 616, 622, 629, 635, 642, 648, 654, 660, 666, 672, 677, 683, 689, 695, 700, 706, 711, 717, 722, 726, 732, 736, 741, 746, 751, 756, 760, 765, 770, 774, 778, 783, 787, 791, 796, 799, 803, 808, 811, 815, 818, 823, 826, 830, 834, 837, 840, 845, 848, 851, 854, 858, 861, 864, 866, 869, 873, 876, 879, 881, 885, 887, 890, 893, 896, 898, 901, 903, 906, 909, 911, 913, 916, 918, 920, 923, 925, 927, 929, 931, 933, 936, 938, 940, 942, 944, 946, 948, 950, 952, 954, 955, 957, 960, 961, 963, 965, 966, 968, 969, 971, 973, 975, 976, 977, 979, 980, 981, 983, 984, 986, 988, 989, 990, 991, 993, 994, 995, 996, 997, 999, 1000, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1012, 1013, 1014, 1014, 1015, 1016, 1017, 1018, 1019, 1020};
 
-int adcValues[2];  // PWM DUTY reference
-bool ADTrigger[2];
+int adcValues[2] = {0, 0};  // PWM DUTY reference
+bool ADTrigger[2] = {0, 0};
 u_int8_t attackEnvelope[2], decayEnvelope[2];  // attack time,decay time
 u_int8_t syncSignal[2];                        // 0=sync with trig , 1=sync with note change
 u_int8_t octaveShift[2];                       // oct=octave shift
@@ -69,23 +70,6 @@ bool activeNotes[2][12];  // 1=note valid,0=note invalid
 
 // display
 bool displayRefresh = 1;  // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
-
-void NoteDisplay(int x0, int y0, boolean on, boolean playing) {
-    int width = 11;
-    int height = 13;
-    int radius = 2;
-    int color = WHITE;
-    if (on) {
-        if (playing) {
-            display.drawRoundRect(x0, y0, width, height, radius, color);
-            display.fillRoundRect(x0 + 3, y0 + 3, width - 6, height - 6, radius, color);
-        } else {
-            display.fillRoundRect(x0, y0, width, height, radius, color);
-        }
-    } else {
-        display.drawRoundRect(x0, y0, width, height, radius, color);
-    }
-};
 
 // Handle encoder button click
 void HandleEncoderClick() {
@@ -138,47 +122,41 @@ void HandleEncoderClick() {
             if (channelSensitivity[1] > 8) {
                 channelSensitivity[1] = 0;
             }
-        } else if (menuItem == 34) {  // Save settings
-            LoadSaveParams p = {
-                &attackEnvelope[0],
-                &attackEnvelope[1],
-                &decayEnvelope[0],
-                &decayEnvelope[1],
-                &syncSignal[0],
-                &syncSignal[1],
-                &channelSensitivity[0],
-                &channelSensitivity[1],
-                &octaveShift[0],
-                &octaveShift[1]};
-            Save(p, activeNotes[0], activeNotes[1]);
-            display.clearDisplay();  // clear display
-            display.setTextSize(2);
-            display.setTextColor(BLACK, WHITE);
-            display.setCursor(10, 40);
-            display.print("SAVED");
-            display.display();
-            delay(1000);
         }
 
-        else if (menuItem == 35 && menuMode == 0)  // Scale setting
+        else if (menuItem == 34 && menuMode == 0)  // Scale setting
         {
             menuMode = 5;
-        } else if (menuItem == 35 && menuMode == 5) {
+        } else if (menuItem == 34 && menuMode == 5) {
             menuMode = 0;
-        } else if (menuItem == 36 && menuMode == 0)  // Note setting
+        } else if (menuItem == 35 && menuMode == 0)  // Note setting
         {
             menuMode = 6;
-        } else if (menuItem == 36 && menuMode == 6) {
+        } else if (menuItem == 35 && menuMode == 6) {
             menuMode = 0;
-        } else if (menuItem == 37) {  // Load Scale into quantizer 1
+        } else if (menuItem == 36) {  // Load Scale into quantizer 1
             Serial.println("Loading scale " + String(scaleIndex) + "  for note " + String(noteIndex) + " into quantizer 1");
             BuildScale(scaleIndex, noteIndex, activeNotes[0]);
             BuildQuantBuffer(activeNotes[0], quantizerThresholdBuff[0]);
-        } else if (menuItem == 38) {  // Load Scale into quantizer 2
+            display.clearDisplay();  // clear display
+            display.setTextSize(2);
+            display.setTextColor(BLACK, WHITE);
+            display.setCursor(1, 40);
+            display.print("LOADED");
+            display.display();
+            delay(1000);
+        } else if (menuItem == 37) {  // Load Scale into quantizer 2
             Serial.println("Loading scale " + String(scaleIndex) + "  for note " + String(noteIndex) + " into quantizer 2");
             BuildScale(scaleIndex, noteIndex, activeNotes[1]);
             BuildQuantBuffer(activeNotes[1], quantizerThresholdBuff[1]);
-        } else if (menuItem == 39) {  // Save settings
+            display.clearDisplay();  // clear display
+            display.setTextSize(2);
+            display.setTextColor(BLACK, WHITE);
+            display.setCursor(1, 40);
+            display.print("LOADED");
+            display.display();
+            delay(1000);
+        } else if (menuItem == 38) {  // Save settings
             LoadSaveParams p = {
                 &attackEnvelope[0],
                 &attackEnvelope[1],
@@ -203,7 +181,6 @@ void HandleEncoderClick() {
 }
 
 void HandleEncoderPosition() {
-    //-------------------------------rotary encoder--------------------------
     newPosition = encoder1.read();
     if ((newPosition - 3) / 4 > oldPosition / 4) {  // 4 is resolution of encoder
         oldPosition = newPosition;
@@ -284,7 +261,23 @@ void HandleEncoderPosition() {
     decayEnvelope[1] = constrain(decayEnvelope[1], 1, 26);
 }
 
-//-----------------------------DISPLAY----------------------------------------
+void NoteDisplay(int x0, int y0, boolean on, boolean playing) {
+    int width = 11;
+    int height = 13;
+    int radius = 2;
+    int color = WHITE;
+    if (on) {
+        if (playing) {
+            display.drawRoundRect(x0, y0, width, height, radius, color);
+            display.fillRoundRect(x0 + 3, y0 + 3, width - 6, height - 6, radius, color);
+        } else {
+            display.fillRoundRect(x0, y0, width, height, radius, color);
+        }
+    } else {
+        display.drawRoundRect(x0, y0, width, height, radius, color);
+    }
+}
+
 void HandleOLED() {
     if (displayRefresh == 1) {
         display.clearDisplay();
@@ -293,36 +286,36 @@ void HandleOLED() {
 
         if (menuItem <= 27) {
             // Draw the keyboard scale 1
-            NoteDisplay(7, 0, activeNotes[0][1] == 1, quantizedNode[0] == 1);              // C#
-            NoteDisplay(7 + 14 * 1, 0, activeNotes[0][3] == 1, quantizedNode[0] == 3);     // D#
-            NoteDisplay(8 + 14 * 3, 0, activeNotes[0][6] == 1, quantizedNode[0] == 6);     // F#
-            NoteDisplay(8 + 14 * 4, 0, activeNotes[0][8] == 1, quantizedNode[0] == 8);     // G#
-            NoteDisplay(8 + 14 * 5, 0, activeNotes[0][10] == 1, quantizedNode[0] == 10);   // A#
-            NoteDisplay(0, 15, activeNotes[0][0] == 1, quantizedNode[0] == 0);             // C
-            NoteDisplay(0 + 14 * 1, 15, activeNotes[0][2] == 1, quantizedNode[0] == 2);    // D
-            NoteDisplay(0 + 14 * 2, 15, activeNotes[0][4] == 1, quantizedNode[0] == 4);    // E
-            NoteDisplay(0 + 14 * 3, 15, activeNotes[0][5] == 1, quantizedNode[0] == 5);    // F
-            NoteDisplay(0 + 14 * 4, 15, activeNotes[0][7] == 1, quantizedNode[0] == 7);    // G
-            NoteDisplay(0 + 14 * 5, 15, activeNotes[0][9] == 1, quantizedNode[0] == 9);    // A
-            NoteDisplay(0 + 14 * 6, 15, activeNotes[0][11] == 1, quantizedNode[0] == 11);  // B
+            NoteDisplay(7, 0, activeNotes[0][1] == 1, quantizedNoteIdx[0] == 1);              // C#
+            NoteDisplay(7 + 14 * 1, 0, activeNotes[0][3] == 1, quantizedNoteIdx[0] == 3);     // D#
+            NoteDisplay(8 + 14 * 3, 0, activeNotes[0][6] == 1, quantizedNoteIdx[0] == 6);     // F#
+            NoteDisplay(8 + 14 * 4, 0, activeNotes[0][8] == 1, quantizedNoteIdx[0] == 8);     // G#
+            NoteDisplay(8 + 14 * 5, 0, activeNotes[0][10] == 1, quantizedNoteIdx[0] == 10);   // A#
+            NoteDisplay(0, 15, activeNotes[0][0] == 1, quantizedNoteIdx[0] == 0);             // C
+            NoteDisplay(0 + 14 * 1, 15, activeNotes[0][2] == 1, quantizedNoteIdx[0] == 2);    // D
+            NoteDisplay(0 + 14 * 2, 15, activeNotes[0][4] == 1, quantizedNoteIdx[0] == 4);    // E
+            NoteDisplay(0 + 14 * 3, 15, activeNotes[0][5] == 1, quantizedNoteIdx[0] == 5);    // F
+            NoteDisplay(0 + 14 * 4, 15, activeNotes[0][7] == 1, quantizedNoteIdx[0] == 7);    // G
+            NoteDisplay(0 + 14 * 5, 15, activeNotes[0][9] == 1, quantizedNoteIdx[0] == 9);    // A
+            NoteDisplay(0 + 14 * 6, 15, activeNotes[0][11] == 1, quantizedNoteIdx[0] == 11);  // B
 
             // Draw the keyboard scale 2
-            NoteDisplay(7, 0 + 34, activeNotes[1][1] == 1, quantizedNode[1] == 1);              // C#
-            NoteDisplay(7 + 14 * 1, 0 + 34, activeNotes[1][3] == 1, quantizedNode[1] == 3);     // D#
-            NoteDisplay(8 + 14 * 3, 0 + 34, activeNotes[1][6] == 1, quantizedNode[1] == 6);     // F#
-            NoteDisplay(8 + 14 * 4, 0 + 34, activeNotes[1][8] == 1, quantizedNode[1] == 8);     // G#
-            NoteDisplay(8 + 14 * 5, 0 + 34, activeNotes[1][10] == 1, quantizedNode[1] == 10);   // A#
-            NoteDisplay(0, 15 + 34, activeNotes[1][0] == 1, quantizedNode[1] == 0);             // C
-            NoteDisplay(0 + 14 * 1, 15 + 34, activeNotes[1][2] == 1, quantizedNode[1] == 2);    // D
-            NoteDisplay(0 + 14 * 2, 15 + 34, activeNotes[1][4] == 1, quantizedNode[1] == 4);    // E
-            NoteDisplay(0 + 14 * 3, 15 + 34, activeNotes[1][5] == 1, quantizedNode[1] == 5);    // F
-            NoteDisplay(0 + 14 * 4, 15 + 34, activeNotes[1][7] == 1, quantizedNode[1] == 7);    // G
-            NoteDisplay(0 + 14 * 5, 15 + 34, activeNotes[1][9] == 1, quantizedNode[1] == 9);    // A
-            NoteDisplay(0 + 14 * 6, 15 + 34, activeNotes[1][11] == 1, quantizedNode[1] == 11);  // B
+            NoteDisplay(7, 0 + 34, activeNotes[1][1] == 1, quantizedNoteIdx[1] == 1);              // C#
+            NoteDisplay(7 + 14 * 1, 0 + 34, activeNotes[1][3] == 1, quantizedNoteIdx[1] == 3);     // D#
+            NoteDisplay(8 + 14 * 3, 0 + 34, activeNotes[1][6] == 1, quantizedNoteIdx[1] == 6);     // F#
+            NoteDisplay(8 + 14 * 4, 0 + 34, activeNotes[1][8] == 1, quantizedNoteIdx[1] == 8);     // G#
+            NoteDisplay(8 + 14 * 5, 0 + 34, activeNotes[1][10] == 1, quantizedNoteIdx[1] == 10);   // A#
+            NoteDisplay(0, 15 + 34, activeNotes[1][0] == 1, quantizedNoteIdx[1] == 0);             // C
+            NoteDisplay(0 + 14 * 1, 15 + 34, activeNotes[1][2] == 1, quantizedNoteIdx[1] == 2);    // D
+            NoteDisplay(0 + 14 * 2, 15 + 34, activeNotes[1][4] == 1, quantizedNoteIdx[1] == 4);    // E
+            NoteDisplay(0 + 14 * 3, 15 + 34, activeNotes[1][5] == 1, quantizedNoteIdx[1] == 5);    // F
+            NoteDisplay(0 + 14 * 4, 15 + 34, activeNotes[1][7] == 1, quantizedNoteIdx[1] == 7);    // G
+            NoteDisplay(0 + 14 * 5, 15 + 34, activeNotes[1][9] == 1, quantizedNoteIdx[1] == 9);    // A
+            NoteDisplay(0 + 14 * 6, 15 + 34, activeNotes[1][11] == 1, quantizedNoteIdx[1] == 11);  // B
 
             // Debug print
-            Serial.print("Note 1: " + String(noteNames[quantizedNode[0]]) + " index: " + String(quantizedNode[0]) + "| Input CV: " + String(channelADC[0]) + " Quantized CV: " + String(CVOutput[0]) + "\n");
-            Serial.print("Note 2: " + String(noteNames[quantizedNode[1]]) + " index: " + String(quantizedNode[1]) + "| Input CV: " + String(channelADC[1]) + " Quantized CV: " + String(CVOutput[1]) + "\n");
+            Serial.print("Note 1: " + String(noteNames[quantizedNoteIdx[0]]) + " index: " + String(quantizedNoteIdx[0]) + "| Input CV: " + String(channelADC[0]) + " Quantized CV: " + String(CVOutput[0]) + "\n");
+            Serial.print("Note 2: " + String(noteNames[quantizedNoteIdx[1]]) + " index: " + String(quantizedNoteIdx[1]) + "| Input CV: " + String(channelADC[1]) + " Quantized CV: " + String(CVOutput[1]) + "\n");
             // Draw the selection triangle
             if (menuItem <= 4) {
                 display.fillTriangle(5 + menuItem * 7, 28, 2 + menuItem * 7, 33, 8 + menuItem * 7, 33, WHITE);
@@ -375,7 +368,7 @@ void HandleOLED() {
         }
 
         // Draw config settings
-        if (menuItem >= 28 && menuItem <= 34) {  // draw sync mode setting
+        if (menuItem >= 28 && menuItem <= 33) {  // draw sync mode setting
             display.setTextSize(1);
             display.setCursor(10, 0);
             display.print("SYNC CH1:");
@@ -413,14 +406,11 @@ void HandleOLED() {
             display.setCursor(72, 45);
             display.print(channelSensitivity[1] - 4);
 
-            display.setCursor(10, 54);
-            display.print("SAVE");
-
             // Draw triangles
             display.fillTriangle(1, (menuItem - 28) * 9, 1, (menuItem - 28) * 9 + 8, 5, (menuItem - 28) * 9 + 4, WHITE);
         }
         // draw scale load setting
-        if (menuItem >= 35 && menuItem <= 39) {
+        if (menuItem >= 34 && menuItem <= 38) {
             display.setTextSize(1);
             display.setCursor(10, 0);
             display.print("SCALE:");
@@ -434,61 +424,32 @@ void HandleOLED() {
             display.print("LOAD IN CH1");
             display.setCursor(10, 27);
             display.print("LOAD IN CH2");
-            display.setCursor(10, 36);
+            display.setCursor(10, 45);
             display.print("SAVE");
             // Draw triangles
-            if (menuItem == 35 && menuMode == 5) {
-                display.fillTriangle(1, (menuItem - 35) * 9, 1, (menuItem - 35) * 9 + 8, 5, (menuItem - 35) * 9 + 4, WHITE);
-            } else if (menuItem == 35 && menuMode == 0) {
-                display.drawTriangle(1, (menuItem - 35) * 9, 1, (menuItem - 35) * 9 + 8, 5, (menuItem - 35) * 9 + 4, WHITE);
-            } else if (menuItem == 36 && menuMode == 6) {
-                display.fillTriangle(1, (menuItem - 35) * 9, 1, (menuItem - 35) * 9 + 8, 5, (menuItem - 35) * 9 + 4, WHITE);
-            } else if (menuItem == 36 && menuMode == 0) {
-                display.drawTriangle(1, (menuItem - 35) * 9, 1, (menuItem - 35) * 9 + 8, 5, (menuItem - 35) * 9 + 4, WHITE);
-            } else {
-                display.fillTriangle(1, (menuItem - 35) * 9, 1, (menuItem - 35) * 9 + 8, 5, (menuItem - 35) * 9 + 4, WHITE);
+            if (menuItem == 34) {
+                if (menuMode == 0) {
+                    display.drawTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
+                } else if (menuMode == 5) {
+                    display.fillTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
+                }
+            } else if (menuItem == 35) {
+                if (menuMode == 0) {
+                    display.drawTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
+                } else if (menuMode == 6) {
+                    display.fillTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
+                }
+            } else if (menuItem == 36) {
+                display.fillTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
+            } else if (menuItem == 37) {
+                display.fillTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
+            } else if (menuItem == 38) {
+                display.fillTriangle(1, (menuItem - 34) * 9 + 9, 1, (menuItem - 34) * 9 + 9 + 8, 5, (menuItem - 34) * 9 + 4 + 9, WHITE);
             }
         }
         display.display();
         displayRefresh = 0;
     }
-}
-
-//-------------------------------Initial setting--------------------------
-void setup() {
-    // Initialize Serial Monitor
-    Serial.begin(115200);
-
-    // Initialize I/O (DAC, pins, etc.)
-    InitIO();
-
-    // Initialize the DAC
-    if (!dac.begin(0x60)) {  // 0x60 is the default I2C address for MCP4725
-        Serial.println("MCP4725 not found!");
-        while (1);
-    }
-    Serial.println("MCP4725 initialized.");
-
-    // Initialize OLED display with address 0x3C for 128x64
-    if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
-        Serial.println(F("SSD1306 allocation failed"));
-        for (;;);  // Don't proceed, loop forever
-    }
-    display.clearDisplay();
-
-    // Load scale and note settings from flash memory
-    LoadSaveParams p = {
-        &attackEnvelope[0],
-        &attackEnvelope[1],
-        &decayEnvelope[0],
-        &decayEnvelope[1],
-        &syncSignal[0],
-        &syncSignal[1],
-        &channelSensitivity[0],
-        &channelSensitivity[1],
-        &octaveShift[0],
-        &octaveShift[1]};
-    Load(p, activeNotes[0], activeNotes[1]);
 }
 
 void HandleInputs() {
@@ -497,8 +458,8 @@ void HandleInputs() {
     oldCVOutput[1] = CVOutput[1];
     oldChannelADC[0] = channelADC[0];
     oldChannelADC[1] = channelADC[1];
-    oldQuantizedNode[0] = quantizedNode[0];
-    oldQuantizedNode[1] = quantizedNode[1];
+    oldQuantizedNoteIdx[0] = quantizedNoteIdx[0];
+    oldQuantizedNoteIdx[1] = quantizedNoteIdx[1];
 
     //-------------------------------Analog read and qnt setting--------------------------
     channelADC[0] = analogRead(CV_1_IN_PIN) / ADCalibration[0];
@@ -561,11 +522,11 @@ void HandleInputs() {
             DACWrite(ch + 1, CVOutput[ch]);
         }
         // Get the quantized note from the CV output
-        GetNote(CVOutput[ch], &quantizedNode[ch]);
+        GetNote(CVOutput[ch], &quantizedNoteIdx[ch]);
     }
 
     // Trigger display refresh if the note has changed
-    if ((oldQuantizedNode[0] != quantizedNode[0]) || (oldQuantizedNode[1] != quantizedNode[1])) {
+    if ((oldQuantizedNoteIdx[0] != quantizedNoteIdx[0]) || (oldQuantizedNoteIdx[1] != quantizedNoteIdx[1])) {
         displayRefresh = 1;
     }
 }
@@ -578,4 +539,31 @@ void loop() {
     HandleInputs();
 
     HandleOLED();
+}
+
+void setup() {
+    // Initialize Serial Monitor
+    Serial.begin(115200);
+
+    InitIO();  // Initialize IO pins
+
+    // OLED initialize
+    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    display.clearDisplay();
+
+    // Load scale and note settings from flash memory
+    LoadSaveParams p = {
+        &attackEnvelope[0],
+        &attackEnvelope[1],
+        &decayEnvelope[0],
+        &decayEnvelope[1],
+        &syncSignal[0],
+        &syncSignal[1],
+        &channelSensitivity[0],
+        &channelSensitivity[1],
+        &octaveShift[0],
+        &octaveShift[1]};
+    Load(p, activeNotes[0], activeNotes[1]);
+    BuildQuantBuffer(activeNotes[0], quantizerThresholdBuff[0]);
+    BuildQuantBuffer(activeNotes[1], quantizerThresholdBuff[1]);
 }
