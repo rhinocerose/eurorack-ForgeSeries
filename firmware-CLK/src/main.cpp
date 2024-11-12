@@ -69,6 +69,7 @@ bool oldSwitchState = 0;
 int menuMode = 0;                                       // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=duty cycle, 7=level3, 8=level4
 bool displayRefresh = 1;                                // Display refresh flag
 bool outputIndicator[] = {false, false, false, false};  // Pulse status for indicator
+bool unsavedChanges = false;                            // Unsaved changes flag
 
 // Play/Pause state
 bool masterPause = false;  // New variable to track play/pause state
@@ -128,6 +129,7 @@ void SetTapTempo() {
         BPM = 60000 / averageTime;
         tapIndex++;
         UpdateBPM();
+        unsavedChanges = true;
     }
 }
 
@@ -189,6 +191,7 @@ void HandleEncoderClick() {
             LoadSaveParams p = {
                 &BPM, &dividerIndex[0], &dividerIndex[1], &dividerIndex[2], &dividerIndex[3], &dutyCycle, &masterPause, &levelValues[2], &levelValues[3], &externalDividerIndex};
             Save(p);
+            unsavedChanges = false;
             display.clearDisplay();  // clear display
             display.setTextSize(2);
             display.setTextColor(BLACK, WHITE);
@@ -222,36 +225,45 @@ void HandleEncoderPosition() {
             case 1:  // Set BPM
                 BPM = BPM - 1;
                 UpdateBPM();
+                unsavedChanges = true;
                 break;
             case 2:  // Set div1
                 dividerIndex[0] = constrain(dividerIndex[0] - 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 3:  // Set div2
                 dividerIndex[1] = constrain(dividerIndex[1] - 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 4:  // Set div3
                 dividerIndex[2] = constrain(dividerIndex[2] - 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 5:  // Set div4
                 dividerIndex[3] = constrain(dividerIndex[3] - 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 6:  // Set external clock divider
                 externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 7:  // Set duty cycle
                 dutyCycle = constrain(dutyCycle - 1, 1, 99);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 8:  // Set level for output 3
                 levelValues[2] = constrain(levelValues[2] - 1, 0, 100);
+                unsavedChanges = true;
                 break;
             case 9:  // Set level for output 4
                 levelValues[3] = constrain(levelValues[3] - 1, 0, 100);
+                unsavedChanges = true;
                 break;
         }
     } else if ((newPosition + 3) / 4 < oldPosition / 4) {  // Increase
@@ -266,41 +278,50 @@ void HandleEncoderPosition() {
             case 1:  // Set BPM
                 BPM = BPM + 1;
                 UpdateBPM();
+                unsavedChanges = true;
                 break;
             case 2:
                 // Set div1
                 dividerIndex[0] = constrain(dividerIndex[0] + 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 3:
                 // Set div2
                 dividerIndex[1] = constrain(dividerIndex[1] + 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 4:
                 // Set div3
                 dividerIndex[2] = constrain(dividerIndex[2] + 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 5:
                 // Set div4
                 dividerIndex[3] = constrain(dividerIndex[3] + 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 6:  // Set external clock divider
                 externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerCount);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 7:
                 // Set duty cycle
                 dutyCycle = constrain(dutyCycle + 1, 1, 99);
                 CalculatePulseIntervals();
+                unsavedChanges = true;
                 break;
             case 8:  // Set level for output 3
                 levelValues[2] = constrain(levelValues[2] + 1, 0, 100);
+                unsavedChanges = true;
                 break;
             case 9:  // Set level for output 4
                 levelValues[3] = constrain(levelValues[3] + 1, 0, 100);
+                unsavedChanges = true;
                 break;
         }
     }
@@ -326,7 +347,7 @@ void HandleOLED() {
 
         // Draw the menu
         if (menuItem == 0 || menuItem == 1) {
-            display.setCursor(10, 0);
+            display.setCursor(5, 0);
             display.setTextSize(3);
             display.print(BPM);
             display.print("BPM");
@@ -403,7 +424,7 @@ void HandleOLED() {
             // Duty Cycle
             display.setCursor(10, yPosition);
             display.println("DUTY CYCLE:");
-            display.setCursor(100, yPosition);
+            display.setCursor(80, yPosition);
             display.print(dutyCycle);
             display.print("%");
             if (menuItem == 7 && menuMode == 0) {
@@ -415,7 +436,7 @@ void HandleOLED() {
             // Level output 3
             display.setCursor(10, yPosition);
             display.print("LVL OUT 3:");
-            display.setCursor(100, yPosition);
+            display.setCursor(80, yPosition);
             display.print(levelValues[2]);
             display.print("%");
             if (menuItem == 8 && menuMode == 0) {
@@ -427,7 +448,7 @@ void HandleOLED() {
             // Level output 4
             display.setCursor(10, yPosition);
             display.print("LVL OUT 4:");
-            display.setCursor(100, yPosition);
+            display.setCursor(80, yPosition);
             display.print(levelValues[3]);
             display.print("%");
             if (menuItem == 9 && menuMode == 0) {
@@ -470,6 +491,11 @@ void HandleOLED() {
                 }
                 yPosition += 9;
             }
+        }
+        // If there are unsaved changes, display an asterisk at the top right corner
+        if (unsavedChanges) {
+            display.setCursor(120, 0);
+            display.print("*");
         }
         display.display();
         displayRefresh = 0;
