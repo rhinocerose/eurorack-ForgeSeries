@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <TimerTCC0.h>
 // Rotary encoder setting
-#define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
+#define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
 // Use flash memory as eeprom
 #include <Adafruit_GFX.h>
@@ -525,7 +525,6 @@ void HandleCVInputs() {
     // }
 }
 
-unsigned long lastDisplayTime = 0;
 void HandleOutputs() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         if (outputs[i].HasPulseChanged()) {
@@ -535,10 +534,13 @@ void HandleOutputs() {
             } else {
                 SetPin(i, LOW);
             }
+            // Dirty hack to refresh the display when the pulse changes only on low dividers
+            // TODO: Figure out a better way to do this without affecting the timing
+            if (outputs[i].GetDividerIndex() <= 7) {
+                displayRefresh = 1;
+            }
         }
     }
-    // Trigger a display refresh
-    // TODO: Figure out a better way to do this without affecting the timing
 }
 
 void ClockPulse() { // Inside the interrupt
