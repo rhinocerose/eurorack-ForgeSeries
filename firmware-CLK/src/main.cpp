@@ -27,13 +27,22 @@
 // Assign ADC calibration value for each channel based on the actual measurement
 float ADCalibration[2] = {0.99728, 0.99728};
 
-// OLED display initialization
+// OLED display object
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-// Rotary encoder creation
+// Rotary encoder object
 Encoder encoder1(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
 float oldPosition = -999;               // rotary encoder library setting
 float newPosition = -999;               // rotary encoder library setting
+
+// Output objects
+Output outputs[NUM_OUTPUTS] = {
+    Output(1, 0),
+    Output(2, 0),
+    Output(3, 1),
+    Output(4, 1)};
+
+// ---- Global variables ----
 
 // ADC input variables
 float channelADC[2], oldChannelADC[2];
@@ -44,14 +53,17 @@ unsigned int lastInternalBPM = 120;
 unsigned int const minBPM = 10;
 unsigned int const maxBPM = 300;
 
+// Play/Pause state
+bool masterPause = false; // New variable to track play/pause state
+
+// Global tick counter
+unsigned long tickCounter = 0;
+
 // External clock variables
 // volatile unsigned long clockInterval = 0;
 // volatile unsigned long lastClockInterruptTime = 0;
 volatile bool usingExternalClock = false;
 // int externalDividerIndex = 5;
-
-// Function prototypes
-void SetTimerPeriod();
 
 // Menu variables
 int menuItems = 16;
@@ -62,56 +74,21 @@ int menuMode = 0;            // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=
 bool displayRefresh = 1;     // Display refresh flag
 bool unsavedChanges = false; // Unsaved changes flag
 
-// Play/Pause state
-bool masterPause = false; // New variable to track play/pause state
-
-// Create the output objects
-Output outputs[NUM_OUTPUTS] = {
-    Output(1, 0),
-    Output(2, 0),
-    Output(3, 1),
-    Output(4, 1)};
+// Function prototypes
+void SetTimerPeriod();
+void UpdateBPM(unsigned int newBPM);
+void SetTapTempo();
+void ToggleMasterPause();
+void HandleEncoderClick();
+void HandleEncoderPosition();
+void HandleOLED();
+void HandleCVInputs();
+void HandleOutputs();
+void ClockPulse();
+void ClockPulseInternal();
+void InitializeTimer();
 
 // ----------------------------------------------
-
-void UpdateBPM(unsigned int newBPM) {
-    BPM = constrain(newBPM, minBPM, maxBPM);
-    SetTimerPeriod();
-}
-
-// Tap tempo function
-static unsigned long lastTapTime = 0;
-static unsigned long tapTimes[3] = {0, 0, 0};
-static int tapIndex = 0;
-void SetTapTempo() {
-    if (usingExternalClock) {
-        return;
-    }
-    unsigned long currentMillis = millis();
-    if (currentMillis - lastTapTime > 2000) {
-        tapIndex = 0;
-    }
-    if (tapIndex < 3) {
-        tapTimes[tapIndex] = currentMillis;
-        tapIndex++;
-        lastTapTime = currentMillis;
-    }
-    if (tapIndex == 3) {
-        unsigned long averageTime = (tapTimes[2] - tapTimes[0]) / 2;
-        unsigned int newBPM = 60000 / averageTime;
-        tapIndex++;
-        UpdateBPM(newBPM);
-        unsavedChanges = true;
-    }
-}
-
-// Pause all outputs
-void ToggleMasterPause() {
-    masterPause = !masterPause;
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        outputs[i].SetPause(masterPause);
-    }
-}
 
 // Handle encoder button click
 void HandleEncoderClick() {
@@ -462,6 +439,58 @@ void HandleOLED() {
     }
 }
 
+void UpdateBPM(unsigned int newBPM) {
+    BPM = constrain(newBPM, minBPM, maxBPM);
+    SetTimerPeriod();
+}
+
+// Tap tempo function
+static unsigned long lastTapTime = 0;
+static unsigned long tapTimes[3] = {0, 0, 0};
+static int tapIndex = 0;
+void SetTapTempo() {
+    if (usingExternalClock) {
+        return;
+    }
+    unsigned long currentMillis = millis();
+    if (currentMillis - lastTapTime > 2000) {
+        tapIndex = 0;
+    }
+    if (tapIndex < 3) {
+        tapTimes[tapIndex] = currentMillis;
+        tapIndex++;
+        lastTapTime = currentMillis;
+    }
+    if (tapIndex == 3) {
+        unsigned long averageTime = (tapTimes[2] - tapTimes[0]) / 2;
+        unsigned int newBPM = 60000 / averageTime;
+        tapIndex++;
+        UpdateBPM(newBPM);
+        unsavedChanges = true;
+    }
+}
+
+// Pause all outputs
+void ToggleMasterPause() {
+    masterPause = !masterPause;
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        outputs[i].SetPause(masterPause);
+    }
+}
+
+void HandleCVInputs() {
+    oldChannelADC[0] = channelADC[0];
+    oldChannelADC[1] = channelADC[1];
+    channelADC[0] = analogRead(CV_1_IN_PIN) / ADCalibration[0];
+    channelADC[1] = analogRead(CV_2_IN_PIN) / ADCalibration[1];
+
+    // Use CV input 1 to control BPM
+    // if (channelADC[0] != oldChannelADC[0] && abs(channelADC[0] - oldChannelADC[0]) > 15) {
+    //     BPM = map(channelADC[0], 0, MaxDACValue, minBPM, maxBPM);
+    //     UpdateBPM();
+    // }
+}
+
 // const unsigned long TAP_TIMEOUT_MS = 1500;
 // const int MAX_TAPS = 3;
 // const unsigned int BPM_THRESHOLD = 3;
@@ -511,19 +540,6 @@ void HandleOLED() {
 //         }
 //     }
 // }
-
-void HandleCVInputs() {
-    oldChannelADC[0] = channelADC[0];
-    oldChannelADC[1] = channelADC[1];
-    channelADC[0] = analogRead(CV_1_IN_PIN) / ADCalibration[0];
-    channelADC[1] = analogRead(CV_2_IN_PIN) / ADCalibration[1];
-
-    // Use CV input 1 to control BPM
-    // if (channelADC[0] != oldChannelADC[0] && abs(channelADC[0] - oldChannelADC[0]) > 15) {
-    //     BPM = map(channelADC[0], 0, MaxDACValue, minBPM, maxBPM);
-    //     UpdateBPM();
-    // }
-}
 
 void HandleOutputs() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
@@ -601,8 +617,6 @@ void setup() {
 }
 
 void loop() {
-    // Measure the time it takes to run the loop averaging over 1000 samples
-
     HandleEncoderClick();
 
     HandleEncoderPosition();
@@ -611,9 +625,9 @@ void loop() {
 
     // HandleExternalClock();
 
-    MEASURE_TIME("HandleOutputs", HandleOutputs());
+    HandleOutputs();
 
-    MEASURE_TIME("HandleOLED", HandleOLED());
+    HandleOLED();
 
     ConsoleReporter();
 }
