@@ -46,3 +46,8 @@ All contributions are welcome, open an issue for questions/problems or a pull re
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more information.
+
+## Acknowledgements
+
+Parts of the code are inspired by Hagiwo's and Quinienl's [LittleBen](https://github.com/Quinienl/LittleBen-Firmware) code.
+Thanks for the inspiration!
