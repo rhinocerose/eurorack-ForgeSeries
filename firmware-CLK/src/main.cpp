@@ -18,7 +18,7 @@
 // Define the amount of clock outputs
 #define NUM_OUTPUTS 4
 
-#define PPQN 384
+#define PPQN 96
 
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
@@ -66,7 +66,7 @@ volatile bool usingExternalClock = false;
 // int externalDividerIndex = 5;
 
 // Menu variables
-int menuItems = 16;
+int menuItems = 24;
 int menuItem = 2;
 bool switchState = 1;
 bool oldSwitchState = 0;
@@ -81,7 +81,7 @@ void SetTapTempo();
 void ToggleMasterPause();
 void HandleEncoderClick();
 void HandleEncoderPosition();
-void HandleOLED();
+void HandleDisplay();
 void HandleCVInputs();
 void HandleOutputs();
 void ClockPulse();
@@ -122,29 +122,84 @@ void HandleEncoderClick() {
             menuMode = 6;
         } else if (menuMode == 6) {
             menuMode = 0;
-        } else if (menuItem == 7 && menuMode == 0) { // Set duty cycle
+        }
+        // --- Page 3 (Pause) - Index 7-10
+        if (menuItem == 7 && menuMode == 0) {
+            outputs[0].TogglePause();
+        }
+        if (menuItem == 8 && menuMode == 0) {
+            outputs[1].TogglePause();
+        }
+        if (menuItem == 9 && menuMode == 0) {
+            outputs[2].TogglePause();
+        }
+        if (menuItem == 10 && menuMode == 0) {
+            outputs[3].TogglePause();
+        }
+
+        // --- Page 4 (Swing) - Index 11-14
+        if (menuItem == 11 && menuMode == 0) { // Set swing amount for outputs
             menuMode = 7;
         } else if (menuMode == 7) {
             menuMode = 0;
         }
-        // Level control for output 3
-        else if (menuItem == 8 && menuMode == 0) {
+        if (menuItem == 12 && menuMode == 0) { // Set swing amount for outputs
             menuMode = 8;
         } else if (menuMode == 8) {
             menuMode = 0;
         }
-        // Level control for output 4
-        else if (menuItem == 9 && menuMode == 0) {
+        if (menuItem == 13 && menuMode == 0) { // Set swing amount for outputs
             menuMode = 9;
         } else if (menuMode == 9) {
             menuMode = 0;
         }
-        // Tap tempo
-        else if (menuItem == 10 && menuMode == 0) {
+        if (menuItem == 14 && menuMode == 0) { // Set swing amount for outputs
+            menuMode = 10;
+        } else if (menuMode == 10) {
+            menuMode = 0;
+        }
+
+        // --- Page 4 (Swing Every) - Index 15-18
+        if (menuItem == 15 && menuMode == 0) { // Set swing amount for outputs
+            menuMode = 11;
+        } else if (menuMode == 11) {
+            menuMode = 0;
+        }
+        if (menuItem == 16 && menuMode == 0) { // Set swing amount for outputs
+            menuMode = 12;
+        } else if (menuMode == 12) {
+            menuMode = 0;
+        }
+        if (menuItem == 17 && menuMode == 0) { // Set swing amount for outputs
+            menuMode = 13;
+        } else if (menuMode == 13) {
+            menuMode = 0;
+        }
+        if (menuItem == 18 && menuMode == 0) { // Set swing amount for outputs
+            menuMode = 14;
+        } else if (menuMode == 14) {
+            menuMode = 0;
+        }
+        // --- Page 5 (Duty cycle / Level) - Index 19-23
+        if (menuItem == 19 && menuMode == 0) { // Set duty cycle
+            menuMode = 15;                     // Mode 15
+        } else if (menuMode == 15) {
+            menuMode = 0;
+        }
+        if (menuItem == 20 && menuMode == 0) { // Level control for output 3
+            menuMode = 16;                     // Mode 16
+        } else if (menuMode == 16) {
+            menuMode = 0;
+        }
+        if (menuItem == 21 && menuMode == 0) { // Level control for output 4
+            menuMode = 17;                     // Mode 17
+        } else if (menuMode == 17) {
+            menuMode = 0;
+        }
+        if (menuItem == 22 && menuMode == 0) { // Tap tempo
             SetTapTempo();
         }
-        // Save settings
-        else if (menuItem == 11 && menuMode == 0) {
+        if (menuItem == 23 && menuMode == 0) { // Save settings
             LoadSaveParams p;
             p.BPM = BPM;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
@@ -152,6 +207,8 @@ void HandleEncoderClick() {
                 p.dutyCycle[i] = outputs[i].GetDutyCycle();
                 p.pausedState[i] = outputs[i].GetPause();
                 p.level[i] = outputs[i].GetLevel();
+                p.swingIdx[i] = outputs[i].GetSwingAmountIndex();
+                p.swingEvery[i] = outputs[i].GetSwingEvery();
             }
             p.extDivIdx = 5; // TODO: Implement external clock divider
             Save(p);
@@ -162,14 +219,6 @@ void HandleEncoderClick() {
             display.print("SAVED");
             display.display();
             delay(1000);
-        } else if (menuItem == 12 && menuMode == 0) {
-            outputs[0].TogglePause();
-        } else if (menuItem == 13 && menuMode == 0) {
-            outputs[1].TogglePause();
-        } else if (menuItem == 14 && menuMode == 0) {
-            outputs[2].TogglePause();
-        } else if (menuItem == 15 && menuMode == 0) {
-            outputs[3].TogglePause();
         }
     }
 }
@@ -210,18 +259,50 @@ void HandleEncoderPosition() {
             // CalculatePulseIntervals();
             unsavedChanges = true;
             break;
-        case 7: // Set duty cycle
+        case 7: // Set swing amount for output 1
+            outputs[0].DecreaseSwingAmount();
+            unsavedChanges = true;
+            break;
+        case 8: // Set swing amount for output 2
+            outputs[1].DecreaseSwingAmount();
+            unsavedChanges = true;
+            break;
+        case 9: // Set swing amount for output 3
+            outputs[2].DecreaseSwingAmount();
+            unsavedChanges = true;
+            break;
+        case 10: // Set swing amount for output 4
+            outputs[3].DecreaseSwingAmount();
+            unsavedChanges = true;
+            break;
+        case 11: // Set swing every for output 1
+            outputs[0].DecreaseSwingEvery();
+            unsavedChanges = true;
+            break;
+        case 12: // Set swing every for output 2
+            outputs[1].DecreaseSwingEvery();
+            unsavedChanges = true;
+            break;
+        case 13: // Set swing every for output 3
+            outputs[2].DecreaseSwingEvery();
+            unsavedChanges = true;
+            break;
+        case 14: // Set swing every for output 4
+            outputs[3].DecreaseSwingEvery();
+            unsavedChanges = true;
+            break;
+
+        case 15: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].DecreaseDutyCycle();
             }
-            // CalculatePulseIntervals();
             unsavedChanges = true;
             break;
-        case 8: // Set level for output 3
+        case 16: // Set level for output 3
             outputs[2].DecreaseLevel();
             unsavedChanges = true;
             break;
-        case 9: // Set level for output 4
+        case 17: // Set level for output 4
             outputs[3].DecreaseLevel();
             unsavedChanges = true;
             break;
@@ -263,18 +344,50 @@ void HandleEncoderPosition() {
             // externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerCount);
             unsavedChanges = true;
             break;
-        case 7:
+        case 7: // Set swing amount for output 1
+            outputs[0].IncreaseSwingAmount();
+            unsavedChanges = true;
+            break;
+        case 8: // Set swing amount for output 2
+            outputs[1].IncreaseSwingAmount();
+            unsavedChanges = true;
+            break;
+        case 9: // Set swing amount for output 3
+            outputs[2].IncreaseSwingAmount();
+            unsavedChanges = true;
+            break;
+        case 10: // Set swing amount for output 4
+            outputs[3].IncreaseSwingAmount();
+            unsavedChanges = true;
+            break;
+        case 11: // Set swing every for output 1
+            outputs[0].IncreaseSwingEvery();
+            unsavedChanges = true;
+            break;
+        case 12: // Set swing every for output 2
+            outputs[1].IncreaseSwingEvery();
+            unsavedChanges = true;
+            break;
+        case 13: // Set swing every for output 3
+            outputs[2].IncreaseSwingEvery();
+            unsavedChanges = true;
+            break;
+        case 14: // Set swing every for output 4
+            outputs[3].IncreaseSwingEvery();
+            unsavedChanges = true;
+            break;
+        case 15:
             // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].IncreaseDutyCycle();
             }
             unsavedChanges = true;
             break;
-        case 8: // Set level for output 3
+        case 16: // Set level for output 3
             outputs[2].IncreaseLevel();
             unsavedChanges = true;
             break;
-        case 9: // Set level for output 4
+        case 17: // Set level for output 4
             outputs[3].IncreaseLevel();
             unsavedChanges = true;
             break;
@@ -282,7 +395,17 @@ void HandleEncoderPosition() {
     }
 }
 
-void HandleOLED() {
+void redrawDisplay() {
+    // If there are unsaved changes, display an asterisk at the top right corner
+    if (unsavedChanges) {
+        display.setCursor(120, 0);
+        display.print("*");
+    }
+    display.display();
+    displayRefresh = 0;
+}
+
+void HandleDisplay() {
     if (displayRefresh == 1) {
         display.clearDisplay();
 
@@ -331,7 +454,10 @@ void HandleOLED() {
                     display.drawRect((i * 30) + 16, 56, 8, 8, WHITE);
                 }
             }
-        } else if (menuItem >= 2 && menuItem <= 6) {
+            redrawDisplay();
+            return;
+        }
+        if (menuItem >= 2 && menuItem <= 6) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("CLOCK DIVIDERS");
@@ -358,57 +484,10 @@ void HandleOLED() {
             } else if (menuMode == 6) {
                 display.fillTriangle(1, 55, 1, 63, 5, 59, 1);
             }
-        } else if (menuItem >= 7 && menuItem <= 11) {
-            display.setTextSize(1);
-            int yPosition = 0;
-            // Duty Cycle
-            display.setCursor(10, yPosition);
-            display.println("DUTY CYCLE:");
-            display.setCursor(80, yPosition);
-            display.print(outputs[0].GetDutyCycleDescription()); // Since all outputs have the same duty cycle
-            if (menuItem == 7 && menuMode == 0) {
-                display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
-            } else if (menuMode == 7) {
-                display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
-            }
-            yPosition += 9;
-            // Level output 3
-            display.setCursor(10, yPosition);
-            display.print("LVL OUT 3:");
-            display.setCursor(80, yPosition);
-            display.print(outputs[2].GetLevelDescription());
-            if (menuItem == 8 && menuMode == 0) {
-                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == 8) {
-                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            }
-            yPosition += 9;
-            // Level output 4
-            display.setCursor(10, yPosition);
-            display.print("LVL OUT 4:");
-            display.setCursor(80, yPosition);
-            display.print(outputs[3].GetLevelDescription());
-            if (menuItem == 9 && menuMode == 0) {
-                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == 9) {
-                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            }
-            yPosition += 15;
-            // Tap tempo
-            display.setCursor(10, yPosition);
-            display.print("TAP TEMPO");
-            display.print(" (" + String(BPM) + " BPM)");
-            if (menuItem == 10) {
-                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            }
-            yPosition += 15;
-            // Save
-            display.setCursor(10, yPosition);
-            display.print("SAVE");
-            if (menuItem == 11) {
-                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            }
-        } else if (menuItem >= 12 && menuItem <= 15) {
+            redrawDisplay();
+            return;
+        }
+        if (menuItem >= 7 && menuItem <= 10) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("OUTPUT STATUS");
@@ -419,23 +498,109 @@ void HandleOLED() {
                 display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
                 display.print(outputs[i].GetPause() ? "OFF" : "ON");
-                if (menuItem == i + 12) {
+                if (menuItem == i + 7) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == i + 12) {
+                    } else if (menuMode == i + 7) {
                         display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     }
                 }
                 yPosition += 9;
             }
+            redrawDisplay();
+            return;
         }
-        // If there are unsaved changes, display an asterisk at the top right corner
-        if (unsavedChanges) {
-            display.setCursor(120, 0);
-            display.print("*");
+        if (menuItem >= 11 && menuItem <= 18) {
+            display.setTextSize(1);
+            display.setCursor(10, 1);
+            display.println("OUTPUT SWING");
+            display.setCursor(64, 20);
+            display.println("SET");
+            display.setCursor(94, 20);
+            display.println("EVE");
+            int yPosition = 29;
+            for (int i = 0; i < NUM_OUTPUTS; i++) {
+                // Display Swing setting and every for each output
+                display.setCursor(10, yPosition);
+                display.print("OUTPUT " + String(i + 1) + ":");
+                display.setCursor(70, yPosition);
+                display.print(outputs[i].GetSwingAmountDescription());
+                display.setCursor(100, yPosition);
+                display.print(outputs[i].GetSwingEvery());
+                if (menuItem == i + 11) {
+                    display.fillTriangle(59, 20, 59, 26, 62, 23, 1);
+                    if (menuMode == 0) {
+                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    } else if (menuMode == i + 7) {
+                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    }
+                }
+                if (menuItem == i + 15) {
+                    display.fillTriangle(89, 20, 89, 26, 92, 23, 1);
+                    if (menuMode == 0) {
+                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    } else if (menuMode == i + 11) {
+                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    }
+                }
+                yPosition += 9;
+            }
+            redrawDisplay();
+            return;
         }
-        display.display();
-        displayRefresh = 0;
+        if (menuItem >= 19 && menuItem <= 23) {
+            display.setTextSize(1);
+            int yPosition = 0;
+            // Duty Cycle
+            display.setCursor(10, yPosition);
+            display.println("DUTY CYCLE:");
+            display.setCursor(80, yPosition);
+            display.print(outputs[0].GetDutyCycleDescription()); // Since all outputs have the same duty cycle
+            if (menuItem == 19 && menuMode == 0) {
+                display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
+            } else if (menuMode == 15) {
+                display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
+            }
+            yPosition += 9;
+            // Level output 3
+            display.setCursor(10, yPosition);
+            display.print("LVL OUT 3:");
+            display.setCursor(80, yPosition);
+            display.print(outputs[2].GetLevelDescription());
+            if (menuItem == 20 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == 16) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            // Level output 4
+            display.setCursor(10, yPosition);
+            display.print("LVL OUT 4:");
+            display.setCursor(80, yPosition);
+            display.print(outputs[3].GetLevelDescription());
+            if (menuItem == 21 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == 17) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 15;
+            // Tap tempo
+            display.setCursor(10, yPosition);
+            display.print("TAP TEMPO");
+            display.print(" (" + String(BPM) + " BPM)");
+            if (menuItem == 22) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 15;
+            // Save
+            display.setCursor(10, yPosition);
+            display.print("SAVE");
+            if (menuItem == 23) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            redrawDisplay();
+            return;
+        }
     }
 }
 
@@ -543,35 +708,33 @@ void HandleCVInputs() {
 
 void HandleOutputs() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        if (outputs[i].HasPulseChanged()) {
-            // Set the output level based on the pulse state
-            if (outputs[i].GetPulseState()) {
-                SetPin(i, outputs[i].GetOutputLevel());
-            } else {
-                SetPin(i, LOW);
-            }
-            // Dirty hack to refresh the display when the pulse changes only on low dividers
-            // TODO: Figure out a better way to do this without affecting the timing
-            if (outputs[i].GetDividerIndex() <= 7) {
-                displayRefresh = 1;
-            }
+        // Set the output level based on the pulse state
+        if (outputs[i].GetPulseState()) {
+            SetPin(i, outputs[i].GetOutputLevel());
+        } else {
+            SetPin(i, LOW);
         }
     }
 }
 
 void ClockPulse() { // Inside the interrupt
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        outputs[i].Pulse(PPQN);
+        outputs[i].Pulse(PPQN, tickCounter);
     }
+    // TODO: Implement figure out the best way to refresh the display without affecting the timing
+    // if ((tickCounter % 48 == 0) && (menuItem == 0 || menuItem == 1)) {
+    //     displayRefresh = 1;
+    // }
+    tickCounter++;
 }
 
 void ClockPulseInternal() { // Inside the interrupt
     ClockPulse();
 }
 
-// Set the timer period based on the BPM and PPQN
+// Set the timer period based on the BPM and PPQN (/4 since 1 BPM = 4 quarter notes)
 void SetTimerPeriod() {
-    TimerTcc0.setPeriod(60L * 1000 * 1000 / BPM / PPQN);
+    TimerTcc0.setPeriod(60L * 1000 * 1000 / BPM / PPQN / 4);
 }
 
 void InitializeTimer() {
@@ -608,6 +771,8 @@ void setup() {
         outputs[i].SetDutyCycle(p.dutyCycle[i]);
         outputs[i].SetPause(p.pausedState[i]);
         outputs[i].SetLevel(p.level[i]);
+        outputs[i].SetSwingAmount(p.swingIdx[i]);
+        outputs[i].SetSwingEvery(p.swingEvery[i]);
     }
     // externalDividerIndex = p.extDivIdx;
 
@@ -627,7 +792,7 @@ void loop() {
 
     HandleOutputs();
 
-    HandleOLED();
+    HandleDisplay();
 
     ConsoleReporter();
 }

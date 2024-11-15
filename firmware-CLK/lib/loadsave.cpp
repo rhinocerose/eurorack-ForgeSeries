@@ -13,6 +13,8 @@ struct LoadSaveParams {
     bool pausedState[NUM_OUTPUTS];
     int level[NUM_OUTPUTS];
     int extDivIdx;
+    int swingIdx[NUM_OUTPUTS];
+    int swingEvery[NUM_OUTPUTS];
 };
 
 // Save data to flash memory
@@ -32,6 +34,12 @@ void Save(LoadSaveParams p) { // save setting data to flash memory
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.level[i]);
     }
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        EEPROM.write(idx++, p.swingIdx[i]);
+    }
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        EEPROM.write(idx++, p.swingEvery[i]);
+    }
     EEPROM.write(idx++, p.extDivIdx);
     EEPROM.commit();
 }
@@ -45,6 +53,8 @@ LoadSaveParams LoadDefaultParams() {
         p.dutyCycle[i] = 50;
         p.pausedState[i] = false;
         p.level[i] = 100;
+        p.swingIdx[i] = 0;
+        p.swingEvery[i] = 2;
     }
     p.extDivIdx = 5;
     return p;
@@ -70,6 +80,12 @@ LoadSaveParams Load() {
             p.level[i] = EEPROM.read(idx++);
         }
         p.extDivIdx = EEPROM.read(idx++);
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            p.swingIdx[i] = EEPROM.read(idx++);
+        }
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            p.swingEvery[i] = EEPROM.read(idx++);
+        }
     } else {
         // If no eeprom data, set default values
         p = LoadDefaultParams();
