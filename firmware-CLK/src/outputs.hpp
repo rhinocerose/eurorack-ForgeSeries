@@ -14,11 +14,11 @@ class Output {
     void SetPulse(bool state) { _isPulseOn = state; }
     void TogglePulse() { _isPulseOn = !_isPulseOn; }
     bool HasPulseChanged();
-    // Pause State
-    bool GetPause() { return _paused; }
-    void SetPause(bool pause) { _paused = pause; }
-    void TogglePause() { _paused = !_paused; }
-    void ToggleMasterPause();
+    // Output State
+    bool GetOutputState() { return _state; }
+    void SetOutputState(bool state) { _state = state; }
+    void ToggleOutputState() { _state = !_state; }
+    void ToggleMasterState();
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
     void SetDivider(int index) { _dividerIndex = constrain(index, 0, dividerAmount - 1); }
@@ -95,9 +95,9 @@ class Output {
     int _level = 100;             // Default to 100%
     bool _isPulseOn = false;      // Pulse state
     bool _lastPulseState = false; // Last pulse state
-    bool _paused = false;         // Paused state
-    bool _oldPaused = false;      // Previous pause state (for master pause)
-    bool _masterPaused = false;   // Master pause state
+    bool _state = true;           // Output state
+    bool _oldState = true;        // Previous output state (for master stop)
+    bool _masterState = true;     // Master output state
     int _pulseProbability = 100;  // % chance of pulse
 
     // Swing variables
@@ -125,8 +125,8 @@ void Output::Pulse(int PPQN, unsigned long tickCounter) {
         tickCounterSwing = tickCounter - _swingAmounts[_swingAmountIndex];
     }
 
-    // If not paused, generate the pulse
-    if (!_paused) {
+    // If not stopped, generate the pulse
+    if (_state) {
         // Calculate the pulse duration based on the duty cycle
         int _pulseDuration = int(PPQN / _clockDividers[_dividerIndex] * (_dutyCycle / 100.0));
         // If the tick counter is a multiple of the clock divider, generate a pulse
@@ -163,14 +163,14 @@ bool Output::HasPulseChanged() {
     return pulseChanged;
 }
 
-// Master pause pause all outputs but on resume, the outputs will resume to state before pause
-void Output::ToggleMasterPause() {
-    _masterPaused = !_masterPaused;
-    if (_masterPaused) {
-        _oldPaused = _paused;
-        _paused = true;
+// Master stop, stops all outputs but on resume, the outputs will resume to previous state
+void Output::ToggleMasterState() {
+    _masterState = !_masterState;
+    if (!_masterState) {
+        _oldState = _state;
+        _state = false;
     } else {
-        _paused = _oldPaused;
+        _state = _oldState;
     }
 }
 

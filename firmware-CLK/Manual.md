@@ -18,10 +18,14 @@ ClockForge provides clock signals for synchronizing other modules in your Eurora
 
 ## Configuration Parameters
 
+Whenever a parameter is changed, a small asterisk will be shown in the top right corner of the screen. This indicates that the current settings were modified and not saved.
+
 ### Global Parameters
 
 - **BPM**: Beats per minute, adjustable from 10 to 300.
-- **Master Pause**: Pause or resume all outputs.
+- **Master Stop**: Stop or resume all outputs.
+
+The small squares on main screen shows the status of each output. If the square is filled, the output is active. If the square is empty, the output is stopped.
 
 ### Output Parameters
 
@@ -29,7 +33,7 @@ Each of the four outputs can be individually configured with the following param
 
 - **Divider**: Set the clock multiplication or division ratio.
 - **Duty Cycle**: Adjust the pulse width of the clock signal.
-- **Pause State**: Pause or resume the specific output.
+- **Output State**: Stop or resume the specific output.
 - **Level**: Set the output voltage level (only for CV outputs 3 and 4).
 - **Swing Amount**: Adjust the swing amount for the output.
 - **Swing Every**: Set the pulse interval for applying swing.
@@ -50,7 +54,7 @@ Each of the four outputs can be individually configured with the following param
 
 ### Global Play/Stop
 
-1. Press the play/stop button to pause or resume all outputs when the PLAY/STOP word is underlined.
+1. Press the play/stop button to stop or resume all outputs when the PLAY/STOP word is underlined.
 
 ### Output clock division/multiplication
 
@@ -124,7 +128,7 @@ The last saved configuration is automatically loaded on boot.
 ## Troubleshooting
 
 - **No Display**: Check the OLED connection and ensure the display address is set correctly.
-- **No Output**: Verify the output settings and ensure the module is not paused.
+- **No Output**: Verify the output settings and ensure the module is not stopped.
 - **Inconsistent BPM**: Ensure the external clock signal is stable and properly connected.
 
 ## Contact

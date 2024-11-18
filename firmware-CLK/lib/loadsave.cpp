@@ -13,7 +13,7 @@ struct LoadSaveParams {
     unsigned int BPM;
     int divIdx[NUM_OUTPUTS];
     int dutyCycle[NUM_OUTPUTS];
-    bool pausedState[NUM_OUTPUTS];
+    bool outputState[NUM_OUTPUTS];
     int level[NUM_OUTPUTS];
     int swingIdx[NUM_OUTPUTS];
     int swingEvery[NUM_OUTPUTS];
@@ -35,7 +35,7 @@ void Save(const LoadSaveParams &p, int slot) { // save setting data to flash mem
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.divIdx[i]);
         EEPROM.write(idx++, p.dutyCycle[i]);
-        EEPROM.write(idx++, p.pausedState[i]);
+        EEPROM.write(idx++, p.outputState[i]);
         EEPROM.write(idx++, p.level[i]);
         EEPROM.write(idx++, p.swingIdx[i]);
         EEPROM.write(idx++, p.swingEvery[i]);
@@ -56,7 +56,7 @@ LoadSaveParams LoadDefaultParams() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         p.divIdx[i] = 5;
         p.dutyCycle[i] = 50;
-        p.pausedState[i] = false;
+        p.outputState[i] = true;
         p.level[i] = 100;
         p.swingIdx[i] = 0;
         p.swingEvery[i] = 2;
@@ -82,7 +82,7 @@ LoadSaveParams Load(int slot) {
         for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.divIdx[i] = EEPROM.read(idx++);
             p.dutyCycle[i] = EEPROM.read(idx++);
-            p.pausedState[i] = EEPROM.read(idx++);
+            p.outputState[i] = EEPROM.read(idx++);
             p.level[i] = EEPROM.read(idx++);
             p.swingIdx[i] = EEPROM.read(idx++);
             p.swingEvery[i] = EEPROM.read(idx++);

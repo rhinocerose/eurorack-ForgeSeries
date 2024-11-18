@@ -53,8 +53,8 @@ unsigned int lastInternalBPM = 120;
 unsigned int const minBPM = 10;
 unsigned int const maxBPM = 300;
 
-// Play/Pause state
-bool masterPause = false; // New variable to track play/pause state
+// Play/Stop state
+bool masterStop = false; // New variable to track play/stop state
 
 // Global tick counter
 unsigned long tickCounter = 0;
@@ -77,7 +77,7 @@ int euclideanOutput = 0;     // Euclidean rhythm output index
 // Function prototypes
 void UpdateBPM(unsigned int);
 void SetTapTempo();
-void ToggleMasterPause();
+void ToggleMasterStop();
 void HandleEncoderClick();
 void HandleEncoderPosition();
 void HandleDisplay();
@@ -101,8 +101,8 @@ void HandleEncoderClick() {
             case 1: // Set BPM
                 menuMode = 1;
                 break;
-            case 2: // Toggle paused state
-                ToggleMasterPause();
+            case 2: // Toggle stopped state
+                ToggleMasterStop();
                 break;
             case 3: // Set div1
                 menuMode = 3;
@@ -117,16 +117,20 @@ void HandleEncoderClick() {
                 menuMode = 6;
                 break;
             case 7:
-                outputs[0].TogglePause();
+                outputs[0].ToggleOutputState();
+                unsavedChanges = true;
                 break;
             case 8:
-                outputs[1].TogglePause();
+                outputs[1].ToggleOutputState();
+                unsavedChanges = true;
                 break;
             case 9:
-                outputs[2].TogglePause();
+                outputs[2].ToggleOutputState();
+                unsavedChanges = true;
                 break;
             case 10:
-                outputs[3].TogglePause();
+                outputs[3].ToggleOutputState();
+                unsavedChanges = true;
                 break;
             case 11: // Set swing amount for outputs
                 menuMode = 11;
@@ -198,7 +202,7 @@ void HandleEncoderClick() {
                 for (int i = 0; i < NUM_OUTPUTS; i++) {
                     p.divIdx[i] = outputs[i].GetDividerIndex();
                     p.dutyCycle[i] = outputs[i].GetDutyCycle();
-                    p.pausedState[i] = outputs[i].GetPause();
+                    p.outputState[i] = outputs[i].GetOutputState();
                     p.level[i] = outputs[i].GetLevel();
                     p.swingIdx[i] = outputs[i].GetSwingAmountIndex();
                     p.swingEvery[i] = outputs[i].GetSwingEvery();
@@ -235,56 +239,67 @@ void HandleEncoderPosition() {
             break;
         case 1: // Set BPM
             UpdateBPM(BPM - 1);
+            unsavedChanges = true;
             break;
         case 3:
         case 4:
         case 5:
         case 6: // Set div1, div2, div3, div4
             outputs[menuMode - 3].DecreaseDivider();
+            unsavedChanges = true;
             break;
+        case 11:
         case 12:
         case 13:
-        case 14:
-        case 15: // Set swing amount for outputs
-            outputs[menuMode - 12].DecreaseSwingAmount();
+        case 14: // Set swing amount for outputs
+            outputs[menuMode - 11].DecreaseSwingAmount();
+            unsavedChanges = true;
             break;
+        case 15:
         case 16:
         case 17:
-        case 18:
-        case 19: // Set swing every for outputs
-            outputs[menuMode - 16].DecreaseSwingEvery();
+        case 18: // Set swing every for outputs
+            outputs[menuMode - 15].DecreaseSwingEvery();
+            unsavedChanges = true;
             break;
+        case 19:
         case 20:
         case 21:
-        case 22:
-        case 23: // Set Pulse Probability for outputs
-            outputs[menuMode - 20].DecreasePulseProbability();
+        case 22: // Set Pulse Probability for outputs
+            outputs[menuMode - 19].DecreasePulseProbability();
+            unsavedChanges = true;
             break;
-        case 24: // Set euclidean output to edit
+        case 23: // Set euclidean output to edit
             euclideanOutput = (euclideanOutput - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - 1;
+            unsavedChanges = true;
             break;
-        case 26: // Set Euclidean rhythm step length
+        case 25: // Set Euclidean rhythm step length
             outputs[euclideanOutput].DecreaseEuclideanSteps();
+            unsavedChanges = true;
             break;
-        case 27: // Set Euclidean rhythm number of triggers
+        case 26: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].DecreaseEuclideanTriggers();
+            unsavedChanges = true;
             break;
-        case 28: // Set Euclidean rhythm rotation
+        case 27: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].DecreaseEuclideanRotation();
+            unsavedChanges = true;
             break;
-        case 29: // Set duty cycle
+        case 28: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].DecreaseDutyCycle();
             }
+            unsavedChanges = true;
             break;
-        case 30: // Set level for output 3
+        case 29: // Set level for output 3
             outputs[2].DecreaseLevel();
+            unsavedChanges = true;
             break;
-        case 31: // Set level for output 4
+        case 30: // Set level for output 4
             outputs[3].DecreaseLevel();
+            unsavedChanges = true;
             break;
         }
-        unsavedChanges = true;
     } else if ((newPosition + 3) / 4 < oldPosition / 4) { // Increase, turned clockwise
         oldPosition = newPosition;
         displayRefresh = 1;
@@ -294,56 +309,67 @@ void HandleEncoderPosition() {
             break;
         case 1: // Set BPM
             UpdateBPM(BPM + 1);
+            unsavedChanges = true;
             break;
         case 3:
         case 4:
         case 5:
         case 6: // Set div1, div2, div3, div4
             outputs[menuMode - 3].IncreaseDivider();
+            unsavedChanges = true;
             break;
+        case 11:
         case 12:
         case 13:
-        case 14:
-        case 15: // Set swing amount for outputs
-            outputs[menuMode - 12].IncreaseSwingAmount();
+        case 14: // Set swing amount for outputs
+            outputs[menuMode - 11].IncreaseSwingAmount();
+            unsavedChanges = true;
             break;
+        case 15:
         case 16:
         case 17:
-        case 18:
-        case 19: // Set swing every for outputs
-            outputs[menuMode - 16].IncreaseSwingEvery();
+        case 18: // Set swing every for outputs
+            outputs[menuMode - 15].IncreaseSwingEvery();
+            unsavedChanges = true;
             break;
+        case 19:
         case 20:
         case 21:
-        case 22:
-        case 23: // Set Pulse Probability for outputs
-            outputs[menuMode - 20].IncreasePulseProbability();
+        case 22: // Set Pulse Probability for outputs
+            outputs[menuMode - 19].IncreasePulseProbability();
+            unsavedChanges = true;
             break;
-        case 24: // Set euclidean output to edit
+        case 23: // Set euclidean output to edit
             euclideanOutput = (euclideanOutput + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + 1;
+            unsavedChanges = true;
             break;
-        case 26: // Set Euclidean rhythm step length
+        case 25: // Set Euclidean rhythm step length
             outputs[euclideanOutput].IncreaseEuclideanSteps();
+            unsavedChanges = true;
             break;
-        case 27: // Set Euclidean rhythm number of triggers
+        case 26: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].IncreaseEuclideanTriggers();
+            unsavedChanges = true;
             break;
-        case 28: // Set Euclidean rhythm rotation
+        case 27: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].IncreaseEuclideanRotation();
+            unsavedChanges = true;
             break;
-        case 29: // Set duty cycle
+        case 28: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].IncreaseDutyCycle();
             }
+            unsavedChanges = true;
             break;
-        case 30: // Set level for output 3
+        case 29: // Set level for output 3
             outputs[2].IncreaseLevel();
+            unsavedChanges = true;
             break;
-        case 31: // Set level for output 4
+        case 30: // Set level for output 4
             outputs[3].IncreaseLevel();
+            unsavedChanges = true;
             break;
         }
-        unsavedChanges = true;
     }
 }
 
@@ -386,7 +412,7 @@ void HandleDisplay() {
                 if (menuItem == 2) {
                     display.drawLine(43, 42, 88, 42, 1);
                 }
-                if (masterPause) {
+                if (masterStop) {
                     display.fillRoundRect(23, 26, 17, 17, 2, 1);
                     display.print("STOP");
                 } else {
@@ -400,10 +426,10 @@ void HandleDisplay() {
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor((i * 30) + 17, 46);
                 display.print(i + 1);
-                if (outputs[i].GetPause()) {
-                    display.drawRect((i * 30) + 16, 56, 8, 8, WHITE);
-                } else {
+                if (outputs[i].GetOutputState()) {
                     display.fillRect((i * 30) + 16, 56, 8, 8, WHITE);
+                } else {
+                    display.drawRect((i * 30) + 16, 56, 8, 8, WHITE);
                 }
             }
             redrawDisplay();
@@ -434,7 +460,7 @@ void HandleDisplay() {
             return;
         }
 
-        // Clock outputs pause menu
+        // Clock outputs state menu
         menuIdx = 7;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
@@ -445,7 +471,7 @@ void HandleDisplay() {
                 display.setCursor(10, yPosition);
                 display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
-                display.print(outputs[i].GetPause() ? "OFF" : "ON");
+                display.print(outputs[i].GetOutputState() ? "ON" : "OFF");
                 if (menuItem == i + menuIdx) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
@@ -533,8 +559,11 @@ void HandleDisplay() {
             display.setCursor(10, yPosition);
             display.println("EUCLIDEAN RHYTHM");
             yPosition = 20;
+            int xPosition = 64;
             display.setCursor(10, yPosition);
-            display.print("OUTPUT: " + String(euclideanOutput + 1));
+            display.print("OUTPUT: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(euclideanOutput + 1));
             if (menuItem == menuIdx && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx) {
@@ -542,7 +571,9 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("ENABLED: " + String(outputs[euclideanOutput].GetEuclidean() ? "YES" : "NO"));
+            display.print("ENABLED: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(outputs[euclideanOutput].GetEuclidean() ? "YES" : "NO"));
             if (menuItem == menuIdx + 1 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 1) {
@@ -550,7 +581,9 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("STEPS: " + String(outputs[euclideanOutput].GetEuclideanSteps()));
+            display.print("STEPS: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(outputs[euclideanOutput].GetEuclideanSteps()));
             if (menuItem == menuIdx + 2 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 2) {
@@ -558,7 +591,9 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("HITS: " + String(outputs[euclideanOutput].GetEuclideanTriggers()));
+            display.print("HITS: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(outputs[euclideanOutput].GetEuclideanTriggers()));
             if (menuItem == menuIdx + 3 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 3) {
@@ -566,7 +601,9 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("ROTATION: " + String(outputs[euclideanOutput].GetEuclideanRotation()));
+            display.print("ROTATION: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(outputs[euclideanOutput].GetEuclideanRotation()));
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 4) {
@@ -680,11 +717,11 @@ void SetTapTempo() {
     }
 }
 
-// Pause all outputs
-void ToggleMasterPause() {
-    masterPause = !masterPause;
+// Stop all outputs
+void ToggleMasterStop() {
+    masterStop = !masterStop;
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        outputs[i].ToggleMasterPause();
+        outputs[i].ToggleMasterState();
     }
 }
 
@@ -771,7 +808,7 @@ void UpdateParameters(LoadSaveParams p) {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         outputs[i].SetDivider(p.divIdx[i]);
         outputs[i].SetDutyCycle(p.dutyCycle[i]);
-        outputs[i].SetPause(p.pausedState[i]);
+        outputs[i].SetOutputState(p.outputState[i]);
         outputs[i].SetLevel(p.level[i]);
         outputs[i].SetSwingAmount(p.swingIdx[i]);
         outputs[i].SetSwingEvery(p.swingEvery[i]);
