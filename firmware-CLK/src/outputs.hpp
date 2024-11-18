@@ -14,6 +14,7 @@ class Output {
     void SetPulse(bool state) { _isPulseOn = state; }
     void TogglePulse() { _isPulseOn = !_isPulseOn; }
     bool HasPulseChanged();
+    void SetExternalClock(bool state) { _externalClock = state; }
     // Output State
     bool GetOutputState() { return _state; }
     void SetOutputState(bool state) { _state = state; }
@@ -21,7 +22,7 @@ class Output {
     void ToggleMasterState();
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
-    void SetDivider(int index) { _dividerIndex = constrain(index, 0, dividerAmount - 1); }
+    void SetDivider(int index);
     void IncreaseDivider() { SetDivider(_dividerIndex + 1); }
     void DecreaseDivider() { SetDivider(_dividerIndex - 1); }
     String GetDividerDescription() { return _dividerDescription[_dividerIndex]; }
@@ -78,9 +79,9 @@ class Output {
     // Constants
     const int MaxDACValue = 4095;
     static int const dividerAmount = 10;
-    static int const MaxEuclideanSteps = 64;
     float _clockDividers[dividerAmount] = {0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0};
     String _dividerDescription[dividerAmount] = {"/32", "/16", "/8", "/4", "/2", "x1", "x2", "x4", "x8", "x16"};
+    static int const MaxEuclideanSteps = 64;
 
     // The shuffle of the TR-909 delays each even-numbered 1/16th by 2/96 of a beat for shuffle setting 1,
     // 4/96 for 2, 6/96 for 3, 8/96 for 4, 10/96 for 5 and 12/96 for 6.
@@ -89,6 +90,7 @@ class Output {
 
     // Variables
     int _ID;
+    bool _externalClock = false;  // External clock state
     int _outputType;              // 0 = Digital, 1 = DAC
     int _dividerIndex = 5;        // Default to 1
     int _dutyCycle = 50;          // Default to 50%
@@ -184,6 +186,16 @@ int Output::GetOutputLevel() {
         }
     } else {
         return _level * MaxDACValue / 100;
+    }
+}
+
+// Set the divider index
+void Output::SetDivider(int index) {
+    // If using external clock, don't allow the divider to be set below x1 (only clock multiplication)
+    if (_externalClock) {
+        _dividerIndex = constrain(index, 5, dividerAmount - 1);
+    } else {
+        _dividerIndex = constrain(index, 0, dividerAmount - 1);
     }
 }
 

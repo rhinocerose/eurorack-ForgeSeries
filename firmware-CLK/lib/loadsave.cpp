@@ -11,6 +11,7 @@
 // Struct to hold params that are saved/loaded to/from EEPROM
 struct LoadSaveParams {
     unsigned int BPM;
+    unsigned int externalClockDivIdx;
     int divIdx[NUM_OUTPUTS];
     int dutyCycle[NUM_OUTPUTS];
     bool outputState[NUM_OUTPUTS];
@@ -32,6 +33,7 @@ void Save(const LoadSaveParams &p, int slot) { // save setting data to flash mem
     noInterrupts();
     int idx = slot * SLOT_SIZE;
     EEPROM.write(idx++, p.BPM);
+    EEPROM.write(idx++, p.externalClockDivIdx);
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.divIdx[i]);
         EEPROM.write(idx++, p.dutyCycle[i]);
@@ -53,6 +55,7 @@ void Save(const LoadSaveParams &p, int slot) { // save setting data to flash mem
 LoadSaveParams LoadDefaultParams() {
     LoadSaveParams p;
     p.BPM = 120;
+    p.externalClockDivIdx = 0;
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         p.divIdx[i] = 5;
         p.dutyCycle[i] = 50;
@@ -79,6 +82,7 @@ LoadSaveParams Load(int slot) {
         delay(100);
         int idx = slot * SLOT_SIZE;
         p.BPM = EEPROM.read(idx++);
+        p.externalClockDivIdx = EEPROM.read(idx++);
         for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.divIdx[i] = EEPROM.read(idx++);
             p.dutyCycle[i] = EEPROM.read(idx++);

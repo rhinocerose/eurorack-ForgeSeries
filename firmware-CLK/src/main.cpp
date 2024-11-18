@@ -64,8 +64,14 @@ volatile unsigned long clockInterval = 0;
 volatile unsigned long lastClockInterruptTime = 0;
 volatile bool usingExternalClock = false;
 
+static int const dividerAmount = 5;
+int externalClockDividers[dividerAmount] = {1, 2, 4, 8, 16};
+String externalDividerDescription[dividerAmount] = {"x1", "/2 ", "/4", "/8", "/16"};
+int externalDividerIndex = 0;
+unsigned long externalTickCounter = 0;
+
 // Menu variables
-int menuItems = 32;
+int menuItems = 33;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 0;
@@ -116,26 +122,26 @@ void HandleEncoderClick() {
             case 6: // Set div4
                 menuMode = 6;
                 break;
-            case 7:
+            case 7: // External clock divider
+                menuMode = 7;
+                break;
+            case 8:
                 outputs[0].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 8:
+            case 9:
                 outputs[1].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 9:
+            case 10:
                 outputs[2].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 10:
+            case 11:
                 outputs[3].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 11: // Set swing amount for outputs
-                menuMode = 11;
-                break;
-            case 12:
+            case 12: // Set swing amount for outputs
                 menuMode = 12;
                 break;
             case 13:
@@ -144,10 +150,10 @@ void HandleEncoderClick() {
             case 14:
                 menuMode = 14;
                 break;
-            case 15: // Set swing every for outputs
+            case 15:
                 menuMode = 15;
                 break;
-            case 16:
+            case 16: // Set swing every for outputs
                 menuMode = 16;
                 break;
             case 17:
@@ -156,10 +162,10 @@ void HandleEncoderClick() {
             case 18:
                 menuMode = 18;
                 break;
-            case 19: // Set pulse probability for outputs
+            case 19:
                 menuMode = 19;
                 break;
-            case 20:
+            case 20: // Set pulse probability for outputs
                 menuMode = 20;
                 break;
             case 21:
@@ -168,37 +174,41 @@ void HandleEncoderClick() {
             case 22:
                 menuMode = 22;
                 break;
-            case 23: // Select Euclidean rhythm output to edit
+            case 23:
                 menuMode = 23;
                 break;
-            case 24:
+            case 24: // Select Euclidean rhythm output to edit
+                menuMode = 24;
+                break;
+            case 25:
                 outputs[euclideanOutput].ToggleEuclidean();
                 unsavedChanges = true;
                 break;
-            case 25: // Set Euclidean rhythm step length
-                menuMode = 25;
-                break;
-            case 26: // Set Euclidean rhythm number of triggers
+            case 26: // Set Euclidean rhythm step length
                 menuMode = 26;
                 break;
-            case 27: // Set Euclidean rhythm rotation
+            case 27: // Set Euclidean rhythm number of triggers
                 menuMode = 27;
                 break;
-            case 28: // Set duty cycle
+            case 28: // Set Euclidean rhythm rotation
                 menuMode = 28;
                 break;
-            case 29: // Level control for output 3
+            case 29: // Set duty cycle
                 menuMode = 29;
                 break;
-            case 30: // Level control for output 4
+            case 30: // Level control for output 3
                 menuMode = 30;
                 break;
-            case 31:
+            case 31: // Level control for output 4
+                menuMode = 31;
+                break;
+            case 32:
                 SetTapTempo();
                 break; // Tap tempo
-            case 32: { // Save settings
+            case 33: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
+                p.externalClockDivIdx = externalDividerIndex;
                 for (int i = 0; i < NUM_OUTPUTS; i++) {
                     p.divIdx[i] = outputs[i].GetDividerIndex();
                     p.dutyCycle[i] = outputs[i].GetDutyCycle();
@@ -246,6 +256,10 @@ void HandleEncoderPosition() {
         case 5:
         case 6: // Set div1, div2, div3, div4
             outputs[menuMode - 3].DecreaseDivider();
+            unsavedChanges = true;
+            break;
+        case 7: // External clock divider
+            externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerAmount - 1);
             unsavedChanges = true;
             break;
         case 11:
@@ -318,6 +332,10 @@ void HandleEncoderPosition() {
             outputs[menuMode - 3].IncreaseDivider();
             unsavedChanges = true;
             break;
+        case 7: // External clock divider
+            externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerAmount - 1);
+            unsavedChanges = true;
+            break;
         case 11:
         case 12:
         case 13:
@@ -387,6 +405,7 @@ void HandleDisplay() {
     if (displayRefresh == 1) {
         display.clearDisplay();
         int menuIdx = 0;
+        int menuItems = 0;
 
         // Draw the menu
         if (menuItem == 1 || menuItem == 2) {
@@ -438,14 +457,16 @@ void HandleDisplay() {
 
         // Clock dividers menu
         menuIdx = 3;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
+        menuItems = 5;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("CLOCK DIVIDERS");
+            int yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                display.setCursor(10, 20 + (i * 9));
+                display.setCursor(10, yPosition);
                 display.print("OUTPUT " + String(i + 1) + ":");
-                display.setCursor(70, 20 + (i * 9));
+                display.setCursor(84, yPosition);
                 display.print(outputs[i].GetDividerDescription());
                 if (menuItem == i + menuIdx) {
                     if (menuMode == 0) {
@@ -454,6 +475,19 @@ void HandleDisplay() {
                         display.fillTriangle(1, 19 + (i * 9), 1, 27 + (i * 9), 5, 23 + (i * 9), 1);
                     }
                 }
+                yPosition += 9;
+            }
+            // For external clock divider
+            display.setCursor(10, yPosition);
+            display.print("EXT CLK DIV:");
+            display.setCursor(84, yPosition);
+            display.print(externalDividerDescription[externalDividerIndex]);
+            if (menuItem == 7) {
+                if (menuMode == 0) {
+                    display.drawTriangle(1, 19 + (NUM_OUTPUTS * 9), 1, 27 + (NUM_OUTPUTS * 9), 5, 23 + (NUM_OUTPUTS * 9), 1);
+                } else if (menuMode == 7) {
+                    display.fillTriangle(1, 19 + (NUM_OUTPUTS * 9), 1, 27 + (NUM_OUTPUTS * 9), 5, 23 + (NUM_OUTPUTS * 9), 1);
+                }
             }
 
             redrawDisplay();
@@ -461,7 +495,7 @@ void HandleDisplay() {
         }
 
         // Clock outputs state menu
-        menuIdx = 7;
+        menuIdx = 8;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
             display.setCursor(10, 1);
@@ -486,8 +520,8 @@ void HandleDisplay() {
         }
 
         // Swing amount menu
-        menuIdx = 11;
-        if (menuItem >= 11 && menuItem < menuIdx + 8) {
+        menuIdx = 12;
+        if (menuItem >= menuIdx && menuItem < menuIdx + 8) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("OUTPUT SWING");
@@ -526,7 +560,7 @@ void HandleDisplay() {
         }
 
         // Pulse Probability menu
-        menuIdx = 19;
+        menuIdx = 20;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -552,7 +586,7 @@ void HandleDisplay() {
         }
 
         // Euclidean rhythm menu
-        menuIdx = 23;
+        menuIdx = 24;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -634,7 +668,7 @@ void HandleDisplay() {
         }
 
         // Duty cycle and level control menu
-        menuIdx = 28;
+        menuIdx = 29;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -739,20 +773,25 @@ void ClockReceived() {
     unsigned long currentTime = millis();
     unsigned long interval = currentTime - lastClockInterruptTime;
     lastClockInterruptTime = currentTime;
-
-    if (interval > 0) {
-        clockInterval = interval;
-        unsigned int newBPM = 60000 / (interval);
-        if (abs(newBPM - BPM) > 3) { // Adjust BPM if the difference is significant
-            UpdateBPM(newBPM);
-            displayRefresh = 1;
-            DEBUG_PRINT("External clock connected");
+    // Divide the external clock signal by the selected divider
+    if (externalTickCounter % externalClockDividers[externalDividerIndex] == 0) {
+        if (interval > 0) {
+            clockInterval = interval;
+            unsigned int newBPM = 60000 / (interval * externalClockDividers[externalDividerIndex]);
+            if (abs(newBPM - BPM) > 3) { // Adjust BPM if the difference is significant
+                UpdateBPM(newBPM);
+                displayRefresh = 1;
+                DEBUG_PRINT("External clock connected");
+            }
         }
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            outputs[i].SetExternalClock(true);
+        }
+        usingExternalClock = true;
+        tickCounter = 0;
+        ClockPulse(1);
     }
-
-    usingExternalClock = true;
-    tickCounter = 0;
-    ClockPulse(1); // 1 PPQN
+    externalTickCounter++;
 }
 
 void HandleExternalClock() {
@@ -761,6 +800,9 @@ void HandleExternalClock() {
         usingExternalClock = false;
         BPM = lastInternalBPM;
         UpdateBPM(BPM);
+        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            outputs[i].SetExternalClock(false);
+        }
         displayRefresh = 1;
         DEBUG_PRINT("External clock disconnected");
     }
@@ -785,10 +827,6 @@ void HandleOutputs() {
         } else {
             SetPin(i, LOW);
         }
-        // TODO: Implement figure out the best way to refresh the display without affecting the timing
-        // if (outputs[i].HasPulseChanged()) {
-        //     displayRefresh = 1;
-        // }
     }
 }
 
@@ -805,6 +843,7 @@ void ClockPulseInternal() { // Inside the interrupt
 
 void UpdateParameters(LoadSaveParams p) {
     BPM = p.BPM;
+    externalDividerIndex = p.externalClockDivIdx;
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         outputs[i].SetDivider(p.divIdx[i]);
         outputs[i].SetDutyCycle(p.dutyCycle[i]);

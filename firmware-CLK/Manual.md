@@ -125,6 +125,10 @@ The last saved configuration is automatically loaded on boot.
 2. The module will automatically adjust the BPM to match the external clock. A small "E" will be displayed on the screen next to BPM when the external clock is detected.
 3. When the external clock is disconnected, the module will revert to the last used internal BPM.
 
+If the external clock is faster than needed (for example running at higher PPQN), it's possible to apply an external clock divider (from 1x, no division to /16) to the input signal in the Clock Divider section.
+
+If using an external clock, it's not possible to divide the output clock signals. Only multiplication is allowed.
+
 ## Troubleshooting
 
 - **No Display**: Check the OLED connection and ensure the display address is set correctly.
