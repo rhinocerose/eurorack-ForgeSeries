@@ -67,7 +67,7 @@ int externalDividerIndex = 5;
 
 // Menu variables
 int menuItems = 33;
-int menuItem = 2;
+int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 0;
 int menuMode = 0;            // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=duty cycle, 7=level3, 8=level4
@@ -98,199 +98,138 @@ void HandleEncoderClick() {
     switchState = digitalRead(ENCODER_SW);
     if (switchState == 1 && oldSwitchState == 0) {
         displayRefresh = 1;
-        if (menuItem == 0 && menuMode == 0) { // Set BPM
-            menuMode = 1;
-        } else if (menuMode == 1) {
-            menuMode = 0;
-        } else if (menuItem == 1 && menuMode == 0) {
-            ToggleMasterPause();                     // Toggle paused state
-        } else if (menuItem == 2 && menuMode == 0) { // Set div1
-            menuMode = 2;
-        } else if (menuMode == 2) {
-            menuMode = 0;
-        } else if (menuItem == 3 && menuMode == 0) { // Set div2
-            menuMode = 3;
-        } else if (menuMode == 3) {
-            menuMode = 0;
-        } else if (menuItem == 4 && menuMode == 0) { // Set div3
-            menuMode = 4;
-        } else if (menuMode == 4) {
-            menuMode = 0;
-        } else if (menuItem == 5 && menuMode == 0) { // Set div4
-            menuMode = 5;
-        } else if (menuMode == 5) {
-            menuMode = 0;
-        } else if (menuItem == 6 && menuMode == 0) { // Set external clock divider
-            menuMode = 6;
-        } else if (menuMode == 6) {
-            menuMode = 0;
-        }
-        // --- Page 3 (Pause) - Index 7-10
-        if (menuItem == 7 && menuMode == 0) {
-            outputs[0].TogglePause();
-        }
-        if (menuItem == 8 && menuMode == 0) {
-            outputs[1].TogglePause();
-        }
-        if (menuItem == 9 && menuMode == 0) {
-            outputs[2].TogglePause();
-        }
-        if (menuItem == 10 && menuMode == 0) {
-            outputs[3].TogglePause();
-        }
-
-        // --- Page 4 (Swing) - Index 11-14
-        if (menuItem == 11 && menuMode == 0) { // Set swing amount for outputs
-            menuMode = 7;
-        } else if (menuMode == 7) {
-            menuMode = 0;
-        }
-        if (menuItem == 12 && menuMode == 0) { // Set swing amount for outputs
-            menuMode = 8;
-        } else if (menuMode == 8) {
-            menuMode = 0;
-        }
-        if (menuItem == 13 && menuMode == 0) { // Set swing amount for outputs
-            menuMode = 9;
-        } else if (menuMode == 9) {
-            menuMode = 0;
-        }
-        if (menuItem == 14 && menuMode == 0) { // Set swing amount for outputs
-            menuMode = 10;
-        } else if (menuMode == 10) {
-            menuMode = 0;
-        }
-
-        // --- Page 4 (Swing Every) - Index 15-18
-        if (menuItem == 15 && menuMode == 0) { // Set swing amount for outputs
-            menuMode = 11;
-        } else if (menuMode == 11) {
-            menuMode = 0;
-        }
-        if (menuItem == 16 && menuMode == 0) { // Set swing amount for outputs
-            menuMode = 12;
-        } else if (menuMode == 12) {
-            menuMode = 0;
-        }
-        if (menuItem == 17 && menuMode == 0) { // Set swing amount for outputs
-            menuMode = 13;
-        } else if (menuMode == 13) {
-            menuMode = 0;
-        }
-        if (menuItem == 18 && menuMode == 0) { // Set swing amount for outputs
-            menuMode = 14;
-        } else if (menuMode == 14) {
-            menuMode = 0;
-        }
-        // --- Page 5 (Pulse Probability) - Index 19-22
-        if (menuItem == 19 && menuMode == 0) { // Set pulse probability for output 1
-            menuMode = 15;
-        } else if (menuMode == 15) {
-            menuMode = 0;
-        }
-        if (menuItem == 20 && menuMode == 0) { // Set pulse probability for output 2
-            menuMode = 16;
-        } else if (menuMode == 16) {
-            menuMode = 0;
-        }
-        if (menuItem == 21 && menuMode == 0) { // Set pulse probability for output 3
-            menuMode = 17;
-        } else if (menuMode == 17) {
-            menuMode = 0;
-        }
-        if (menuItem == 22 && menuMode == 0) { // Set pulse probability for output 4
-            menuMode = 18;
-        } else if (menuMode == 18) {
-            menuMode = 0;
-        }
-
-        // --- Page 6 (Euclidean Rhythm) - Index 23-27
-        if (menuItem == 23 && menuMode == 0) { // Select Euclidean rhythm output to edit
-            menuMode = 19;
-        } else if (menuMode == 19) {
-            menuMode = 0;
-        }
-        if (menuItem == 24 && menuMode == 0) { // Enable Euclidean rhythm for selected output
-            outputs[euclideanOutput].ToggleEuclidean();
-            unsavedChanges = true;
-        }
-        if (menuItem == 25 && menuMode == 0) { // Set Euclidean rhythm step length
-            menuMode = 21;
-        } else if (menuMode == 21) {
-            menuMode = 0;
-        }
-        if (menuItem == 26 && menuMode == 0) { // Set Euclidean rhythm number of triggers
-            menuMode = 22;
-        } else if (menuMode == 22) {
-            menuMode = 0;
-        }
-        if (menuItem == 27 && menuMode == 0) { // Set Euclidean rhythm rotation
-            menuMode = 23;
-        } else if (menuMode == 23) {
-            menuMode = 0;
-        }
-
-        // --- Page 7 (Duty cycle / Level) - Index 28-32
-        if (menuItem == 28 && menuMode == 0) { // Set duty cycle
-            menuMode = 24;
-        } else if (menuMode == 24) {
-            menuMode = 0;
-        }
-        if (menuItem == 29 && menuMode == 0) { // Level control for output 3
-            menuMode = 25;
-        } else if (menuMode == 25) {
-            menuMode = 0;
-        }
-        if (menuItem == 30 && menuMode == 0) { // Level control for output 4
-            menuMode = 26;
-        } else if (menuMode == 26) {
-            menuMode = 0;
-        }
-        if (menuItem == 31 && menuMode == 0) { // Tap tempo
-            SetTapTempo();
-        }
-        if (menuItem == 32 && menuMode == 0) { // Save settings
-            LoadSaveParams p;
-            p.BPM = BPM;
-            for (int i = 0; i < NUM_OUTPUTS; i++) {
-                p.divIdx[i] = outputs[i].GetDividerIndex();
-                p.dutyCycle[i] = outputs[i].GetDutyCycle();
-                p.pausedState[i] = outputs[i].GetPause();
-                p.level[i] = outputs[i].GetLevel();
-                p.swingIdx[i] = outputs[i].GetSwingAmountIndex();
-                p.swingEvery[i] = outputs[i].GetSwingEvery();
-                p.pulseProbability[i] = outputs[i].GetPulseProbability();
-                p.euclideanEnabled[i] = outputs[i].GetEuclidean();
-                p.euclideanSteps[i] = outputs[i].GetEuclideanSteps();
-                p.euclideanTriggers[i] = outputs[i].GetEuclideanTriggers();
-                p.euclideanRotations[i] = outputs[i].GetEuclideanRotation();
+        if (menuMode == 0) {
+            switch (menuItem) {
+            case 1: // Set BPM
+                menuMode = 1;
+                break;
+            case 2: // Toggle paused state
+                ToggleMasterPause();
+                break;
+            case 3: // Set div1
+                menuMode = 3;
+                break;
+            case 4: // Set div2
+                menuMode = 4;
+                break;
+            case 5: // Set div3
+                menuMode = 5;
+                break;
+            case 6: // Set div4
+                menuMode = 6;
+                break;
+            case 7:
+                menuMode = 7;
+                break; // Set external clock divider
+            case 8:
+                outputs[0].TogglePause();
+                break;
+            case 9:
+                outputs[1].TogglePause();
+                break;
+            case 10:
+                outputs[2].TogglePause();
+                break;
+            case 11:
+                outputs[3].TogglePause();
+                break;
+            case 12: // Set swing amount for outputs
+                menuMode = 12;
+                break;
+            case 13:
+                menuMode = 13;
+                break;
+            case 14:
+                menuMode = 14;
+                break;
+            case 15:
+                menuMode = 15;
+                break;
+            case 16: // Set swing every for outputs
+                menuMode = 16;
+                break;
+            case 17:
+                menuMode = 17;
+                break;
+            case 18:
+                menuMode = 18;
+                break;
+            case 19:
+                menuMode = 19;
+                break;
+            case 20: // Set pulse probability for outputs
+                menuMode = 20;
+                break;
+            case 21:
+                menuMode = 21;
+                break;
+            case 22:
+                menuMode = 22;
+                break;
+            case 23:
+                menuMode = 23;
+                break;
+            case 24: // Select Euclidean rhythm output to edit
+                menuMode = 24;
+                break;
+            case 25:
+                outputs[euclideanOutput].ToggleEuclidean();
+                unsavedChanges = true;
+                break;
+            case 26: // Set Euclidean rhythm step length
+                menuMode = 26;
+                break;
+            case 27: // Set Euclidean rhythm number of triggers
+                menuMode = 27;
+                break;
+            case 28: // Set Euclidean rhythm rotation
+                menuMode = 28;
+                break;
+            case 29: // Set duty cycle
+                menuMode = 29;
+                break;
+            case 30: // Level control for output 3
+                menuMode = 30;
+                break;
+            case 31: // Level control for output 4
+                menuMode = 31;
+                break;
+            case 32:
+                SetTapTempo();
+                break; // Tap tempo
+            case 33: { // Save settings
+                LoadSaveParams p;
+                p.BPM = BPM;
+                for (int i = 0; i < NUM_OUTPUTS; i++) {
+                    p.divIdx[i] = outputs[i].GetDividerIndex();
+                    p.dutyCycle[i] = outputs[i].GetDutyCycle();
+                    p.pausedState[i] = outputs[i].GetPause();
+                    p.level[i] = outputs[i].GetLevel();
+                    p.swingIdx[i] = outputs[i].GetSwingAmountIndex();
+                    p.swingEvery[i] = outputs[i].GetSwingEvery();
+                    p.pulseProbability[i] = outputs[i].GetPulseProbability();
+                    p.euclideanEnabled[i] = outputs[i].GetEuclidean();
+                    p.euclideanSteps[i] = outputs[i].GetEuclideanSteps();
+                    p.euclideanTriggers[i] = outputs[i].GetEuclideanTriggers();
+                    p.euclideanRotations[i] = outputs[i].GetEuclideanRotation();
+                }
+                p.extDivIdx = 5; // TODO: Implement external clock divider
+                Save(p);
+                unsavedChanges = false;
+                display.clearDisplay(); // clear display
+                display.setTextSize(2);
+                display.setCursor(SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT / 2 - 16);
+                display.print("SAVED");
+                display.display();
+                delay(1000);
+                break;
             }
-            p.extDivIdx = 5; // TODO: Implement external clock divider
-            Save(p);
-            unsavedChanges = false;
-            display.clearDisplay(); // clear display
-            display.setTextSize(2);
-            display.setCursor(SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT / 2 - 16);
-            display.print("SAVED");
-            display.display();
-            delay(1000);
+            }
+        } else {
+            menuMode = 0;
         }
-        // if (menuItem == 33 && menuMode == 0) { // Load default parameters
-        //     display.clearDisplay();
-        //     display.setTextSize(1);
-        //     display.setCursor(0, 0);
-        //     display.print("Load default settings?");
-        //     display.display();
-        //     delay(2000);
-        //     if (digitalRead(ENCODER_SW) == 1) {
-        //         LoadSaveParams p = LoadDefaultParams();
-        //         UpdateParameters(p);
-        //         unsavedChanges = false;
-        //     }
-        // }
     }
 }
-
 void HandleEncoderPosition() {
     newPosition = encoder1.read();
     if ((newPosition - 3) / 4 > oldPosition / 4) { // Decrease, turned counter-clockwise
@@ -298,233 +237,125 @@ void HandleEncoderPosition() {
         displayRefresh = 1;
         switch (menuMode) {
         case 0:
-            menuItem--;
-            if (menuItem < 0)
-                menuItem = menuItems - 1;
+            menuItem = (menuItem - 1 < 1) ? menuItems : menuItem - 1;
             break;
         case 1: // Set BPM
             UpdateBPM(BPM - 1);
-            unsavedChanges = true;
             break;
-        case 2: // Set div1
-            outputs[0].DecreaseDivider();
-            unsavedChanges = true;
+        case 3:
+        case 4:
+        case 5:
+        case 6: // Set div1, div2, div3, div4
+            outputs[menuMode - 3].DecreaseDivider();
             break;
-        case 3: // Set div2
-            outputs[1].DecreaseDivider();
-            unsavedChanges = true;
-            break;
-        case 4: // Set div3
-            outputs[2].DecreaseDivider();
-            unsavedChanges = true;
-            break;
-        case 5: // Set div4
-            outputs[3].DecreaseDivider();
-            unsavedChanges = true;
-            break;
-        case 6: // Set external clock divider
+        case 7: // Set external clock divider
             // externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerCount);
-            // CalculatePulseIntervals();
-            unsavedChanges = true;
             break;
-        case 7: // Set swing amount for output 1
-            outputs[0].DecreaseSwingAmount();
-            unsavedChanges = true;
+        case 12:
+        case 13:
+        case 14:
+        case 15: // Set swing amount for outputs
+            outputs[menuMode - 12].DecreaseSwingAmount();
             break;
-        case 8: // Set swing amount for output 2
-            outputs[1].DecreaseSwingAmount();
-            unsavedChanges = true;
+        case 16:
+        case 17:
+        case 18:
+        case 19: // Set swing every for outputs
+            outputs[menuMode - 16].DecreaseSwingEvery();
             break;
-        case 9: // Set swing amount for output 3
-            outputs[2].DecreaseSwingAmount();
-            unsavedChanges = true;
+        case 20:
+        case 21:
+        case 22:
+        case 23: // Set Pulse Probability for outputs
+            outputs[menuMode - 20].DecreasePulseProbability();
             break;
-        case 10: // Set swing amount for output 4
-            outputs[3].DecreaseSwingAmount();
-            unsavedChanges = true;
+        case 24: // Set euclidean output to edit
+            euclideanOutput = (euclideanOutput - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - 1;
             break;
-        case 11: // Set swing every for output 1
-            outputs[0].DecreaseSwingEvery();
-            unsavedChanges = true;
-            break;
-        case 12: // Set swing every for output 2
-            outputs[1].DecreaseSwingEvery();
-            unsavedChanges = true;
-            break;
-        case 13: // Set swing every for output 3
-            outputs[2].DecreaseSwingEvery();
-            unsavedChanges = true;
-            break;
-        case 14: // Set swing every for output 4
-            outputs[3].DecreaseSwingEvery();
-            unsavedChanges = true;
-            break;
-        case 15: // Set Pulse Probability for output 1
-            outputs[0].DecreasePulseProbability();
-            unsavedChanges = true;
-            break;
-        case 16: // Set Pulse Probability for output 2
-            outputs[1].DecreasePulseProbability();
-            unsavedChanges = true;
-            break;
-        case 17: // Set Pulse Probability for output 3
-            outputs[2].DecreasePulseProbability();
-            unsavedChanges = true;
-            break;
-        case 18: // Set Pulse Probability for output 4
-            outputs[3].DecreasePulseProbability();
-            unsavedChanges = true;
-            break;
-        case 19: // Set euclidean output to edit
-            euclideanOutput--;
-            if (euclideanOutput < 0)
-                euclideanOutput = NUM_OUTPUTS - 1;
-            break;
-        case 21: // Set Euclidean rhythm step length
+        case 26: // Set Euclidean rhythm step length
             outputs[euclideanOutput].DecreaseEuclideanSteps();
-            unsavedChanges = true;
             break;
-        case 22: // Set Euclidean rhythm number of triggers
+        case 27: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].DecreaseEuclideanTriggers();
-            unsavedChanges = true;
             break;
-        case 23: // Set Euclidean rhythm rotation
+        case 28: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].DecreaseEuclideanRotation();
-            unsavedChanges = true;
             break;
-        case 24: // Set duty cycle
+        case 29: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].DecreaseDutyCycle();
             }
-            unsavedChanges = true;
             break;
-        case 25: // Set level for output 3
+        case 30: // Set level for output 3
             outputs[2].DecreaseLevel();
-            unsavedChanges = true;
             break;
-        case 26: // Set level for output 4
+        case 31: // Set level for output 4
             outputs[3].DecreaseLevel();
-            unsavedChanges = true;
             break;
         }
+        unsavedChanges = true;
     } else if ((newPosition + 3) / 4 < oldPosition / 4) { // Increase, turned clockwise
         oldPosition = newPosition;
         displayRefresh = 1;
         switch (menuMode) {
         case 0:
-            menuItem++;
-            if (menuItem > menuItems - 1)
-                menuItem = 0;
+            menuItem = (menuItem + 1 > menuItems) ? 1 : menuItem + 1;
             break;
         case 1: // Set BPM
             UpdateBPM(BPM + 1);
-            unsavedChanges = true;
-            break;
-        case 2:
-            // Set div1
-            outputs[0].IncreaseDivider();
-            unsavedChanges = true;
             break;
         case 3:
-            // Set div2
-            outputs[1].IncreaseDivider();
-            unsavedChanges = true;
-            break;
         case 4:
-            // Set div3
-            outputs[2].IncreaseDivider();
-            unsavedChanges = true;
-            break;
         case 5:
-            // Set div4
-            outputs[3].IncreaseDivider();
-            unsavedChanges = true;
+        case 6: // Set div1, div2, div3, div4
+            outputs[menuMode - 3].IncreaseDivider();
             break;
-        case 6: // Set external clock divider
+        case 7: // Set external clock divider
             // externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerCount);
-            unsavedChanges = true;
             break;
-        case 7: // Set swing amount for output 1
-            outputs[0].IncreaseSwingAmount();
-            unsavedChanges = true;
+        case 12:
+        case 13:
+        case 14:
+        case 15: // Set swing amount for outputs
+            outputs[menuMode - 12].IncreaseSwingAmount();
             break;
-        case 8: // Set swing amount for output 2
-            outputs[1].IncreaseSwingAmount();
-            unsavedChanges = true;
+        case 16:
+        case 17:
+        case 18:
+        case 19: // Set swing every for outputs
+            outputs[menuMode - 16].IncreaseSwingEvery();
             break;
-        case 9: // Set swing amount for output 3
-            outputs[2].IncreaseSwingAmount();
-            unsavedChanges = true;
+        case 20:
+        case 21:
+        case 22:
+        case 23: // Set Pulse Probability for outputs
+            outputs[menuMode - 20].IncreasePulseProbability();
             break;
-        case 10: // Set swing amount for output 4
-            outputs[3].IncreaseSwingAmount();
-            unsavedChanges = true;
+        case 24: // Set euclidean output to edit
+            euclideanOutput = (euclideanOutput + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + 1;
             break;
-        case 11: // Set swing every for output 1
-            outputs[0].IncreaseSwingEvery();
-            unsavedChanges = true;
-            break;
-        case 12: // Set swing every for output 2
-            outputs[1].IncreaseSwingEvery();
-            unsavedChanges = true;
-            break;
-        case 13: // Set swing every for output 3
-            outputs[2].IncreaseSwingEvery();
-            unsavedChanges = true;
-            break;
-        case 14: // Set swing every for output 4
-            outputs[3].IncreaseSwingEvery();
-            unsavedChanges = true;
-            break;
-        case 15: // Set Pulse Probability for output 1
-            outputs[0].IncreasePulseProbability();
-            unsavedChanges = true;
-            break;
-        case 16: // Set Pulse Probability for output 2
-            outputs[1].IncreasePulseProbability();
-            unsavedChanges = true;
-            break;
-        case 17: // Set Pulse Probability for output 3
-            outputs[2].IncreasePulseProbability();
-            unsavedChanges = true;
-            break;
-        case 18: // Set Pulse Probability for output 4
-            outputs[3].IncreasePulseProbability();
-            unsavedChanges = true;
-            break;
-        case 19: // Set euclidean output to edit
-            euclideanOutput++;
-            if (euclideanOutput > NUM_OUTPUTS - 1)
-                euclideanOutput = 0;
-            break;
-        case 21: // Set Euclidean rhythm step length
+        case 26: // Set Euclidean rhythm step length
             outputs[euclideanOutput].IncreaseEuclideanSteps();
-            unsavedChanges = true;
             break;
-        case 22: // Set Euclidean rhythm number of triggers
+        case 27: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].IncreaseEuclideanTriggers();
-            unsavedChanges = true;
             break;
-        case 23: // Set Euclidean rhythm rotation
+        case 28: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].IncreaseEuclideanRotation();
-            unsavedChanges = true;
             break;
-        case 24:
-            // Set duty cycle
+        case 29: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].IncreaseDutyCycle();
             }
-            unsavedChanges = true;
             break;
-        case 25: // Set level for output 3
+        case 30: // Set level for output 3
             outputs[2].IncreaseLevel();
-            unsavedChanges = true;
             break;
-        case 26: // Set level for output 4
+        case 31: // Set level for output 4
             outputs[3].IncreaseLevel();
-            unsavedChanges = true;
             break;
         }
+        unsavedChanges = true;
     }
 }
 
@@ -540,12 +371,11 @@ void redrawDisplay() {
 
 void HandleDisplay() {
     if (displayRefresh == 1) {
-        int menuIdx;
-        int menuModeIdx;
         display.clearDisplay();
+        int menuIdx = 0;
 
         // Draw the menu
-        if (menuItem == 0 || menuItem == 1) {
+        if (menuItem == 1 || menuItem == 2) {
             display.setCursor(10, 0);
             display.setTextSize(3);
             display.print(BPM);
@@ -556,30 +386,28 @@ void HandleDisplay() {
                 display.print("E");
             }
             // Draw selection triangle
-            if (menuMode == 0 && menuItem == 0) {
+            if (menuMode == 0 && menuItem == 1) {
                 display.drawTriangle(2, 6, 2, 14, 6, 10, 1);
-            } else if (menuMode == 1) {
+            } else if (menuMode == menuItem) {
                 display.fillTriangle(2, 6, 2, 14, 6, 10, 1);
             }
 
-            if (menuMode == 0 || menuMode == 1) {
+            if (menuMode >= 0 && menuMode <= 2) {
                 display.setTextSize(2);
                 display.setCursor(44, 27);
-                if (menuItem == 1) {
+                if (menuItem == 2) {
                     display.drawLine(43, 42, 88, 42, 1);
                 }
                 if (masterPause) {
                     display.fillRoundRect(23, 26, 17, 17, 2, 1);
                     display.print("STOP");
-                } else // Playing
-                {
+                } else {
                     display.fillTriangle(23, 26, 23, 42, 39, 34, 1);
                     display.print("PLAY");
                 }
             }
 
             // Show a box to each output showing if it's enabled
-            // TODO: Sync small boxes to each output to show the pulse status
             display.setTextSize(1);
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor((i * 30) + 17, 46);
@@ -595,14 +423,12 @@ void HandleDisplay() {
         }
 
         // Clock dividers menu
-        menuIdx = 2;
-        menuModeIdx = 2;
+        menuIdx = 3;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("CLOCK DIVIDERS");
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                // Display the clock divider for each output
                 display.setCursor(10, 20 + (i * 9));
                 display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, 20 + (i * 9));
@@ -610,18 +436,17 @@ void HandleDisplay() {
                 if (menuItem == i + menuIdx) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, 19 + (i * 9), 1, 27 + (i * 9), 5, 23 + (i * 9), 1);
-                    } else if (menuMode == i + menuModeIdx) {
+                    } else if (menuMode == i + menuIdx) {
                         display.fillTriangle(1, 19 + (i * 9), 1, 27 + (i * 9), 5, 23 + (i * 9), 1);
                     }
                 }
             }
             display.setCursor(10, 56);
             display.print("EXT CLK DIV: ");
-            // display.print(dividerDescripion[externalDividerIndex]);
             display.print("x");
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, 55, 1, 63, 5, 59, 1);
-            } else if (menuMode == menuModeIdx + 4) {
+            } else if (menuMode == menuIdx + 4) {
                 display.fillTriangle(1, 55, 1, 63, 5, 59, 1);
             }
             redrawDisplay();
@@ -629,15 +454,13 @@ void HandleDisplay() {
         }
 
         // Clock outputs pause menu
-        menuIdx = 7;
-        menuModeIdx = 7;
+        menuIdx = 8;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("OUTPUT STATUS");
             int yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                // Display the clock divider for each output
                 display.setCursor(10, yPosition);
                 display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
@@ -645,7 +468,7 @@ void HandleDisplay() {
                 if (menuItem == i + menuIdx) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == i + menuModeIdx) {
+                    } else if (menuMode == i + menuIdx) {
                         display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     }
                 }
@@ -656,8 +479,7 @@ void HandleDisplay() {
         }
 
         // Swing amount menu
-        menuIdx = 11;
-        menuModeIdx = 7;
+        menuIdx = 12;
         if (menuItem >= 11 && menuItem < menuIdx + 8) {
             display.setTextSize(1);
             display.setCursor(10, 1);
@@ -668,7 +490,6 @@ void HandleDisplay() {
             display.println("EVERY");
             int yPosition = 29;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                // Display Swing setting and every for each output
                 display.setCursor(10, yPosition);
                 display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
@@ -679,7 +500,7 @@ void HandleDisplay() {
                     display.fillTriangle(59, 20, 59, 26, 62, 23, 1);
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == i + menuModeIdx) {
+                    } else if (menuMode == i + menuIdx) {
                         display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     }
                 }
@@ -687,7 +508,7 @@ void HandleDisplay() {
                     display.fillTriangle(89, 20, 89, 26, 92, 23, 1);
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == i + menuModeIdx + 4) {
+                    } else if (menuMode == i + menuIdx + 4) {
                         display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     }
                 }
@@ -698,8 +519,7 @@ void HandleDisplay() {
         }
 
         // Pulse Probability menu
-        menuIdx = 19;
-        menuModeIdx = 15;
+        menuIdx = 20;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -707,7 +527,6 @@ void HandleDisplay() {
             display.println("PULSE PROBABILITY");
             yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                // Display Pulse Probability for each output
                 display.setCursor(10, yPosition);
                 display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
@@ -715,7 +534,7 @@ void HandleDisplay() {
                 if (menuItem == menuIdx + i) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == menuModeIdx + i) {
+                    } else if (menuMode == menuIdx + i) {
                         display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     }
                 }
@@ -726,8 +545,7 @@ void HandleDisplay() {
         }
 
         // Euclidean rhythm menu
-        menuIdx = 23;
-        menuModeIdx = 19;
+        menuIdx = 24;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -738,7 +556,7 @@ void HandleDisplay() {
             display.print("OUTPUT: " + String(euclideanOutput + 1));
             if (menuItem == menuIdx && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuModeIdx) {
+            } else if (menuMode == menuIdx) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
@@ -746,7 +564,7 @@ void HandleDisplay() {
             display.print("ENABLED: " + String(outputs[euclideanOutput].GetEuclidean() ? "YES" : "NO"));
             if (menuItem == menuIdx + 1 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuModeIdx + 1) {
+            } else if (menuMode == menuIdx + 1) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
@@ -754,7 +572,7 @@ void HandleDisplay() {
             display.print("STEPS: " + String(outputs[euclideanOutput].GetEuclideanSteps()));
             if (menuItem == menuIdx + 2 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuModeIdx + 2) {
+            } else if (menuMode == menuIdx + 2) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
@@ -762,7 +580,7 @@ void HandleDisplay() {
             display.print("HITS: " + String(outputs[euclideanOutput].GetEuclideanTriggers()));
             if (menuItem == menuIdx + 3 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuModeIdx + 3) {
+            } else if (menuMode == menuIdx + 3) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
@@ -770,13 +588,12 @@ void HandleDisplay() {
             display.print("ROTATION: " + String(outputs[euclideanOutput].GetEuclideanRotation()));
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuModeIdx + 4) {
+            } else if (menuMode == menuIdx + 4) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
             // Draw the Euclidean rhythm pattern for the selected output
             if (outputs[euclideanOutput].GetEuclidean()) {
-                // Draw a tiny arrow pointing down to the first step
                 display.fillTriangle(90, 10, 94, 10, 92, 14, WHITE);
                 yPosition = 15;
                 int euclideanSteps = outputs[euclideanOutput].GetEuclideanSteps();
@@ -791,7 +608,6 @@ void HandleDisplay() {
                     }
                 }
                 if (euclideanSteps > 47) {
-                    // Draw an arrow pointing down to the last step
                     display.fillTriangle(120, 57, 124, 57, 122, 61, WHITE);
                 }
             }
@@ -800,8 +616,7 @@ void HandleDisplay() {
         }
 
         // Duty cycle and level control menu
-        menuIdx = 28;
-        menuModeIdx = 24;
+        menuIdx = 29;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -809,10 +624,10 @@ void HandleDisplay() {
             display.setCursor(10, yPosition);
             display.println("DUTY CYCLE:");
             display.setCursor(80, yPosition);
-            display.print(outputs[0].GetDutyCycleDescription()); // Since all outputs have the same duty cycle
+            display.print(outputs[0].GetDutyCycleDescription());
             if (menuItem == menuIdx && menuMode == 0) {
                 display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
-            } else if (menuMode == menuModeIdx) {
+            } else if (menuMode == menuIdx) {
                 display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
             }
             yPosition += 9;
@@ -823,7 +638,7 @@ void HandleDisplay() {
             display.print(outputs[2].GetLevelDescription());
             if (menuItem == menuIdx + 1 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuModeIdx + 1) {
+            } else if (menuMode == menuIdx + 1) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
@@ -834,7 +649,7 @@ void HandleDisplay() {
             display.print(outputs[3].GetLevelDescription());
             if (menuItem == menuIdx + 2 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuModeIdx + 2) {
+            } else if (menuMode == menuIdx + 2) {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 15;
@@ -852,14 +667,6 @@ void HandleDisplay() {
             if (menuItem == menuIdx + 4) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
-            // yPosition += 9;
-            // // Load default
-            // display.setCursor(10, yPosition);
-            // display.print("LOAD DEFAULT");
-            // if (menuItem == menuIdx + 5) {
-            //     display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            // }
-
             redrawDisplay();
             return;
         }
