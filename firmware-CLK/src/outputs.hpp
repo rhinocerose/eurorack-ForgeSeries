@@ -18,6 +18,7 @@ class Output {
     bool GetPause() { return _paused; }
     void SetPause(bool pause) { _paused = pause; }
     void TogglePause() { _paused = !_paused; }
+    void ToggleMasterPause();
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
     void SetDivider(int index) { _dividerIndex = constrain(index, 0, dividerAmount - 1); }
@@ -95,6 +96,8 @@ class Output {
     bool _isPulseOn = false;      // Pulse state
     bool _lastPulseState = false; // Last pulse state
     bool _paused = false;         // Paused state
+    bool _oldPaused = false;      // Previous pause state (for master pause)
+    bool _masterPaused = false;   // Master pause state
     int _pulseProbability = 100;  // % chance of pulse
 
     // Swing variables
@@ -158,6 +161,17 @@ bool Output::HasPulseChanged() {
     bool pulseChanged = (_isPulseOn != _lastPulseState);
     _lastPulseState = _isPulseOn;
     return pulseChanged;
+}
+
+// Master pause pause all outputs but on resume, the outputs will resume to state before pause
+void Output::ToggleMasterPause() {
+    _masterPaused = !_masterPaused;
+    if (_masterPaused) {
+        _oldPaused = _paused;
+        _paused = true;
+    } else {
+        _paused = _oldPaused;
+    }
 }
 
 // Output Level based on the output type

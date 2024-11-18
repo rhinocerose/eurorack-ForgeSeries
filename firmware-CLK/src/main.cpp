@@ -60,10 +60,10 @@ bool masterPause = false; // New variable to track play/pause state
 unsigned long tickCounter = 0;
 
 // External clock variables
-// volatile unsigned long clockInterval = 0;
-// volatile unsigned long lastClockInterruptTime = 0;
+volatile unsigned long clockInterval = 0;
+volatile unsigned long lastClockInterruptTime = 0;
 volatile bool usingExternalClock = false;
-// int externalDividerIndex = 5;
+int externalDividerIndex = 5;
 
 // Menu variables
 int menuItems = 33;
@@ -77,7 +77,7 @@ int euclideanOutput = 0;     // Euclidean rhythm output index
 
 // Function prototypes
 void SetTimerPeriod();
-void UpdateBPM(unsigned int newBPM);
+void UpdateBPM(unsigned int);
 void SetTapTempo();
 void ToggleMasterPause();
 void HandleEncoderClick();
@@ -85,9 +85,10 @@ void HandleEncoderPosition();
 void HandleDisplay();
 void HandleCVInputs();
 void HandleOutputs();
-void ClockPulse();
+void ClockPulse(int);
 void ClockPulseInternal();
 void InitializeTimer();
+void UpdateParameters(LoadSaveParams);
 
 // ----------------------------------------------
 
@@ -259,6 +260,7 @@ void HandleEncoderClick() {
                 p.swingIdx[i] = outputs[i].GetSwingAmountIndex();
                 p.swingEvery[i] = outputs[i].GetSwingEvery();
                 p.pulseProbability[i] = outputs[i].GetPulseProbability();
+                p.euclideanEnabled[i] = outputs[i].GetEuclidean();
                 p.euclideanSteps[i] = outputs[i].GetEuclideanSteps();
                 p.euclideanTriggers[i] = outputs[i].GetEuclideanTriggers();
                 p.euclideanRotations[i] = outputs[i].GetEuclideanRotation();
@@ -273,6 +275,19 @@ void HandleEncoderClick() {
             display.display();
             delay(1000);
         }
+        // if (menuItem == 33 && menuMode == 0) { // Load default parameters
+        //     display.clearDisplay();
+        //     display.setTextSize(1);
+        //     display.setCursor(0, 0);
+        //     display.print("Load default settings?");
+        //     display.display();
+        //     delay(2000);
+        //     if (digitalRead(ENCODER_SW) == 1) {
+        //         LoadSaveParams p = LoadDefaultParams();
+        //         UpdateParameters(p);
+        //         unsavedChanges = false;
+        //     }
+        // }
     }
 }
 
@@ -837,6 +852,14 @@ void HandleDisplay() {
             if (menuItem == menuIdx + 4) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
+            // yPosition += 9;
+            // // Load default
+            // display.setCursor(10, yPosition);
+            // display.print("LOAD DEFAULT");
+            // if (menuItem == menuIdx + 5) {
+            //     display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            // }
+
             redrawDisplay();
             return;
         }
@@ -879,7 +902,7 @@ void ToggleMasterPause() {
     // TODO: If an individual output is paused, this should not unpause it
     masterPause = !masterPause;
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        outputs[i].SetPause(masterPause);
+        outputs[i].ToggleMasterPause();
     }
 }
 
@@ -889,11 +912,7 @@ void HandleCVInputs() {
     channelADC[0] = analogRead(CV_1_IN_PIN) / ADCalibration[0];
     channelADC[1] = analogRead(CV_2_IN_PIN) / ADCalibration[1];
 
-    // Use CV input 1 to control BPM
-    // if (channelADC[0] != oldChannelADC[0] && abs(channelADC[0] - oldChannelADC[0]) > 15) {
-    //     BPM = map(channelADC[0], 0, MaxDACValue, minBPM, maxBPM);
-    //     UpdateBPM();
-    // }
+    // Use CV input 1 to control play/stop
 }
 
 // const unsigned long TAP_TIMEOUT_MS = 1500;
@@ -931,20 +950,42 @@ void HandleCVInputs() {
 //     }
 // }
 
-// // Handle external clock
-// void HandleExternalClock() {
-//     unsigned long currentTime = millis();
-
+// This function is called on both rising and falling edges of the clock input
+// It should be able to generate a clock signal from an external source to keep the
+// outputs in sync
+// Since using rising and falling edges, it should generate a 2PPQN signal
+// void ClockReceived() {
 //     if (usingExternalClock) {
-//         bool externalActive = (currentTime - lastClockInterruptTime) < TAP_TIMEOUT_MS;
-//         usingExternalClock = externalActive;
-
-//         if (!usingExternalClock) {
-//             BPM = lastInternalBPM;
-//             UpdateBPM();
-//         }
+//         lastClockInterruptTime = millis();
+//         // tickCounter = 0;
+//         // ClockPulse();
 //     }
+//     if (usingExternalClock == false) {
+//         lastInternalBPM = BPM;
+//     }
+//     usingExternalClock = true;
+//     ClockPulse(2);
+//     // if (usingExternalClock) {
+//     //     lastClockInterruptTime = millis();
+//     //     tickCounter = 0;
+//     //     ClockPulse();
+//     // }
 // }
+
+// // Handle external clock
+void HandleExternalClock() {
+    // unsigned long currentTime = millis();
+
+    // if (usingExternalClock) {
+    //     bool externalActive = (currentTime - lastClockInterruptTime) < TAP_TIMEOUT_MS;
+    //     usingExternalClock = externalActive;
+
+    //     if (!usingExternalClock) {
+    //         BPM = lastInternalBPM;
+    //         UpdateBPM();
+    //     }
+    // }
+}
 
 void HandleOutputs() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
@@ -961,15 +1002,15 @@ void HandleOutputs() {
     }
 }
 
-void ClockPulse() { // Inside the interrupt
+void ClockPulse(int ppqn) { // Inside the interrupt
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        outputs[i].Pulse(PPQN, tickCounter);
+        outputs[i].Pulse(ppqn, tickCounter);
     }
     tickCounter++;
 }
 
 void ClockPulseInternal() { // Inside the interrupt
-    ClockPulse();
+    ClockPulse(PPQN);
 }
 
 // Set the timer period based on the BPM and PPQN (/4 since 1 BPM = 4 quarter notes)
@@ -981,6 +1022,24 @@ void InitializeTimer() {
     // Set up the timer
     TimerTcc0.initialize();
     TimerTcc0.attachInterrupt(ClockPulseInternal);
+}
+
+void UpdateParameters(LoadSaveParams p) {
+    BPM = p.BPM;
+    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        outputs[i].SetDivider(p.divIdx[i]);
+        outputs[i].SetDutyCycle(p.dutyCycle[i]);
+        outputs[i].SetPause(p.pausedState[i]);
+        outputs[i].SetLevel(p.level[i]);
+        outputs[i].SetSwingAmount(p.swingIdx[i]);
+        outputs[i].SetSwingEvery(p.swingEvery[i]);
+        outputs[i].SetPulseProbability(p.pulseProbability[i]);
+        outputs[i].SetEuclidean(p.euclideanEnabled[i]);
+        outputs[i].SetEuclideanSteps(p.euclideanSteps[i]);
+        outputs[i].SetEuclideanTriggers(p.euclideanTriggers[i]);
+        outputs[i].SetEuclideanRotation(p.euclideanRotations[i]);
+    }
+    externalDividerIndex = p.extDivIdx;
 }
 
 void setup() {
@@ -1002,23 +1061,11 @@ void setup() {
 
     // Attach interrupt for external clock
     // attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, RISING);
+    // attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, FALLING);
 
     // Load settings from flash memory or set defaults
     LoadSaveParams p = Load();
-    BPM = p.BPM;
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
-        outputs[i].SetDivider(p.divIdx[i]);
-        outputs[i].SetDutyCycle(p.dutyCycle[i]);
-        outputs[i].SetPause(p.pausedState[i]);
-        outputs[i].SetLevel(p.level[i]);
-        outputs[i].SetSwingAmount(p.swingIdx[i]);
-        outputs[i].SetSwingEvery(p.swingEvery[i]);
-        outputs[i].SetPulseProbability(p.pulseProbability[i]);
-        outputs[i].SetEuclideanSteps(p.euclideanSteps[i]);
-        outputs[i].SetEuclideanTriggers(p.euclideanTriggers[i]);
-        outputs[i].SetEuclideanRotation(p.euclideanRotations[i]);
-    }
-    // externalDividerIndex = p.extDivIdx;
+    UpdateParameters(p);
 
     // Initialize timer
     InitializeTimer();
@@ -1037,6 +1084,4 @@ void loop() {
     HandleOutputs();
 
     HandleDisplay();
-
-    ConsoleReporter();
 }

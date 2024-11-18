@@ -16,48 +16,34 @@ struct LoadSaveParams {
     int swingIdx[NUM_OUTPUTS];
     int swingEvery[NUM_OUTPUTS];
     int pulseProbability[NUM_OUTPUTS];
+    bool euclideanEnabled[NUM_OUTPUTS];
     int euclideanSteps[NUM_OUTPUTS];
     int euclideanTriggers[NUM_OUTPUTS];
     int euclideanRotations[NUM_OUTPUTS];
 };
 
 // Save data to flash memory
-void Save(LoadSaveParams p) { // save setting data to flash memory
+void Save(const LoadSaveParams &p) { // save setting data to flash memory
     delay(100);
+    noInterrupts();
     int idx = 0;
     EEPROM.write(idx++, p.BPM);
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.divIdx[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.dutyCycle[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.pausedState[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.level[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.swingIdx[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.swingEvery[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.pulseProbability[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
+        EEPROM.write(idx++, p.euclideanEnabled[i]);
         EEPROM.write(idx++, p.euclideanSteps[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.euclideanTriggers[i]);
-    }
-    for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.euclideanRotations[i]);
     }
     EEPROM.write(idx++, p.extDivIdx);
     EEPROM.commit();
+    interrupts();
 }
 
 // Load default setting data
@@ -72,6 +58,7 @@ LoadSaveParams LoadDefaultParams() {
         p.swingIdx[i] = 0;
         p.swingEvery[i] = 2;
         p.pulseProbability[i] = 100;
+        p.euclideanEnabled[i] = false;
         p.euclideanSteps[i] = 10;
         p.euclideanTriggers[i] = 6;
         p.euclideanRotations[i] = 1;
@@ -83,44 +70,29 @@ LoadSaveParams LoadDefaultParams() {
 // Load setting data from flash memory
 LoadSaveParams Load() {
     LoadSaveParams p;
+    noInterrupts();
     if (EEPROM.isValid() == 1) {
         delay(100);
         int idx = 0;
         p.BPM = EEPROM.read(idx++);
         for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.divIdx[i] = EEPROM.read(idx++);
-        }
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.dutyCycle[i] = EEPROM.read(idx++);
-        }
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.pausedState[i] = EEPROM.read(idx++);
-        }
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.level[i] = EEPROM.read(idx++);
-        }
-        p.extDivIdx = EEPROM.read(idx++);
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.swingIdx[i] = EEPROM.read(idx++);
-        }
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.swingEvery[i] = EEPROM.read(idx++);
-        }
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.pulseProbability[i] = EEPROM.read(idx++);
-        }
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
+            p.euclideanEnabled[i] = EEPROM.read(idx++);
             p.euclideanSteps[i] = EEPROM.read(idx++);
-        }
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.euclideanTriggers[i] = EEPROM.read(idx++);
-        }
-        for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.euclideanRotations[i] = EEPROM.read(idx++);
         }
+        p.extDivIdx = EEPROM.read(idx++);
     } else {
         // If no eeprom data, set default values
         p = LoadDefaultParams();
     }
+    interrupts();
     return p;
 }
