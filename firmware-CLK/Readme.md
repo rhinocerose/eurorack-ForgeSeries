@@ -1,8 +1,10 @@
-# Eurorack Module Firmware - CLK
+# ClockForge -  An Eurorack Module Firmware for Clock Signals
 
 ## Overview
 
 This repository contains the firmware for the CLK Eurorack module. The CLK module is designed to provide precise clock signals for synchronizing other modules in your Eurorack system.
+
+Check the [Manual](Manual.md) for more information.
 
 ## Features
 
@@ -17,6 +19,8 @@ This repository contains the firmware for the CLK Eurorack module. The CLK modul
 Some of these features are still in development.
 
 ## Getting Started
+
+If you want to build the module, check the [main repository](https://github.com/carlosedp/Eurorack-Modules) where the schematics and PCBs are available.
 
 ### Prerequisites
 
@@ -36,8 +40,9 @@ Assembly of the DIY module with PCBs, BOM and Schematic from the main repository
     cd firmware-CLK
     ```
 
-3. Build the project using VSCode and PlatformIO extension
+3. Open the project using VSCode and PlatformIO extension
 
+4. Build and upload the firmware to the module.
 
 ## Contributing
 

@@ -69,13 +69,12 @@ int menuItems = 32;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 0;
-int menuMode = 0;            // 0=menu select, 1=bpm, 2=div1, 3=div2, 4=div3, 5=div4, 6=duty cycle, 7=level3, 8=level4
+int menuMode = 0;            // Menu mode for parameter editing
 bool displayRefresh = 1;     // Display refresh flag
 bool unsavedChanges = false; // Unsaved changes flag
 int euclideanOutput = 0;     // Euclidean rhythm output index
 
 // Function prototypes
-void SetTimerPeriod();
 void UpdateBPM(unsigned int);
 void SetTapTempo();
 void ToggleMasterPause();
@@ -209,7 +208,7 @@ void HandleEncoderClick() {
                     p.euclideanTriggers[i] = outputs[i].GetEuclideanTriggers();
                     p.euclideanRotations[i] = outputs[i].GetEuclideanRotation();
                 }
-                Save(p);
+                Save(p, 0);
                 unsavedChanges = false;
                 display.clearDisplay(); // clear display
                 display.setTextSize(2);
@@ -732,11 +731,6 @@ void HandleExternalClock() {
 
 void UpdateBPM(unsigned int newBPM) {
     BPM = constrain(newBPM, minBPM, maxBPM);
-    SetTimerPeriod();
-}
-
-// Set the timer period based on the BPM and PPQN (/4 since 1 BPM = 4 quarter notes)
-void SetTimerPeriod() {
     TimerTcc0.setPeriod(60L * 1000 * 1000 / BPM / PPQN / 4);
 }
 
@@ -810,12 +804,12 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, RISING);
 
     // Load settings from flash memory or set defaults
-    LoadSaveParams p = Load();
+    LoadSaveParams p = Load(0);
     UpdateParameters(p);
 
     // Initialize timer
     InitializeTimer();
-    SetTimerPeriod();
+    UpdateBPM(BPM);
 }
 
 void loop() {

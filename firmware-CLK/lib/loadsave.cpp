@@ -5,6 +5,9 @@
 #include <FlashAsEEPROM.h>
 
 #define NUM_OUTPUTS 4
+#define NUM_SLOTS 4
+#define SLOT_SIZE (sizeof(LoadSaveParams))
+
 // Struct to hold params that are saved/loaded to/from EEPROM
 struct LoadSaveParams {
     unsigned int BPM;
@@ -22,10 +25,12 @@ struct LoadSaveParams {
 };
 
 // Save data to flash memory
-void Save(const LoadSaveParams &p) { // save setting data to flash memory
+void Save(const LoadSaveParams &p, int slot) { // save setting data to flash memory
+    if (slot < 0 || slot >= NUM_SLOTS)
+        return;
     delay(100);
     noInterrupts();
-    int idx = 0;
+    int idx = slot * SLOT_SIZE;
     EEPROM.write(idx++, p.BPM);
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         EEPROM.write(idx++, p.divIdx[i]);
@@ -65,12 +70,14 @@ LoadSaveParams LoadDefaultParams() {
 }
 
 // Load setting data from flash memory
-LoadSaveParams Load() {
+LoadSaveParams Load(int slot) {
+    if (slot < 0 || slot >= NUM_SLOTS)
+        return LoadDefaultParams();
     LoadSaveParams p;
     noInterrupts();
     if (EEPROM.isValid() == 1) {
         delay(100);
-        int idx = 0;
+        int idx = slot * SLOT_SIZE;
         p.BPM = EEPROM.read(idx++);
         for (int i = 0; i < NUM_OUTPUTS; i++) {
             p.divIdx[i] = EEPROM.read(idx++);
