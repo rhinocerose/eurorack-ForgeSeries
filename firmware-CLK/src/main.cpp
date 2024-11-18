@@ -63,13 +63,9 @@ unsigned long tickCounter = 0;
 volatile unsigned long clockInterval = 0;
 volatile unsigned long lastClockInterruptTime = 0;
 volatile bool usingExternalClock = false;
-static int const dividerAmount = 5;
-int _externalClockDividers[dividerAmount] = {1, 2, 4, 8, 16};
-String _externalDividerDescription[dividerAmount] = {"x1", "/2 ", "/4", "/8", "/16"};
-int externalDividerIndex = 0;
 
 // Menu variables
-int menuItems = 33;
+int menuItems = 32;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 0;
@@ -122,21 +118,21 @@ void HandleEncoderClick() {
                 menuMode = 6;
                 break;
             case 7:
-                menuMode = 7;
-                break; // Set external clock divider
-            case 8:
                 outputs[0].TogglePause();
                 break;
-            case 9:
+            case 8:
                 outputs[1].TogglePause();
                 break;
-            case 10:
+            case 9:
                 outputs[2].TogglePause();
                 break;
-            case 11:
+            case 10:
                 outputs[3].TogglePause();
                 break;
-            case 12: // Set swing amount for outputs
+            case 11: // Set swing amount for outputs
+                menuMode = 11;
+                break;
+            case 12:
                 menuMode = 12;
                 break;
             case 13:
@@ -145,10 +141,10 @@ void HandleEncoderClick() {
             case 14:
                 menuMode = 14;
                 break;
-            case 15:
+            case 15: // Set swing every for outputs
                 menuMode = 15;
                 break;
-            case 16: // Set swing every for outputs
+            case 16:
                 menuMode = 16;
                 break;
             case 17:
@@ -157,10 +153,10 @@ void HandleEncoderClick() {
             case 18:
                 menuMode = 18;
                 break;
-            case 19:
+            case 19: // Set pulse probability for outputs
                 menuMode = 19;
                 break;
-            case 20: // Set pulse probability for outputs
+            case 20:
                 menuMode = 20;
                 break;
             case 21:
@@ -169,38 +165,35 @@ void HandleEncoderClick() {
             case 22:
                 menuMode = 22;
                 break;
-            case 23:
+            case 23: // Select Euclidean rhythm output to edit
                 menuMode = 23;
                 break;
-            case 24: // Select Euclidean rhythm output to edit
-                menuMode = 24;
-                break;
-            case 25:
+            case 24:
                 outputs[euclideanOutput].ToggleEuclidean();
                 unsavedChanges = true;
                 break;
-            case 26: // Set Euclidean rhythm step length
+            case 25: // Set Euclidean rhythm step length
+                menuMode = 25;
+                break;
+            case 26: // Set Euclidean rhythm number of triggers
                 menuMode = 26;
                 break;
-            case 27: // Set Euclidean rhythm number of triggers
+            case 27: // Set Euclidean rhythm rotation
                 menuMode = 27;
                 break;
-            case 28: // Set Euclidean rhythm rotation
+            case 28: // Set duty cycle
                 menuMode = 28;
                 break;
-            case 29: // Set duty cycle
+            case 29: // Level control for output 3
                 menuMode = 29;
                 break;
-            case 30: // Level control for output 3
+            case 30: // Level control for output 4
                 menuMode = 30;
                 break;
-            case 31: // Level control for output 4
-                menuMode = 31;
-                break;
-            case 32:
+            case 31:
                 SetTapTempo();
                 break; // Tap tempo
-            case 33: { // Save settings
+            case 32: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 for (int i = 0; i < NUM_OUTPUTS; i++) {
@@ -216,7 +209,6 @@ void HandleEncoderClick() {
                     p.euclideanTriggers[i] = outputs[i].GetEuclideanTriggers();
                     p.euclideanRotations[i] = outputs[i].GetEuclideanRotation();
                 }
-                p.extDivIdx = 5; // TODO: Implement external clock divider
                 Save(p);
                 unsavedChanges = false;
                 display.clearDisplay(); // clear display
@@ -250,9 +242,6 @@ void HandleEncoderPosition() {
         case 5:
         case 6: // Set div1, div2, div3, div4
             outputs[menuMode - 3].DecreaseDivider();
-            break;
-        case 7: // Set external clock divider
-            externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerAmount - 1);
             break;
         case 12:
         case 13:
@@ -312,9 +301,6 @@ void HandleEncoderPosition() {
         case 5:
         case 6: // Set div1, div2, div3, div4
             outputs[menuMode - 3].IncreaseDivider();
-            break;
-        case 7: // Set external clock divider
-            externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerAmount - 1);
             break;
         case 12:
         case 13:
@@ -427,7 +413,7 @@ void HandleDisplay() {
 
         // Clock dividers menu
         menuIdx = 3;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
+        if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
             display.setCursor(10, 1);
             display.println("CLOCK DIVIDERS");
@@ -444,20 +430,13 @@ void HandleDisplay() {
                     }
                 }
             }
-            display.setCursor(10, 56);
-            display.print("EXT CLK DIV: ");
-            display.print(_externalDividerDescription[externalDividerIndex]);
-            if (menuItem == menuIdx + 4 && menuMode == 0) {
-                display.drawTriangle(1, 55, 1, 63, 5, 59, 1);
-            } else if (menuMode == menuIdx + 4) {
-                display.fillTriangle(1, 55, 1, 63, 5, 59, 1);
-            }
+
             redrawDisplay();
             return;
         }
 
         // Clock outputs pause menu
-        menuIdx = 8;
+        menuIdx = 7;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
             display.setCursor(10, 1);
@@ -482,7 +461,7 @@ void HandleDisplay() {
         }
 
         // Swing amount menu
-        menuIdx = 12;
+        menuIdx = 11;
         if (menuItem >= 11 && menuItem < menuIdx + 8) {
             display.setTextSize(1);
             display.setCursor(10, 1);
@@ -522,7 +501,7 @@ void HandleDisplay() {
         }
 
         // Pulse Probability menu
-        menuIdx = 20;
+        menuIdx = 19;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -548,7 +527,7 @@ void HandleDisplay() {
         }
 
         // Euclidean rhythm menu
-        menuIdx = 24;
+        menuIdx = 23;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -619,7 +598,7 @@ void HandleDisplay() {
         }
 
         // Duty cycle and level control menu
-        menuIdx = 29;
+        menuIdx = 28;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -731,7 +710,7 @@ void ClockReceived() {
         if (abs(newBPM - BPM) > 3) { // Adjust BPM if the difference is significant
             UpdateBPM(newBPM);
             displayRefresh = 1;
-            Serial.println("External clock connected");
+            DEBUG_PRINT("External clock connected");
         }
     }
 
@@ -747,7 +726,7 @@ void HandleExternalClock() {
         BPM = lastInternalBPM;
         UpdateBPM(BPM);
         displayRefresh = 1;
-        Serial.println("External clock disconnected");
+        DEBUG_PRINT("External clock disconnected");
     }
 }
 
@@ -808,7 +787,6 @@ void UpdateParameters(LoadSaveParams p) {
         outputs[i].SetEuclideanTriggers(p.euclideanTriggers[i]);
         outputs[i].SetEuclideanRotation(p.euclideanRotations[i]);
     }
-    externalDividerIndex = p.extDivIdx;
 }
 
 void setup() {

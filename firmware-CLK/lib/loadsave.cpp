@@ -12,7 +12,6 @@ struct LoadSaveParams {
     int dutyCycle[NUM_OUTPUTS];
     bool pausedState[NUM_OUTPUTS];
     int level[NUM_OUTPUTS];
-    int extDivIdx;
     int swingIdx[NUM_OUTPUTS];
     int swingEvery[NUM_OUTPUTS];
     int pulseProbability[NUM_OUTPUTS];
@@ -41,7 +40,6 @@ void Save(const LoadSaveParams &p) { // save setting data to flash memory
         EEPROM.write(idx++, p.euclideanTriggers[i]);
         EEPROM.write(idx++, p.euclideanRotations[i]);
     }
-    EEPROM.write(idx++, p.extDivIdx);
     EEPROM.commit();
     interrupts();
 }
@@ -63,7 +61,6 @@ LoadSaveParams LoadDefaultParams() {
         p.euclideanTriggers[i] = 6;
         p.euclideanRotations[i] = 1;
     }
-    p.extDivIdx = 0;
     return p;
 }
 
@@ -88,7 +85,6 @@ LoadSaveParams Load() {
             p.euclideanTriggers[i] = EEPROM.read(idx++);
             p.euclideanRotations[i] = EEPROM.read(idx++);
         }
-        p.extDivIdx = EEPROM.read(idx++);
     } else {
         // If no eeprom data, set default values
         p = LoadDefaultParams();

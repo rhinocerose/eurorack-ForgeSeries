@@ -9,10 +9,12 @@
     interrupts();
 
 // Define a debug flag and a debug print function
-// #define DEBUG 1
-#define DEBUG_PRINT(x) \
-    if (DEBUG)         \
-    Serial.print(x)
+#define DEBUG 0
+#ifdef DEBUG
+#define DEBUG_PRINT(X) Serial.print(X)
+#else
+#define DEBUG_PRINT(X)
+#endif
 
 // -----------
 unsigned long loopTime = 0;
