@@ -63,7 +63,10 @@ unsigned long tickCounter = 0;
 volatile unsigned long clockInterval = 0;
 volatile unsigned long lastClockInterruptTime = 0;
 volatile bool usingExternalClock = false;
-int externalDividerIndex = 5;
+static int const dividerAmount = 5;
+int _externalClockDividers[dividerAmount] = {1, 2, 4, 8, 16};
+String _externalDividerDescription[dividerAmount] = {"x1", "/2 ", "/4", "/8", "/16"};
+int externalDividerIndex = 0;
 
 // Menu variables
 int menuItems = 33;
@@ -249,7 +252,7 @@ void HandleEncoderPosition() {
             outputs[menuMode - 3].DecreaseDivider();
             break;
         case 7: // Set external clock divider
-            // externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerCount);
+            externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerAmount - 1);
             break;
         case 12:
         case 13:
@@ -311,7 +314,7 @@ void HandleEncoderPosition() {
             outputs[menuMode - 3].IncreaseDivider();
             break;
         case 7: // Set external clock divider
-            // externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerCount);
+            externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerAmount - 1);
             break;
         case 12:
         case 13:
@@ -443,7 +446,7 @@ void HandleDisplay() {
             }
             display.setCursor(10, 56);
             display.print("EXT CLK DIV: ");
-            display.print("x");
+            display.print(_externalDividerDescription[externalDividerIndex]);
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, 55, 1, 63, 5, 59, 1);
             } else if (menuMode == menuIdx + 4) {
@@ -673,11 +676,6 @@ void HandleDisplay() {
     }
 }
 
-void UpdateBPM(unsigned int newBPM) {
-    BPM = constrain(newBPM, minBPM, maxBPM);
-    SetTimerPeriod();
-}
-
 // Tap tempo function
 static unsigned long lastTapTime = 0;
 static unsigned long tapTimes[3] = {0, 0, 0};
@@ -706,7 +704,6 @@ void SetTapTempo() {
 
 // Pause all outputs
 void ToggleMasterPause() {
-    // TODO: If an individual output is paused, this should not unpause it
     masterPause = !masterPause;
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         outputs[i].ToggleMasterPause();
@@ -722,76 +719,52 @@ void HandleCVInputs() {
     // Use CV input 1 to control play/stop
 }
 
-// const unsigned long TAP_TIMEOUT_MS = 1500;
-// const int MAX_TAPS = 3;
-// const unsigned int BPM_THRESHOLD = 3;
+// External clock interrupt service routine
+void ClockReceived() {
+    unsigned long currentTime = millis();
+    unsigned long interval = currentTime - lastClockInterruptTime;
+    lastClockInterruptTime = currentTime;
 
-// void ClockReceived() {
-//     lastClockInterruptTime = millis();
+    if (interval > 0) {
+        clockInterval = interval;
+        unsigned int newBPM = 60000 / (interval);
+        if (abs(newBPM - BPM) > 3) { // Adjust BPM if the difference is significant
+            UpdateBPM(newBPM);
+            displayRefresh = 1;
+            Serial.println("External clock connected");
+        }
+    }
 
-//     if (lastClockInterruptTime - lastTapTime > TAP_TIMEOUT_MS) {
-//         tapIndex = 0;
-//     }
+    usingExternalClock = true;
+    tickCounter = 0;
+    ClockPulse(1); // 1 PPQN
+}
 
-//     if (tapIndex < MAX_TAPS) {
-//         tapTimes[tapIndex++] = lastClockInterruptTime;
-//         lastTapTime = lastClockInterruptTime;
-//     }
-
-//     if (tapIndex == MAX_TAPS) {
-//         unsigned long timeDiff1 = tapTimes[1] - tapTimes[0];
-//         unsigned long timeDiff2 = tapTimes[2] - tapTimes[1];
-//         unsigned long averageTime = (timeDiff1 + timeDiff2) / 2;
-
-//         unsigned int calculatedBPM = (60000 / averageTime) * clockDividers[externalDividerIndex];
-//         tapIndex++;
-
-//         if (abs(calculatedBPM - BPM) > BPM_THRESHOLD) {
-//             if (usingExternalClock == false) {
-//                 lastInternalBPM = BPM;
-//             }
-//             usingExternalClock = true;
-//             BPM = calculatedBPM;
-//             UpdateBPM();
-//         }
-//     }
-// }
-
-// This function is called on both rising and falling edges of the clock input
-// It should be able to generate a clock signal from an external source to keep the
-// outputs in sync
-// Since using rising and falling edges, it should generate a 2PPQN signal
-// void ClockReceived() {
-//     if (usingExternalClock) {
-//         lastClockInterruptTime = millis();
-//         // tickCounter = 0;
-//         // ClockPulse();
-//     }
-//     if (usingExternalClock == false) {
-//         lastInternalBPM = BPM;
-//     }
-//     usingExternalClock = true;
-//     ClockPulse(2);
-//     // if (usingExternalClock) {
-//     //     lastClockInterruptTime = millis();
-//     //     tickCounter = 0;
-//     //     ClockPulse();
-//     // }
-// }
-
-// // Handle external clock
 void HandleExternalClock() {
-    // unsigned long currentTime = millis();
+    unsigned long currentTime = millis();
+    if (usingExternalClock && (currentTime - lastClockInterruptTime) > 2000) {
+        usingExternalClock = false;
+        BPM = lastInternalBPM;
+        UpdateBPM(BPM);
+        displayRefresh = 1;
+        Serial.println("External clock disconnected");
+    }
+}
 
-    // if (usingExternalClock) {
-    //     bool externalActive = (currentTime - lastClockInterruptTime) < TAP_TIMEOUT_MS;
-    //     usingExternalClock = externalActive;
+void UpdateBPM(unsigned int newBPM) {
+    BPM = constrain(newBPM, minBPM, maxBPM);
+    SetTimerPeriod();
+}
 
-    //     if (!usingExternalClock) {
-    //         BPM = lastInternalBPM;
-    //         UpdateBPM();
-    //     }
-    // }
+// Set the timer period based on the BPM and PPQN (/4 since 1 BPM = 4 quarter notes)
+void SetTimerPeriod() {
+    TimerTcc0.setPeriod(60L * 1000 * 1000 / BPM / PPQN / 4);
+}
+
+void InitializeTimer() {
+    // Set up the timer
+    TimerTcc0.initialize();
+    TimerTcc0.attachInterrupt(ClockPulseInternal);
 }
 
 void HandleOutputs() {
@@ -818,17 +791,6 @@ void ClockPulse(int ppqn) { // Inside the interrupt
 
 void ClockPulseInternal() { // Inside the interrupt
     ClockPulse(PPQN);
-}
-
-// Set the timer period based on the BPM and PPQN (/4 since 1 BPM = 4 quarter notes)
-void SetTimerPeriod() {
-    TimerTcc0.setPeriod(60L * 1000 * 1000 / BPM / PPQN / 4);
-}
-
-void InitializeTimer() {
-    // Set up the timer
-    TimerTcc0.initialize();
-    TimerTcc0.attachInterrupt(ClockPulseInternal);
 }
 
 void UpdateParameters(LoadSaveParams p) {
@@ -867,8 +829,7 @@ void setup() {
     display.setTextColor(WHITE);
 
     // Attach interrupt for external clock
-    // attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, RISING);
-    // attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, FALLING);
+    attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, RISING);
 
     // Load settings from flash memory or set defaults
     LoadSaveParams p = Load();
@@ -886,7 +847,7 @@ void loop() {
 
     HandleCVInputs();
 
-    // HandleExternalClock();
+    HandleExternalClock();
 
     HandleOutputs();
 

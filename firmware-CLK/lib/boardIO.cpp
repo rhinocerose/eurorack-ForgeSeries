@@ -30,7 +30,7 @@ void InitIO() {
     analogReadResolution(12);
 
     pinMode(LED_BUILTIN, OUTPUT);      // LED
-    pinMode(CLK_IN_PIN, INPUT_PULLUP); // CLK in
+    pinMode(CLK_IN_PIN, INPUT);        // CLK in
     pinMode(CV_1_IN_PIN, INPUT);       // IN1
     pinMode(CV_2_IN_PIN, INPUT);       // IN2
     pinMode(ENCODER_SW, INPUT_PULLUP); // push sw

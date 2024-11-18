@@ -63,7 +63,7 @@ LoadSaveParams LoadDefaultParams() {
         p.euclideanTriggers[i] = 6;
         p.euclideanRotations[i] = 1;
     }
-    p.extDivIdx = 5;
+    p.extDivIdx = 0;
     return p;
 }
 
