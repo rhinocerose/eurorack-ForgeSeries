@@ -127,7 +127,7 @@ The last saved configuration is automatically loaded on boot.
 
 If the external clock is faster than needed (for example running at higher PPQN), it's possible to apply an external clock divider (from 1x, no division to /16) to the input signal in the Clock Divider section.
 
-If using an external clock, it's not possible to divide the output clock signals. Only multiplication is allowed.
+The module works with external clocks from 30 to 300 BPM.
 
 ## Troubleshooting
 

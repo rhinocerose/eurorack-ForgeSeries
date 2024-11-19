@@ -773,11 +773,20 @@ void ClockReceived() {
     unsigned long currentTime = millis();
     unsigned long interval = currentTime - lastClockInterruptTime;
     lastClockInterruptTime = currentTime;
+
+    static unsigned long intervals[3] = {0, 0, 0};
+    static int intervalIndex = 0;
+
+    intervals[intervalIndex] = interval;
+    intervalIndex = (intervalIndex + 1) % 3;
+
+    unsigned long averageInterval = (intervals[0] + intervals[1] + intervals[2]) / 3;
+
     // Divide the external clock signal by the selected divider
     if (externalTickCounter % externalClockDividers[externalDividerIndex] == 0) {
-        if (interval > 0) {
-            clockInterval = interval;
-            unsigned int newBPM = 60000 / (interval * externalClockDividers[externalDividerIndex]);
+        if (averageInterval > 0) {
+            clockInterval = averageInterval;
+            unsigned int newBPM = 60000 / (averageInterval * externalClockDividers[externalDividerIndex]);
             if (abs(newBPM - BPM) > 3) { // Adjust BPM if the difference is significant
                 UpdateBPM(newBPM);
                 displayRefresh = 1;
