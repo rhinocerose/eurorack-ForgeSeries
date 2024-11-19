@@ -22,7 +22,7 @@ class Output {
     void ToggleMasterState();
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
-    void SetDivider(int index);
+    void SetDivider(int index) { _dividerIndex = constrain(index, 0, dividerAmount - 1); }
     void IncreaseDivider() { SetDivider(_dividerIndex + 1); }
     void DecreaseDivider() { SetDivider(_dividerIndex - 1); }
     String GetDividerDescription() { return _dividerDescription[_dividerIndex]; }
@@ -121,23 +121,22 @@ Output::Output(int ID, int type) {
 }
 // Pulse function
 void Output::Pulse(int PPQN, unsigned long globalTick) {
-    // Calculate the clock divider ticks based on the selected divider
-    float clockDivider = PPQN / _clockDividers[_dividerIndex];
-    if (_externalClock) {
-    }
-
     // Calculate the tick counter with swing applied
     unsigned long tickCounterSwing = globalTick;
-    if (int(globalTick / clockDivider) % _swingEvery == 0) {
+    int clockDividerExternal = 1 / _clockDividers[_dividerIndex];
+
+    if (int(globalTick / (PPQN / _clockDividers[_dividerIndex])) % _swingEvery == 0) {
         tickCounterSwing = globalTick - _swingAmounts[_swingAmountIndex];
     }
 
     // If not stopped, generate the pulse
     if (_state) {
         // Calculate the pulse duration(in ticks) based on the duty cycle
-        int _pulseDuration = int(clockDivider * (_dutyCycle / 100));
-        // If the tick counter is a multiple of the clock divider, generate a pulse
-        if (tickCounterSwing % int(clockDivider) == 0 || (globalTick == 0)) {
+        int _pulseDuration = int(PPQN / _clockDividers[_dividerIndex] * (_dutyCycle / 100.0));
+        int _externalPulseDuration = int(clockDividerExternal * (_dutyCycle / 100.0));
+
+        // Lambda function to generate a pulse
+        auto generatePulse = [this]() {
             if (!_euclideanParams.enabled) {
                 // If not using Euclidean rhythm, generate a pulse based on the pulse probability
                 if (random(100) < _pulseProbability) {
@@ -154,11 +153,28 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
                     _euclideanStepIndex = 0;
                 }
             }
-            // If the tick counter is not a multiple of the clock divider, turn off the pulse
-        } else if (int(globalTick % int(clockDivider)) >= _pulseDuration) {
-            SetPulse(false);
+        };
+
+        // If using an external clock, generate a pulse based on the internal pulse counter
+        // dirty workaround to make this work with clock dividers
+        if (_externalClock && _clockDividers[_dividerIndex] < 1) {
+            if (_internalPulseCounter % clockDividerExternal == 0 || _internalPulseCounter == 0) {
+                generatePulse();
+            } else if (_internalPulseCounter % _externalPulseDuration == 0) {
+                SetPulse(false);
+            }
+            if (PPQN == 1) {
+                _internalPulseCounter++;
+            }
+        } else {
+            // If the tick counter is a multiple of the clock divider, generate a pulse
+            if (tickCounterSwing % int(PPQN / _clockDividers[_dividerIndex]) == 0 || (globalTick == 0)) {
+                generatePulse();
+                // If the tick counter is not a multiple of the clock divider, turn off the pulse
+            } else if (int(globalTick % int(PPQN / _clockDividers[_dividerIndex])) >= _pulseDuration) {
+                SetPulse(false);
+            }
         }
-        _internalPulseCounter++;
     } else {
         SetPulse(false);
     }
@@ -192,16 +208,6 @@ int Output::GetOutputLevel() {
         }
     } else {
         return _level * MaxDACValue / 100;
-    }
-}
-
-// Set the divider index
-void Output::SetDivider(int index) {
-    // If using external clock, don't allow the divider to be set below x1 (only clock multiplication)
-    if (_externalClock) {
-        _dividerIndex = constrain(index, 5, dividerAmount - 1);
-    } else {
-        _dividerIndex = constrain(index, 0, dividerAmount - 1);
     }
 }
 
