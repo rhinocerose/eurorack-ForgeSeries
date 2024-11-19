@@ -1,8 +1,12 @@
-# Eurorack Modules
+# Voltage Foundry Modular
 
-This project is a collection of Eurorack modules based on the fantastic work of Hagiwo and some of my creation. The modules are designed to be easy to build and modify and be built with through-hole components. The firmware is based on the Arduino platform.
+![Voltage Foundry Modular Logo](./VFM_Logo.png)
 
-The concept is to have a generic hardware with a display, rotary encoder, a trigger (clock) input, two CV inputs, 2 CV outputs and 2 trigger outputs. With this base hardware, I can create different modules by changing the firmware.
+This repository is a collection of Eurorack modules based on the fantastic work of Hagiwo and some of my creation. The modules are designed to be easy to build and modify and be built with through-hole components. The firmware is based on the Arduino platform.
+
+The concept is to have some generic hardware with a display, rotary encoder, trigger inputs and output, CV inputs and outputs allowing different modules by changing the firmware.
+
+The module's core uses a Seeeduino Xiao (SAMD21/Cortex M0 chip) and a MCP4725 DAC.
 
 This project currently provides the following modules:
 
@@ -11,34 +15,34 @@ This project currently provides the following modules:
 - Sequencer
 - Generative Sequencer
 
-The hardware is based on Hagiwo 033 module. The quantizer base code is from the [original](https://note.com/solder_state/n/nb8b9a2f212a2) Hagiwo 033 Dual Quantizer and the updated thru-hole project by [Testbild-synth](https://github.com/Testbild-synth/HAGIWO-029-033-Eurorack-quantizer). The module uses a Seeeduino Xiao (SAMD21/Cortex M0 chip) and a MCP4725 DAC.
+Each new module firmware will be in a separate folder which can be built and uploaded to the Seeeduino Xiao using PlatformIO.
 
-I've consolidated the information from both projects like the original concepts, generated PCBs and Panel from Testbild-synth and added some new functionality to the code. Each new module firmware wil be in a separate folder which can be built and uploaded to the Seeeduino Xiao using PlatformIO.
-
-<img src="images/in_rack.jpg" width="30%" height="30%">
+<img src="images/in_rack.jpg" alt="Eurorack module in rack" width="30%" height="30%">
 
 ## Clock Generator
 
 This module provides a clock generator with a display and a rotary encoder to select the BPM and the division of the clock signal. The module has 4 (four) trigger outputs. The module has a configuration screen to change the clock division/multiplication parameters for each output and tap-tempo functionality. All configurations can saved in the EEPROM memory in the SAVE menu.
 
+Check details [here](./firmware-CLK/Readme.md) and the module [manual](./firmware-CLK/Manual.md).
+
 ### Interface
 
-- TRIG: Optional Clock input (0-5V) (Not implemented yet)
-- IN1, IN2: CV input to control internal parameters (0-5V) (Not implemented yet)
+- TRIG: Optional Clock input (0-5V)
+- IN1, IN2: CV input to control internal parameters (0-5V)
 - GATE 1 / 2: Clock Outputs 1 and 2 (0-5V)
 - CV 1 / 2: Clock Outputs 3 and 4 (0-5V)
 
 ### Operation
 
-The main screen shows the current BPM and a square that pulses according to each output. Pushing the encoder enables the BPM edit mode which can be changed from 10 to 350 BPM. Pushing the encoder again returns to the parameter selection mode.
+The main screen shows the current BPM and a square shows each output status. Pushing the encoder enables the BPM edit mode which can be changed from 10 to 300 BPM. Pushing the encoder again returns to the parameter selection mode.
 
-Rotating the encoder, changes to the second page of configuration where you can select the division/multiplication of the clock signal for each output. Select the division/multiplication by pushing the encoder for each parameter and rotating it to select the desired value. Pushing the encoder again returns to the parameter selection mode.
-
-The next screen is the tap-tempo, pulse duration and save screen. You can tap the tempo by selecting the option and pushing the encoder 3 (three) times. Pushing the encoder again returns to the parameter selection mode. To save the settings, select the SAVE option and push the encoder.
+Check the module's manual for more details.
 
 ## Dual Quantizer
 
-This module is a dual quantizer with a display and a rotary encoder to select the scale and root note for each channel. The module has two CV inputs and two CV outputs with a trigger output for each channel. The module has an envelope generator for each channel with attack and decay parameters. The module has a configuration screen to change the parameters for each channel and a preset screen to load predefined scales and notes for each channel.
+This module is a dual quantizer with a display and a rotary encoder to select the scale and root note for each channel. The module has two CV inputs and two CV outputs with a trigger output for each channel. The module has an envelope generator for each channel with attack and decay parameters. The configuration screen allows changing the parameters for each channel and a preset screen to load predefined scales and notes for each channel.
+
+![quantizer module](./images/Quantizer.jpg)
 
 ### Interface
 
@@ -68,7 +72,10 @@ LOAD CH1/CH2: Loads the selected Scale and Root into the channel overwriting the
 
 - Eurorack standard 3U 6HP size
 - Power supply: 30mA (at 5V)
+- Module depth: 40mm
 - On-board converter from 12V to internal 5V
+
+Power supply can be select from an on-board jumper where closing the the SEL with REG jumper, will take power from eurorack 12V supply and closing the SEL with BOARD jumper, will take power from 5V (requires 16 pin cable). It can also be powered by the USB-C jack on the Seeeduino Xiao.
 
 ## Project State
 
@@ -76,21 +83,19 @@ LOAD CH1/CH2: Loads the selected Scale and Root into the channel overwriting the
 - ❎ - Not tested
 - ❓ - In progress
 
-| Project              | Simulation | Hardware |
-| -------------------- | ---------- | -------- |
-| Hardware             |            | ❎        |
-| Clock Generator      | ✅          | ❓        |
-| Dual Quantizer       | ❎          | ❎        |
-| Sequencer            | ❎          | ❎        |
-| Generative Sequencer | ❎          | ❎        |
+| Firmware             | Support  |
+| -------------------- | ---------|
+| Hardware             |    ✅    |
+| Clock Generator      |    ✅    |
+| Dual Quantizer       |    ✅    |
+| Sequencer            |    ❎    |
+| Generative Sequencer |    ❎    |
 
 ## Simulations
 
 - Clock Generator: [Link](https://wokwi.com/projects/403851982905059329)
 
 ## Hardware and PCB
-
-<img src="images/front_1.jpg" width="30%" height="30%"><img src="images/front_2.jpg" width="30%" height="30%">
 
 You can find the schematic and BOM in the root folder.
 For the PCBs, the module has one main circuit PCB, one control circuit PCB and one panel PCB. The files are available in the [gerbers](./gerbers/) directory.
@@ -103,6 +108,10 @@ When ordering the display module, make sure to choose an 0.96 I2C oled module th
 Also make sure you order a Seediuno XIAO (with a SAMD21/Cortex M0 chip) as opposed to the XIAO esp32c3 or the XIAO rp2040, those are different chips.
 
 <img src="images/display.jpg" width="20%" height="20%">
+
+<img src="images/side.jpg" width="20%" height="20%">
+
+<img src="images/back.jpg" width="20%" height="20%">
 
 Pinout Diagram:
 
@@ -146,15 +155,6 @@ Vin(5v) *(R21(33k)/R21(33k)+R19(18k) = Vout
 5v/3.3v = 1.51515
 0.51515 = 5k(adjustable)/6.8k
 
-## Arduino Code
+## Acknowledgements
 
-### Double Quantizer
-
-HAGIWO did great work, but I decided to make some changes to the Arduino code because I had ADC issues on my seeduino Xiao.
-
-The main changes are:
-
-- HAGIWO had a check that cv is only updated then there's a big enough change from the last value. I took this out since I want to be able to process slow cv changes (i.e. from LFOs), also.
-- I followed suggestions from [this very nice blog about adc accuracy on samd21](https://blog.thea.codes/getting-the-most-out-of-the-samd21-adc/). With lower input impedance and the changes from this blog, the readings got a lot more accurate on mine. Downside is more latency (in the single ms range) but frankly im willing to take that for more stability/less noise.
-- Also, to make use of this, the note calculation is now done with 12 bit instead of downsampling the adc values to 10 bit.
-- Comment out the specified lines in the code if you dont want the slower adc.
+The initial [hardware](./Hardware/) is based on Hagiwo 033 module. The quantizer base code is from the [original](https://note.com/solder_state/n/nb8b9a2f212a2) Hagiwo 033 Dual Quantizer and the updated thru-hole project by [Testbild-synth](https://github.com/Testbild-synth/HAGIWO-029-033-Eurorack-quantizer). Some ideas for the clock module were "taken" from the [LittleBen module](https://github.com/Quinienl/LittleBen-Firmware) from Quinie.nl.

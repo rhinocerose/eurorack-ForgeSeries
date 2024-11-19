@@ -90,17 +90,18 @@ class Output {
 
     // Variables
     int _ID;
-    bool _externalClock = false;  // External clock state
-    int _outputType;              // 0 = Digital, 1 = DAC
-    int _dividerIndex = 5;        // Default to 1
-    int _dutyCycle = 50;          // Default to 50%
-    int _level = 100;             // Default to 100%
-    bool _isPulseOn = false;      // Pulse state
-    bool _lastPulseState = false; // Last pulse state
-    bool _state = true;           // Output state
-    bool _oldState = true;        // Previous output state (for master stop)
-    bool _masterState = true;     // Master output state
-    int _pulseProbability = 100;  // % chance of pulse
+    bool _externalClock = false;             // External clock state
+    int _outputType;                         // 0 = Digital, 1 = DAC
+    int _dividerIndex = 5;                   // Default to 1
+    int _dutyCycle = 50;                     // Default to 50%
+    int _level = 100;                        // Default to 100%
+    bool _isPulseOn = false;                 // Pulse state
+    bool _lastPulseState = false;            // Last pulse state
+    bool _state = true;                      // Output state
+    bool _oldState = true;                   // Previous output state (for master stop)
+    bool _masterState = true;                // Master output state
+    int _pulseProbability = 100;             // % chance of pulse
+    unsigned long _internalPulseCounter = 0; // Pulse counter (used for external clock division)
 
     // Swing variables
     unsigned int _swingAmountIndex = 0; // Swing amount index
@@ -118,21 +119,25 @@ Output::Output(int ID, int type) {
     _outputType = type;
     GeneratePattern(_euclideanParams, _euclideanRhythm);
 }
-
 // Pulse function
-void Output::Pulse(int PPQN, unsigned long tickCounter) {
+void Output::Pulse(int PPQN, unsigned long globalTick) {
+    // Calculate the clock divider ticks based on the selected divider
+    float clockDivider = PPQN / _clockDividers[_dividerIndex];
+    if (_externalClock) {
+    }
+
     // Calculate the tick counter with swing applied
-    unsigned long tickCounterSwing = tickCounter;
-    if (int(tickCounter / (PPQN / _clockDividers[_dividerIndex])) % _swingEvery == 0) {
-        tickCounterSwing = tickCounter - _swingAmounts[_swingAmountIndex];
+    unsigned long tickCounterSwing = globalTick;
+    if (int(globalTick / clockDivider) % _swingEvery == 0) {
+        tickCounterSwing = globalTick - _swingAmounts[_swingAmountIndex];
     }
 
     // If not stopped, generate the pulse
     if (_state) {
-        // Calculate the pulse duration based on the duty cycle
-        int _pulseDuration = int(PPQN / _clockDividers[_dividerIndex] * (_dutyCycle / 100.0));
+        // Calculate the pulse duration(in ticks) based on the duty cycle
+        int _pulseDuration = int(clockDivider * (_dutyCycle / 100));
         // If the tick counter is a multiple of the clock divider, generate a pulse
-        if (tickCounterSwing % int(PPQN / _clockDividers[_dividerIndex]) == 0 || (tickCounter == 0)) {
+        if (tickCounterSwing % int(clockDivider) == 0 || (globalTick == 0)) {
             if (!_euclideanParams.enabled) {
                 // If not using Euclidean rhythm, generate a pulse based on the pulse probability
                 if (random(100) < _pulseProbability) {
@@ -150,9 +155,10 @@ void Output::Pulse(int PPQN, unsigned long tickCounter) {
                 }
             }
             // If the tick counter is not a multiple of the clock divider, turn off the pulse
-        } else if (int(tickCounter % int(PPQN / _clockDividers[_dividerIndex])) >= _pulseDuration) {
+        } else if (int(globalTick % int(clockDivider)) >= _pulseDuration) {
             SetPulse(false);
         }
+        _internalPulseCounter++;
     } else {
         SetPulse(false);
     }
