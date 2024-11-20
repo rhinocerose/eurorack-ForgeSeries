@@ -10,7 +10,8 @@ FIRMWARE=$1
 
 if [ -f "$FIRMWARE" ]; then
   echo "Converting firmware to UF2 format..."
-  ./scripts/uf2conv.py -f SAMD21 -b 0x2000 "$FIRMWARE" -o "${FIRMWARE%.*}".uf2
+  ./scripts/uf2conv.py -f SAMD21 -b 0x2000 "$FIRMWARE" -o "${FIRMWARE%.*}.UF2"
+  cp -f "${FIRMWARE%.*}.UF2" CURRENT.UF2
   echo "Firmware converted successfully!"
   exit 0
 else

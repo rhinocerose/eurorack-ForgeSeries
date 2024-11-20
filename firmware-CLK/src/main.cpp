@@ -15,6 +15,7 @@
 #include "pinouts.hpp"
 #include "splash.hpp"
 #include "utils.hpp"
+#include "version.hpp"
 
 // Define the amount of clock outputs
 #define NUM_OUTPUTS 4
@@ -920,6 +921,17 @@ void setup() {
     display.drawBitmap(30, 0, VFM_Splash, 68, 64, 1);
     display.display();
     delay(2000);
+    // Print module name in the middle of the screen
+    display.clearDisplay();
+    display.setTextSize(2);
+    display.setTextColor(WHITE);
+    display.setCursor(4, 20);
+    display.print("CLOCKFORGE");
+    display.setTextSize(1);
+    display.setCursor(80, 54);
+    display.print("V" VERSION);
+    display.display();
+    delay(1500);
 
     display.setTextColor(WHITE);
 
