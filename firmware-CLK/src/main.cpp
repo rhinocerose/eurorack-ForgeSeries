@@ -262,54 +262,54 @@ void HandleEncoderPosition() {
             externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerAmount - 1);
             unsavedChanges = true;
             break;
-        case 11:
         case 12:
         case 13:
-        case 14: // Set swing amount for outputs
-            outputs[menuMode - 11].DecreaseSwingAmount();
+        case 14:
+        case 15: // Set swing amount for outputs
+            outputs[menuMode - 12].DecreaseSwingAmount();
             unsavedChanges = true;
             break;
-        case 15:
         case 16:
         case 17:
-        case 18: // Set swing every for outputs
-            outputs[menuMode - 15].DecreaseSwingEvery();
+        case 18:
+        case 19: // Set swing every for outputs
+            outputs[menuMode - 16].DecreaseSwingEvery();
             unsavedChanges = true;
             break;
-        case 19:
         case 20:
         case 21:
-        case 22: // Set Pulse Probability for outputs
-            outputs[menuMode - 19].DecreasePulseProbability();
+        case 22:
+        case 23: // Set Pulse Probability for outputs
+            outputs[menuMode - 20].DecreasePulseProbability();
             unsavedChanges = true;
             break;
-        case 23: // Set euclidean output to edit
+        case 24: // Set euclidean output to edit
             euclideanOutput = (euclideanOutput - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - 1;
             unsavedChanges = true;
             break;
-        case 25: // Set Euclidean rhythm step length
+        case 26: // Set Euclidean rhythm step length
             outputs[euclideanOutput].DecreaseEuclideanSteps();
             unsavedChanges = true;
             break;
-        case 26: // Set Euclidean rhythm number of triggers
+        case 27: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].DecreaseEuclideanTriggers();
             unsavedChanges = true;
             break;
-        case 27: // Set Euclidean rhythm rotation
+        case 28: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].DecreaseEuclideanRotation();
             unsavedChanges = true;
             break;
-        case 28: // Set duty cycle
+        case 29: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].DecreaseDutyCycle();
             }
             unsavedChanges = true;
             break;
-        case 29: // Set level for output 3
+        case 30: // Set level for output 3
             outputs[2].DecreaseLevel();
             unsavedChanges = true;
             break;
-        case 30: // Set level for output 4
+        case 31: // Set level for output 4
             outputs[3].DecreaseLevel();
             unsavedChanges = true;
             break;
@@ -336,54 +336,54 @@ void HandleEncoderPosition() {
             externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerAmount - 1);
             unsavedChanges = true;
             break;
-        case 11:
         case 12:
         case 13:
-        case 14: // Set swing amount for outputs
-            outputs[menuMode - 11].IncreaseSwingAmount();
+        case 14:
+        case 15: // Set swing amount for outputs
+            outputs[menuMode - 12].IncreaseSwingAmount();
             unsavedChanges = true;
             break;
-        case 15:
         case 16:
         case 17:
-        case 18: // Set swing every for outputs
-            outputs[menuMode - 15].IncreaseSwingEvery();
+        case 18:
+        case 19: // Set swing every for outputs
+            outputs[menuMode - 16].IncreaseSwingEvery();
             unsavedChanges = true;
             break;
-        case 19:
         case 20:
         case 21:
-        case 22: // Set Pulse Probability for outputs
-            outputs[menuMode - 19].IncreasePulseProbability();
+        case 22:
+        case 23: // Set Pulse Probability for outputs
+            outputs[menuMode - 20].IncreasePulseProbability();
             unsavedChanges = true;
             break;
-        case 23: // Set euclidean output to edit
+        case 24: // Set euclidean output to edit
             euclideanOutput = (euclideanOutput + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + 1;
             unsavedChanges = true;
             break;
-        case 25: // Set Euclidean rhythm step length
+        case 26: // Set Euclidean rhythm step length
             outputs[euclideanOutput].IncreaseEuclideanSteps();
             unsavedChanges = true;
             break;
-        case 26: // Set Euclidean rhythm number of triggers
+        case 27: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].IncreaseEuclideanTriggers();
             unsavedChanges = true;
             break;
-        case 27: // Set Euclidean rhythm rotation
+        case 28: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].IncreaseEuclideanRotation();
             unsavedChanges = true;
             break;
-        case 28: // Set duty cycle
+        case 29: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].IncreaseDutyCycle();
             }
             unsavedChanges = true;
             break;
-        case 29: // Set level for output 3
+        case 30: // Set level for output 3
             outputs[2].IncreaseLevel();
             unsavedChanges = true;
             break;
-        case 30: // Set level for output 4
+        case 31: // Set level for output 4
             outputs[3].IncreaseLevel();
             unsavedChanges = true;
             break;
