@@ -3,7 +3,7 @@
 // Rotary encoder setting
 #define ENCODER_OPTIMIZE_INTERRUPTS
 #include <Encoder.h>
-// Use flash memory as eeprom
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <Wire.h>
@@ -13,6 +13,7 @@
 #include "loadsave.cpp"
 #include "outputs.hpp"
 #include "pinouts.hpp"
+#include "splash.hpp"
 #include "utils.hpp"
 
 // Define the amount of clock outputs
@@ -71,7 +72,7 @@ int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 33;
+int menuItems = 34;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 0;
@@ -87,6 +88,7 @@ void ToggleMasterStop();
 void HandleEncoderClick();
 void HandleEncoderPosition();
 void HandleDisplay();
+void HandleExternalClock();
 void HandleCVInputs();
 void HandleOutputs();
 void ClockPulse(int);
@@ -229,9 +231,34 @@ void HandleEncoderClick() {
                 display.setCursor(SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT / 2 - 16);
                 display.print("SAVED");
                 display.display();
-                delay(1000);
+                unsigned long saveMessageStartTime = millis();
+                while (millis() - saveMessageStartTime < 1000) {
+                    HandleEncoderClick();
+                    HandleEncoderPosition();
+                    HandleCVInputs();
+                    HandleExternalClock();
+                    HandleOutputs();
+                }
                 break;
             }
+            case 34: // Load default settings
+                LoadSaveParams p = LoadDefaultParams();
+                UpdateParameters(p);
+                unsavedChanges = false;
+                display.clearDisplay(); // clear display
+                display.setTextSize(2);
+                display.setCursor(SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT / 2 - 16);
+                display.print("LOADED");
+                display.display();
+                unsigned long loadMessageStartTime = millis();
+                while (millis() - loadMessageStartTime < 1000) {
+                    HandleEncoderClick();
+                    HandleEncoderPosition();
+                    HandleCVInputs();
+                    HandleExternalClock();
+                    HandleOutputs();
+                }
+                break;
             }
         } else {
             menuMode = 0;
@@ -669,7 +696,7 @@ void HandleDisplay() {
 
         // Duty cycle and level control menu
         menuIdx = 29;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
+        if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
             display.setTextSize(1);
             int yPosition = 0;
             // Duty Cycle
@@ -719,6 +746,14 @@ void HandleDisplay() {
             if (menuItem == menuIdx + 4) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
+            yPosition += 9;
+            // Load default settings
+            display.setCursor(10, yPosition);
+            display.print("LOAD DEFAULTS");
+            if (menuItem == menuIdx + 5) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+
             redrawDisplay();
             return;
         }
@@ -881,8 +916,11 @@ void setup() {
         for (;;)
             ; // Don't proceed, loop forever
     }
-    delay(1000);
     display.clearDisplay();
+    display.drawBitmap(30, 0, VFM_Splash, 68, 64, 1);
+    display.display();
+    delay(2000);
+
     display.setTextColor(WHITE);
 
     // Attach interrupt for external clock

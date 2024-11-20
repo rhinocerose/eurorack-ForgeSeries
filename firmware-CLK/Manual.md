@@ -119,6 +119,8 @@ Outputs 3 and 4 can output CV values so they support setting the output level.
 
 The last saved configuration is automatically loaded on boot.
 
+The "LOAD DEFAULTS" option will load the default configuration but will not save it. To save the default configuration, navigate to the save configuration parameter and save it.
+
 ### External Clock Sync
 
 1. Connect an external clock signal to the designated input.
@@ -128,6 +130,15 @@ The last saved configuration is automatically loaded on boot.
 If the external clock is faster than needed (for example running at higher PPQN), it's possible to apply an external clock divider (from 1x, no division to /16) to the input signal in the Clock Divider section.
 
 The module works with external clocks from 30 to 300 BPM.
+
+## Firmware Update
+
+1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules/releases). The firmware file is named `CURRENT.UF2`.
+2. Connect the module to your computer using a USB-C cable.
+3. Use tweezers or a jumper wire to quickly short TWICE the two pads labeled `RESET` on the back of the module CPU. The orange LED will flicker and light up.
+4. Copy and overwrite the `CURRENT.UF2` file to the module USB drive named "Arduino" that will appear.
+
+Ref: ![Module bootloader mode](../images/XIAO-reset.gif)
 
 ## Troubleshooting
 
