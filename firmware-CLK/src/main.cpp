@@ -33,9 +33,9 @@ float ADCalibration[2] = {0.99728, 0.99728};
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Rotary encoder object
-Encoder encoder1(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
-float oldPosition = -999;               // rotary encoder library setting
-float newPosition = -999;               // rotary encoder library setting
+Encoder encoder(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
+float oldPosition = -999;              // rotary encoder library setting
+float newPosition = -999;              // rotary encoder library setting
 
 // Output objects
 Output outputs[NUM_OUTPUTS] = {
@@ -88,6 +88,7 @@ void SetTapTempo();
 void ToggleMasterStop();
 void HandleEncoderClick();
 void HandleEncoderPosition();
+void EncoderSpeedFactor(unsigned long timeDiff);
 void HandleDisplay();
 void HandleExternalClock();
 void HandleCVInputs();
@@ -279,9 +280,31 @@ void HandleEncoderClick() {
         }
     }
 }
+
+// Calculate the speed of the encoder rotation
+float speedFactor;
+unsigned long lastEncoderTime = 0;
+void UpdateSpeedFactor() {
+    unsigned long currentEncoderTime = millis();
+    unsigned long timeDiff = currentEncoderTime - lastEncoderTime;
+    lastEncoderTime = currentEncoderTime;
+
+    if (timeDiff < 50) {
+        speedFactor = 8.0; // Fast rotation
+    } else if (timeDiff < 100) {
+        speedFactor = 4.0; // Medium rotation
+    } else if (timeDiff < 200) {
+        speedFactor = 2.0; // Slow rotation
+    } else {
+        speedFactor = 1.0; // Normal rotation
+    }
+}
+
 void HandleEncoderPosition() {
-    newPosition = encoder1.read();
+    newPosition = encoder.read();
+
     if ((newPosition - 3) / 4 > oldPosition / 4) { // Decrease, turned counter-clockwise
+        UpdateSpeedFactor();
         oldPosition = newPosition;
         displayRefresh = 1;
         switch (menuMode) {
@@ -289,80 +312,103 @@ void HandleEncoderPosition() {
             menuItem = (menuItem - 1 < 1) ? menuItems : menuItem - 1;
             break;
         case 1: // Set BPM
-            UpdateBPM(BPM - 1);
+            UpdateBPM(BPM - speedFactor);
             unsavedChanges = true;
             break;
         case 3:
         case 4:
         case 5:
         case 6: // Set div1, div2, div3, div4
-            outputs[menuMode - 3].DecreaseDivider();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 3].DecreaseDivider();
+            }
             unsavedChanges = true;
             break;
         case 7: // External clock divider
-            externalDividerIndex = constrain(externalDividerIndex - 1, 0, dividerAmount - 1);
+            externalDividerIndex = constrain(externalDividerIndex - speedFactor, 0, dividerAmount - 1);
             unsavedChanges = true;
             break;
         case 12:
         case 13:
         case 14:
         case 15: // Set swing amount for outputs
-            outputs[menuMode - 12].DecreaseSwingAmount();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 12].DecreaseSwingAmount();
+            }
             unsavedChanges = true;
             break;
         case 16:
         case 17:
         case 18:
         case 19: // Set swing every for outputs
-            outputs[menuMode - 16].DecreaseSwingEvery();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 16].DecreaseSwingEvery();
+            }
             unsavedChanges = true;
             break;
         case 20:
         case 21:
         case 22:
         case 23: // Set Pulse Probability for outputs
-            outputs[menuMode - 20].DecreasePulseProbability();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 20].DecreasePulseProbability();
+            }
             unsavedChanges = true;
             break;
         case 24:
         case 25:
         case 26:
         case 27: // Set phase shift for outputs
-            outputs[menuMode - 24].DecreasePhase();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 24].DecreasePhase();
+            }
             unsavedChanges = true;
             break;
         case 28: // Set euclidean output to edit
-            euclideanOutput = (euclideanOutput - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - 1;
+            euclideanOutput = (euclideanOutput - speedFactor < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - speedFactor;
             unsavedChanges = true;
             break;
         case 30: // Set Euclidean rhythm step length
-            outputs[euclideanOutput].DecreaseEuclideanSteps();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[euclideanOutput].DecreaseEuclideanSteps();
+            }
             unsavedChanges = true;
             break;
         case 31: // Set Euclidean rhythm number of triggers
-            outputs[euclideanOutput].DecreaseEuclideanTriggers();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[euclideanOutput].DecreaseEuclideanTriggers();
+            }
             unsavedChanges = true;
             break;
         case 32: // Set Euclidean rhythm rotation
-            outputs[euclideanOutput].DecreaseEuclideanRotation();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[euclideanOutput].DecreaseEuclideanRotation();
+            }
             unsavedChanges = true;
             break;
         case 33: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                outputs[i].DecreaseDutyCycle();
+                for (int j = 0; j < speedFactor; j++) {
+                    outputs[i].DecreaseDutyCycle();
+                }
             }
             unsavedChanges = true;
             break;
         case 34: // Set level for output 3
-            outputs[2].DecreaseLevel();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[2].DecreaseLevel();
+            }
             unsavedChanges = true;
             break;
         case 35: // Set level for output 4
-            outputs[3].DecreaseLevel();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[3].DecreaseLevel();
+            }
             unsavedChanges = true;
             break;
         }
     } else if ((newPosition + 3) / 4 < oldPosition / 4) { // Increase, turned clockwise
+        UpdateSpeedFactor();
         oldPosition = newPosition;
         displayRefresh = 1;
         switch (menuMode) {
@@ -370,83 +416,106 @@ void HandleEncoderPosition() {
             menuItem = (menuItem + 1 > menuItems) ? 1 : menuItem + 1;
             break;
         case 1: // Set BPM
-            UpdateBPM(BPM + 1);
+            UpdateBPM(BPM + speedFactor);
             unsavedChanges = true;
             break;
         case 3:
         case 4:
         case 5:
         case 6: // Set div1, div2, div3, div4
-            outputs[menuMode - 3].IncreaseDivider();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 3].IncreaseDivider();
+            }
             unsavedChanges = true;
             break;
         case 7: // External clock divider
-            externalDividerIndex = constrain(externalDividerIndex + 1, 0, dividerAmount - 1);
+            externalDividerIndex = constrain(externalDividerIndex + speedFactor, 0, dividerAmount - 1);
             unsavedChanges = true;
             break;
         case 12:
         case 13:
         case 14:
         case 15: // Set swing amount for outputs
-            outputs[menuMode - 12].IncreaseSwingAmount();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 12].IncreaseSwingAmount();
+            }
             unsavedChanges = true;
             break;
         case 16:
         case 17:
         case 18:
         case 19: // Set swing every for outputs
-            outputs[menuMode - 16].IncreaseSwingEvery();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 16].IncreaseSwingEvery();
+            }
             unsavedChanges = true;
             break;
         case 20:
         case 21:
         case 22:
         case 23: // Set Pulse Probability for outputs
-            outputs[menuMode - 20].IncreasePulseProbability();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 20].IncreasePulseProbability();
+            }
             unsavedChanges = true;
             break;
         case 24:
         case 25:
         case 26:
         case 27: // Set phase shift for outputs
-            outputs[menuMode - 24].IncreasePhase();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[menuMode - 24].IncreasePhase();
+            }
             unsavedChanges = true;
             break;
         case 28: // Set euclidean output to edit
-            euclideanOutput = (euclideanOutput + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + 1;
+            euclideanOutput = (euclideanOutput + speedFactor > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + speedFactor;
             unsavedChanges = true;
             break;
         case 30: // Set Euclidean rhythm step length
-            outputs[euclideanOutput].IncreaseEuclideanSteps();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[euclideanOutput].IncreaseEuclideanSteps();
+            }
             unsavedChanges = true;
             break;
         case 31: // Set Euclidean rhythm number of triggers
-            outputs[euclideanOutput].IncreaseEuclideanTriggers();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[euclideanOutput].IncreaseEuclideanTriggers();
+            }
             unsavedChanges = true;
             break;
         case 32: // Set Euclidean rhythm rotation
-            outputs[euclideanOutput].IncreaseEuclideanRotation();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[euclideanOutput].IncreaseEuclideanRotation();
+            }
             unsavedChanges = true;
             break;
         case 33: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                outputs[i].IncreaseDutyCycle();
+                for (int j = 0; j < speedFactor; j++) {
+                    outputs[i].IncreaseDutyCycle();
+                }
             }
             unsavedChanges = true;
             break;
         case 34: // Set level for output 3
-            outputs[2].IncreaseLevel();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[2].IncreaseLevel();
+            }
             unsavedChanges = true;
             break;
         case 35: // Set level for output 4
-            outputs[3].IncreaseLevel();
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[3].IncreaseLevel();
+            }
             unsavedChanges = true;
             break;
         }
     }
 }
 
-void redrawDisplay() {
+// Redraw the display and show unsaved changes indicator
+void RedrawDisplay() {
     // If there are unsaved changes, display an asterisk at the top right corner
     if (unsavedChanges) {
         display.setCursor(120, 0);
@@ -456,6 +525,7 @@ void redrawDisplay() {
     displayRefresh = 0;
 }
 
+// Handle display drawing
 void HandleDisplay() {
     if (displayRefresh == 1) {
         display.clearDisplay();
@@ -506,7 +576,7 @@ void HandleDisplay() {
                     display.drawRect((i * 30) + 16, 56, 8, 8, WHITE);
                 }
             }
-            redrawDisplay();
+            RedrawDisplay();
             return;
         }
 
@@ -545,7 +615,7 @@ void HandleDisplay() {
                 }
             }
 
-            redrawDisplay();
+            RedrawDisplay();
             return;
         }
 
@@ -570,7 +640,7 @@ void HandleDisplay() {
                 }
                 yPosition += 9;
             }
-            redrawDisplay();
+            RedrawDisplay();
             return;
         }
 
@@ -610,7 +680,7 @@ void HandleDisplay() {
                 }
                 yPosition += 9;
             }
-            redrawDisplay();
+            RedrawDisplay();
             return;
         }
 
@@ -636,7 +706,7 @@ void HandleDisplay() {
                 }
                 yPosition += 9;
             }
-            redrawDisplay();
+            RedrawDisplay();
             return;
         }
 
@@ -662,7 +732,7 @@ void HandleDisplay() {
                 }
                 yPosition += 9;
             }
-            redrawDisplay();
+            RedrawDisplay();
             return;
         }
 
@@ -744,7 +814,7 @@ void HandleDisplay() {
                     display.fillTriangle(120, 57, 124, 57, 122, 61, WHITE);
                 }
             }
-            redrawDisplay();
+            RedrawDisplay();
             return;
         }
 
@@ -808,7 +878,7 @@ void HandleDisplay() {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
-            redrawDisplay();
+            RedrawDisplay();
             return;
         }
     }
