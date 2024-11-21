@@ -73,7 +73,7 @@ int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 34;
+int menuItems = 38;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 0;
@@ -180,35 +180,47 @@ void HandleEncoderClick() {
             case 23:
                 menuMode = 23;
                 break;
-            case 24: // Select Euclidean rhythm output to edit
+            case 24: // Set phase shift for outputs
                 menuMode = 24;
                 break;
             case 25:
+                menuMode = 25;
+                break;
+            case 26:
+                menuMode = 26;
+                break;
+            case 27:
+                menuMode = 27;
+                break;
+            case 28: // Select Euclidean rhythm output to edit
+                menuMode = 24;
+                break;
+            case 29:
                 outputs[euclideanOutput].ToggleEuclidean();
                 unsavedChanges = true;
                 break;
-            case 26: // Set Euclidean rhythm step length
-                menuMode = 26;
-                break;
-            case 27: // Set Euclidean rhythm number of triggers
-                menuMode = 27;
-                break;
-            case 28: // Set Euclidean rhythm rotation
-                menuMode = 28;
-                break;
-            case 29: // Set duty cycle
-                menuMode = 29;
-                break;
-            case 30: // Level control for output 3
+            case 30: // Set Euclidean rhythm step length
                 menuMode = 30;
                 break;
-            case 31: // Level control for output 4
+            case 31: // Set Euclidean rhythm number of triggers
                 menuMode = 31;
                 break;
-            case 32:
+            case 32: // Set Euclidean rhythm rotation
+                menuMode = 32;
+                break;
+            case 33: // Set duty cycle
+                menuMode = 33;
+                break;
+            case 34: // Level control for output 3
+                menuMode = 34;
+                break;
+            case 35: // Level control for output 4
+                menuMode = 35;
+                break;
+            case 36:
                 SetTapTempo();
                 break; // Tap tempo
-            case 33: { // Save settings
+            case 37: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -224,6 +236,7 @@ void HandleEncoderClick() {
                     p.euclideanSteps[i] = outputs[i].GetEuclideanSteps();
                     p.euclideanTriggers[i] = outputs[i].GetEuclideanTriggers();
                     p.euclideanRotations[i] = outputs[i].GetEuclideanRotation();
+                    p.phaseShift[i] = outputs[i].GetPhase();
                 }
                 Save(p, 0);
                 unsavedChanges = false;
@@ -242,7 +255,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 34: // Load default settings
+            case 38: // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -311,33 +324,40 @@ void HandleEncoderPosition() {
             outputs[menuMode - 20].DecreasePulseProbability();
             unsavedChanges = true;
             break;
-        case 24: // Set euclidean output to edit
+        case 24:
+        case 25:
+        case 26:
+        case 27: // Set phase shift for outputs
+            outputs[menuMode - 24].DecreasePhase();
+            unsavedChanges = true;
+            break;
+        case 28: // Set euclidean output to edit
             euclideanOutput = (euclideanOutput - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - 1;
             unsavedChanges = true;
             break;
-        case 26: // Set Euclidean rhythm step length
+        case 30: // Set Euclidean rhythm step length
             outputs[euclideanOutput].DecreaseEuclideanSteps();
             unsavedChanges = true;
             break;
-        case 27: // Set Euclidean rhythm number of triggers
+        case 31: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].DecreaseEuclideanTriggers();
             unsavedChanges = true;
             break;
-        case 28: // Set Euclidean rhythm rotation
+        case 32: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].DecreaseEuclideanRotation();
             unsavedChanges = true;
             break;
-        case 29: // Set duty cycle
+        case 33: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].DecreaseDutyCycle();
             }
             unsavedChanges = true;
             break;
-        case 30: // Set level for output 3
+        case 34: // Set level for output 3
             outputs[2].DecreaseLevel();
             unsavedChanges = true;
             break;
-        case 31: // Set level for output 4
+        case 35: // Set level for output 4
             outputs[3].DecreaseLevel();
             unsavedChanges = true;
             break;
@@ -385,33 +405,40 @@ void HandleEncoderPosition() {
             outputs[menuMode - 20].IncreasePulseProbability();
             unsavedChanges = true;
             break;
-        case 24: // Set euclidean output to edit
+        case 24:
+        case 25:
+        case 26:
+        case 27: // Set phase shift for outputs
+            outputs[menuMode - 24].IncreasePhase();
+            unsavedChanges = true;
+            break;
+        case 28: // Set euclidean output to edit
             euclideanOutput = (euclideanOutput + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + 1;
             unsavedChanges = true;
             break;
-        case 26: // Set Euclidean rhythm step length
+        case 30: // Set Euclidean rhythm step length
             outputs[euclideanOutput].IncreaseEuclideanSteps();
             unsavedChanges = true;
             break;
-        case 27: // Set Euclidean rhythm number of triggers
+        case 31: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].IncreaseEuclideanTriggers();
             unsavedChanges = true;
             break;
-        case 28: // Set Euclidean rhythm rotation
+        case 32: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].IncreaseEuclideanRotation();
             unsavedChanges = true;
             break;
-        case 29: // Set duty cycle
+        case 33: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 outputs[i].IncreaseDutyCycle();
             }
             unsavedChanges = true;
             break;
-        case 30: // Set level for output 3
+        case 34: // Set level for output 3
             outputs[2].IncreaseLevel();
             unsavedChanges = true;
             break;
-        case 31: // Set level for output 4
+        case 35: // Set level for output 4
             outputs[3].IncreaseLevel();
             unsavedChanges = true;
             break;
@@ -613,8 +640,34 @@ void HandleDisplay() {
             return;
         }
 
-        // Euclidean rhythm menu
+        // Phase shift menu
         menuIdx = 24;
+        if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
+            display.setTextSize(1);
+            int yPosition = 0;
+            display.setCursor(10, yPosition);
+            display.println("PHASE SHIFT");
+            yPosition = 20;
+            for (int i = 0; i < NUM_OUTPUTS; i++) {
+                display.setCursor(10, yPosition);
+                display.print("OUTPUT " + String(i + 1) + ":");
+                display.setCursor(70, yPosition);
+                display.print(outputs[i].GetPhaseDescription());
+                if (menuItem == menuIdx + i) {
+                    if (menuMode == 0) {
+                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    } else if (menuMode == menuIdx + i) {
+                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    }
+                }
+                yPosition += 9;
+            }
+            redrawDisplay();
+            return;
+        }
+
+        // Euclidean rhythm menu
+        menuIdx = 28;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -696,7 +749,7 @@ void HandleDisplay() {
         }
 
         // Duty cycle and level control menu
-        menuIdx = 29;
+        menuIdx = 33;
         if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
             display.setTextSize(1);
             int yPosition = 0;
@@ -901,6 +954,7 @@ void UpdateParameters(LoadSaveParams p) {
         outputs[i].SetEuclideanSteps(p.euclideanSteps[i]);
         outputs[i].SetEuclideanTriggers(p.euclideanTriggers[i]);
         outputs[i].SetEuclideanRotation(p.euclideanRotations[i]);
+        outputs[i].SetPhase(p.phaseShift[i]);
     }
 }
 

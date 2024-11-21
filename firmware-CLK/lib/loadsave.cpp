@@ -23,6 +23,7 @@ struct LoadSaveParams {
     int euclideanSteps[NUM_OUTPUTS];
     int euclideanTriggers[NUM_OUTPUTS];
     int euclideanRotations[NUM_OUTPUTS];
+    int phaseShift[NUM_OUTPUTS];
 };
 
 // Save data to flash memory
@@ -46,6 +47,7 @@ void Save(const LoadSaveParams &p, int slot) { // save setting data to flash mem
         EEPROM.write(idx++, p.euclideanSteps[i]);
         EEPROM.write(idx++, p.euclideanTriggers[i]);
         EEPROM.write(idx++, p.euclideanRotations[i]);
+        EEPROM.write(idx++, p.phaseShift[i]);
     }
     EEPROM.commit();
     interrupts();
@@ -68,6 +70,7 @@ LoadSaveParams LoadDefaultParams() {
         p.euclideanSteps[i] = 10;
         p.euclideanTriggers[i] = 6;
         p.euclideanRotations[i] = 1;
+        p.phaseShift[i] = 0;
     }
     return p;
 }
@@ -95,6 +98,7 @@ LoadSaveParams Load(int slot) {
             p.euclideanSteps[i] = EEPROM.read(idx++);
             p.euclideanTriggers[i] = EEPROM.read(idx++);
             p.euclideanRotations[i] = EEPROM.read(idx++);
+            p.phaseShift[i] = EEPROM.read(idx++);
         }
     } else {
         // If no eeprom data, set default values

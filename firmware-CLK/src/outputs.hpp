@@ -74,6 +74,12 @@ class Output {
     int GetEuclideanRotation() { return _euclideanParams.rotation; }
     void IncreaseEuclideanRotation() { SetEuclideanRotation(_euclideanParams.rotation + 1); }
     void DecreaseEuclideanRotation() { SetEuclideanRotation(_euclideanParams.rotation - 1); }
+    // Phase
+    void SetPhase(int phase) { _phase = constrain(phase, 0, 100); }
+    int GetPhase() { return _phase; }
+    void IncreasePhase() { SetPhase(_phase + 1); }
+    void DecreasePhase() { SetPhase(_phase - 1); }
+    String GetPhaseDescription() { return String(_phase) + "%"; }
 
   private:
     // Constants
@@ -94,6 +100,7 @@ class Output {
     int _outputType;                         // 0 = Digital, 1 = DAC
     int _dividerIndex = 5;                   // Default to 1
     int _dutyCycle = 50;                     // Default to 50%
+    int _phase = 0;                          // Phase offset, default to 0% (in phase with master)
     int _level = 100;                        // Default to 100%
     bool _isPulseOn = false;                 // Pulse state
     bool _lastPulseState = false;            // Last pulse state
@@ -128,6 +135,9 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
     if (int(globalTick / (PPQN / _clockDividers[_dividerIndex])) % _swingEvery == 0) {
         tickCounterSwing = globalTick - _swingAmounts[_swingAmountIndex];
     }
+
+    // Calculate the phase offset in ticks
+    unsigned long phaseOffsetTicks = (PPQN / _clockDividers[_dividerIndex]) * (_phase / 100.0);
 
     // If not stopped, generate the pulse
     if (_state) {
@@ -167,11 +177,11 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
                 _internalPulseCounter++;
             }
         } else {
-            // If the tick counter is a multiple of the clock divider, generate a pulse
-            if (tickCounterSwing % int(PPQN / _clockDividers[_dividerIndex]) == 0 || (globalTick == 0)) {
+            // If the tick counter is a multiple of the clock divider with phase offset, generate a pulse
+            if ((tickCounterSwing - phaseOffsetTicks) % int(PPQN / _clockDividers[_dividerIndex]) == 0 || (globalTick == 0)) {
                 generatePulse();
                 // If the tick counter is not a multiple of the clock divider, turn off the pulse
-            } else if (int(globalTick % int(PPQN / _clockDividers[_dividerIndex])) >= _pulseDuration) {
+            } else if (int((globalTick - phaseOffsetTicks) % int(PPQN / _clockDividers[_dividerIndex])) >= _pulseDuration) {
                 SetPulse(false);
             }
         }

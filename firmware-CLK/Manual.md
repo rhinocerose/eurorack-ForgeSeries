@@ -54,9 +54,11 @@ Each of the four outputs can be individually configured with the following param
 
 ### Global Play/Stop
 
-1. Press the play/stop button to stop or resume all outputs when the PLAY/STOP word is underlined.
+With the PLAY or STOP word underlined, press the encoder button to stop or resume all outputs. The individual outputs can still be stopped or resumed individually and will remain in the last state set.
 
 ### Output clock division/multiplication
+
+Outputs can be configured to multiply or divide the master clock. The default value is 1x which means the output will be in sync with the master clock. The outputs can be multiplied up to 16x or divided down to /32.
 
 1. Navigate to the selected output.
 2. Click the encoder to enter edit mode.
@@ -65,10 +67,14 @@ Each of the four outputs can be individually configured with the following param
 
 ### Output Play/Stop
 
+Outputs can be stopped individually. When stopped, the output will not generate any pulses. When master stop is activated, all outputs will be stopped and when master play is resumed, any stopped output will be kept stopped.
+
 1. Navigate to the selected output.
 2. Click the encoder to set the output to ON or OFF
 
 ### Swing Configuration
+
+The outputs can have a swing pattern applied to them. The swing amount is in 1/96th of a note based on current BPM and the swing every is the interval between applying the swing. The swing amount can be set from 2/96th to 12/96th delay and the swing every from 1 to 16 pulses.
 
 1. Navigate to the selected output. The first parameter to be edited is the swing amount.
 2. Click the encoder to enter edit mode.
@@ -81,6 +87,8 @@ Each of the four outputs can be individually configured with the following param
 
 ### Pulse Probability
 
+This is the percentage of probability that a pulse will be generated on the output. This is useful for creating random patterns or adding some variation to the output.
+
 1. Navigate to the selected output.
 2. Click the encoder to enter edit mode.
 3. Use the encoder to select the desired pulse probability in percentage.
@@ -88,26 +96,39 @@ Each of the four outputs can be individually configured with the following param
 
 ### Euclidean Rhythm Configuration
 
+Euclidean rhythms are made from an algorithm which takes a numbers of steps, triggers (active steps) and rotation of this pattern and produces a rhythm based the on hits being as equidistant from each other as possible. See <https://en.wikipedia.org/wiki/Euclidean_rhythm> for more info.
+
 1. Navigate to the output selection item. Click the encoder and rotate to select the output to be edited. Click the encoder again to exit the output selection.
 2. First setting enables or disables the Euclidean rhythm generation by clicking the encoder.
 3. Select the Steps, Triggers and Rotation parameters, click the encoder to edit the values.
 4. The pattern will be updated in real-time and displayed on the right of the screen. Euclidean rhythm allows up to 64 steps but only the first 47 are displayed. Rhythm steps are shown in columns, top to bottom, left to right.
 
-### Duty Cycle
+### Duty Cycle (pulse width)
+
+Duty cycle or width is the percentage of the pulse that remains high or low. The default value is 50% which means the pulse is a square wave. The duty cycle can be set from 1 to 99% where 1% will generate a very short pulse and 99% a very long high pulse.
 
 1. Select the duty cycle parameter. Click the encoder to enter edit mode.
 2. Use the encoder to select the desired duty cycle value from 1 to 99%. Value applies to all outputs.
 3. Click the encoder to exit edit mode.
 
+### Output Phase Shift
+
+Outputs can have their phase adjusted in percentage in relation to the master pulse. This allows for phase shifting the output in relation to the master clock. The default value is 0% which means the output is in phase with the master clock.
+An adjstment of 50% will shift the output by half a pulse width which means that this output will hit in the upbeats of the master clock (or an output with a 0% phase shift).
+
+Just be careful with phase wraps as shifting an output phase by more than 50% with a duty-cycle bigger than 50% can lead to unexpected triggers.
+
 ### Output Level
 
-Outputs 3 and 4 can output CV values so they support setting the output level.
+Outputs 3 and 4 can output CV values so they support setting the output level which ranges from 0 to 100% corresponding to 0 to 5V.
 
 1. Navigate to the selected output. Click the encoder to enter edit mode.
 2. Use the encoder to select the desired output level from 0 to 100% which corresponds to 0 to 5V.
 3. Click the encoder to exit edit mode.
 
 ### Tap Tempo
+
+Instead of setting the BPM manually, the module can be set to the desired BPM by tapping a button. The module will calculate the BPM based on the interval between taps.
 
 1. Select the tap tempo parameter.
 2. Press the tap tempo button at least 3 times to set the BPM based on the interval between taps. If more than 3 taps are entered, the average time between the last 3 is used. BPM is updated in real-time.
@@ -129,21 +150,20 @@ The "LOAD DEFAULTS" option will load the default configuration but will not save
 
 If the external clock is faster than needed (for example running at higher PPQN), it's possible to apply an external clock divider (from 1x, no division to /16) to the input signal in the Clock Divider section.
 
-The module works with external clocks from 30 to 300 BPM.
+The module works with external clocks from 30 to 300 BPM. Due to timer resolution, using very slow external clocks with high multipliers may lead to jitter on the outputs.
 
 ## Firmware Update
 
 1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules/releases). The firmware file is named `CURRENT.UF2`.
 2. Connect the module to your computer using a USB-C cable. The CPU can be removed from the module as it's socketed to the main board. Firmware loading can be done with the CPU removed.
 3. Use tweezers or a jumper wire to quickly short TWICE the two pads labeled `RESET` on the back of the module CPU. The orange LED will flicker and light up.
-4. Copy and overwrite the `CURRENT.UF2` file to the module USB drive named "Arduino" that will appear. After copy is finished, the module will reboot and the new firmware will be loaded.
+4. Copy and overwrite the `CURRENT.UF2` file to the module USB drive named "Seeed XIAO" that will appear. After copy is finished, the module will reboot and the new firmware will be loaded.
 
 ![Module bootloader mode](../images/XIAO-reset.gif)
 
 ## Troubleshooting
 
-- **No Display**: Check the OLED connection and ensure the display address is set correctly.
-- **No Output**: Verify the output settings and ensure the module is not stopped.
+- **No Output**: Verify the board connections and output settings and ensure the module is not stopped.
 - **Inconsistent BPM**: Ensure the external clock signal is stable and properly connected.
 
 ## Contact

@@ -6,7 +6,7 @@ FIRMWARE=$1
 
 if [ -d /Volumes/Arduino ]; then
   echo "Uploading firmware to device..."
-  cp -rf "$FIRMWARE" /Volumes/Arduino/CURRENT.UF2
+  cp -rf "$FIRMWARE" "/Volumes/Seeed XIAO/CURRENT.UF2"
   echo "Firmware uploaded successfully!"
   exit 0
 else
