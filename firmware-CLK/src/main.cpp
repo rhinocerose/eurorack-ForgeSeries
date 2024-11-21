@@ -73,7 +73,7 @@ int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 38;
+int menuItems = 39;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 0;
@@ -209,19 +209,22 @@ void HandleEncoderClick() {
             case 32: // Set Euclidean rhythm rotation
                 menuMode = 32;
                 break;
-            case 33: // Set duty cycle
+            case 33: // Set euclidean padding
                 menuMode = 33;
                 break;
-            case 34: // Level control for output 3
+            case 34: // Set duty cycle
+                menuMode = 33;
+                break;
+            case 35: // Level control for output 3
                 menuMode = 34;
                 break;
-            case 35: // Level control for output 4
+            case 36: // Level control for output 4
                 menuMode = 35;
                 break;
-            case 36:
+            case 37:
                 SetTapTempo();
                 break; // Tap tempo
-            case 37: { // Save settings
+            case 38: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -256,7 +259,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 38: // Load default settings
+            case 39: // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -386,7 +389,13 @@ void HandleEncoderPosition() {
             }
             unsavedChanges = true;
             break;
-        case 33: // Set duty cycle
+        case 33: // Set Euclidean padding
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[euclideanOutput].DecreaseEuclideanPadding();
+            }
+            unsavedChanges = true;
+            break;
+        case 34: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 for (int j = 0; j < speedFactor; j++) {
                     outputs[i].DecreaseDutyCycle();
@@ -394,13 +403,13 @@ void HandleEncoderPosition() {
             }
             unsavedChanges = true;
             break;
-        case 34: // Set level for output 3
+        case 35: // Set level for output 3
             for (int i = 0; i < speedFactor; i++) {
                 outputs[2].DecreaseLevel();
             }
             unsavedChanges = true;
             break;
-        case 35: // Set level for output 4
+        case 36: // Set level for output 4
             for (int i = 0; i < speedFactor; i++) {
                 outputs[3].DecreaseLevel();
             }
@@ -490,7 +499,13 @@ void HandleEncoderPosition() {
             }
             unsavedChanges = true;
             break;
-        case 33: // Set duty cycle
+        case 33: // Set Euclidean padding
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[euclideanOutput].IncreaseEuclideanPadding();
+            }
+            unsavedChanges = true;
+            break;
+        case 34: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 for (int j = 0; j < speedFactor; j++) {
                     outputs[i].IncreaseDutyCycle();
@@ -498,13 +513,13 @@ void HandleEncoderPosition() {
             }
             unsavedChanges = true;
             break;
-        case 34: // Set level for output 3
+        case 35: // Set level for output 3
             for (int i = 0; i < speedFactor; i++) {
                 outputs[2].IncreaseLevel();
             }
             unsavedChanges = true;
             break;
-        case 35: // Set level for output 4
+        case 36: // Set level for output 4
             for (int i = 0; i < speedFactor; i++) {
                 outputs[3].IncreaseLevel();
             }
@@ -738,7 +753,7 @@ void HandleDisplay() {
 
         // Euclidean rhythm menu
         menuIdx = 28;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
+        if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
             display.setTextSize(1);
             int yPosition = 0;
             display.setCursor(10, yPosition);
@@ -786,8 +801,7 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("ROTATION: ");
-            display.setCursor(xPosition, yPosition);
+            display.print("RT:");
             display.print(String(outputs[euclideanOutput].GetEuclideanRotation()));
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
@@ -795,22 +809,37 @@ void HandleDisplay() {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
+            display.setCursor(48, yPosition);
+            display.print("PD:");
+            display.print(String(outputs[euclideanOutput].GetEuclideanPadding()));
+            if (menuItem == menuIdx + 5 && menuMode == 0) {
+                display.drawTriangle(42, yPosition - 1, 42, yPosition + 7, 46, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 5) {
+                display.fillTriangle(42, yPosition - 1, 42, yPosition + 7, 46, yPosition + 3, 1);
+            }
+
             // Draw the Euclidean rhythm pattern for the selected output
             if (outputs[euclideanOutput].GetEuclidean()) {
                 display.fillTriangle(90, 10, 94, 10, 92, 14, WHITE);
                 yPosition = 15;
                 int euclideanSteps = outputs[euclideanOutput].GetEuclideanSteps();
-                for (int i = 0; i < euclideanSteps && i < 47; i++) {
+                int euclideanPadding = outputs[euclideanOutput].GetEuclideanPadding();
+                for (int i = 0; i < euclideanSteps + euclideanPadding && i < 47; i++) {
                     int column = i / 8;
                     int row = i % 8;
                     display.setCursor(90 + (column * 6), yPosition + (row * 6));
-                    if (outputs[euclideanOutput].GetRhythmStep(i)) {
+                    if (i < euclideanSteps && outputs[euclideanOutput].GetRhythmStep(i)) {
                         display.fillRect(90 + (column * 6), yPosition + (row * 6), 5, 5, WHITE);
                     } else {
-                        display.drawRect(90 + (column * 6), yPosition + (row * 6), 5, 5, WHITE);
+                        if (i < euclideanSteps) {
+                            display.drawRect(90 + (column * 6), yPosition + (row * 6), 5, 5, WHITE);
+                        } else {
+                            display.drawRect(90 + (column * 6), yPosition + (row * 6), 5, 5, WHITE);
+                            display.writePixel(90 + (column * 6) + 2, yPosition + (row * 6) + 2, WHITE);
+                        }
                     }
                 }
-                if (euclideanSteps > 47) {
+                if (euclideanSteps + euclideanPadding > 47) {
                     display.fillTriangle(120, 57, 124, 57, 122, 61, WHITE);
                 }
             }
@@ -819,7 +848,7 @@ void HandleDisplay() {
         }
 
         // Duty cycle and level control menu
-        menuIdx = 33;
+        menuIdx = 34;
         if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
             display.setTextSize(1);
             int yPosition = 0;

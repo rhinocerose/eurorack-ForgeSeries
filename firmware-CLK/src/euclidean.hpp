@@ -2,9 +2,10 @@
 
 struct EuclideanParams {
     bool enabled = false;
-    int steps = 10;
-    int triggers = 6;
-    int rotation = 1;
+    int steps = 10;   // Number of steps in the pattern
+    int triggers = 6; // Number of triggers in the pattern
+    int rotation = 1; // Rotation of the pattern
+    int pad = 0;      // No trigger steps added to the end of the pattern
 };
 
 // Helper function to distribute the pattern based on counts and remainders
@@ -53,5 +54,10 @@ void GeneratePattern(EuclideanParams &params, int *rhythm) {
     // Step 3: Rotate the pattern
     for (int i = 0; i < params.steps; i++) {
         rhythm[(i + params.rotation) % params.steps] = pattern[i];
+    }
+
+    // Step 4: Add padding to the end of the pattern
+    for (int i = params.steps; i < params.steps + params.pad; i++) {
+        rhythm[i] = 0;
     }
 }

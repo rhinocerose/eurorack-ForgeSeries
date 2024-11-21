@@ -54,7 +54,7 @@ Each of the four outputs can be individually configured with the following param
 
 ### Global Play/Stop
 
-With the PLAY or STOP word underlined, press the encoder button to stop or resume all outputs. The individual outputs can still be stopped or resumed individually and will remain in the last state set.
+With the **PLAY** or **STOP** word underlined, press the encoder button to stop or resume all outputs. The individual outputs can still be stopped or resumed individually and will remain in the last state set.
 
 ### Output clock division/multiplication
 
@@ -96,7 +96,9 @@ This is the percentage of probability that a pulse will be generated on the outp
 
 ### Euclidean Rhythm Configuration
 
-Euclidean rhythms are made from an algorithm which takes a numbers of steps, triggers (active steps) and rotation of this pattern and produces a rhythm based the on hits being as equidistant from each other as possible. See <https://en.wikipedia.org/wiki/Euclidean_rhythm> for more info.
+Euclidean rhythms are made from an algorithm which takes a numbers of steps, triggers(HITS) which are active steps and rotation(RT) of this pattern and produces a rhythm based the on hits being as equidistant from each other as possible. See <https://en.wikipedia.org/wiki/Euclidean_rhythm> for more info.
+
+Additional empty steps can be added to the pattern using the pad(PD) parameter. This is useful for creating more complex rhythms.
 
 1. Navigate to the output selection item. Click the encoder and rotate to select the output to be edited. Click the encoder again to exit the output selection.
 2. First setting enables or disables the Euclidean rhythm generation by clicking the encoder.

@@ -74,6 +74,11 @@ class Output {
     int GetEuclideanRotation() { return _euclideanParams.rotation; }
     void IncreaseEuclideanRotation() { SetEuclideanRotation(_euclideanParams.rotation + 1); }
     void DecreaseEuclideanRotation() { SetEuclideanRotation(_euclideanParams.rotation - 1); }
+    void SetEuclideanPadding(int pad);
+    int GetEuclideanPadding() { return _euclideanParams.pad; }
+    void IncreaseEuclideanPadding() { SetEuclideanPadding(_euclideanParams.pad + 1); }
+    void DecreaseEuclideanPadding() { SetEuclideanPadding(_euclideanParams.pad - 1); }
+
     // Phase
     void SetPhase(int phase) { _phase = constrain(phase, 0, 100); }
     int GetPhase() { return _phase; }
@@ -159,7 +164,7 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
                 }
                 _euclideanStepIndex++;
                 // Restart the Euclidean rhythm if it reaches the end
-                if (_euclideanStepIndex >= _euclideanParams.steps) {
+                if (_euclideanStepIndex >= _euclideanParams.steps + _euclideanParams.pad) {
                     _euclideanStepIndex = 0;
                 }
             }
@@ -251,7 +256,14 @@ void Output::SetEuclideanTriggers(int triggers) {
 
 // Set the rotation of the Euclidean rhythm
 void Output::SetEuclideanRotation(int rotation) {
-    _euclideanParams.rotation = rotation;
+    _euclideanParams.rotation = constrain(rotation, 0, _euclideanParams.steps - 1);
+    if (_euclideanParams.enabled) {
+        GeneratePattern(_euclideanParams, _euclideanRhythm);
+    }
+}
+
+void Output::SetEuclideanPadding(int pad) {
+    _euclideanParams.pad = constrain(pad, 0, MaxEuclideanSteps - _euclideanParams.steps);
     if (_euclideanParams.enabled) {
         GeneratePattern(_euclideanParams, _euclideanRhythm);
     }
