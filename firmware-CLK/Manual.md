@@ -134,11 +134,11 @@ The module works with external clocks from 30 to 300 BPM.
 ## Firmware Update
 
 1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules/releases). The firmware file is named `CURRENT.UF2`.
-2. Connect the module to your computer using a USB-C cable.
+2. Connect the module to your computer using a USB-C cable. The CPU can be removed from the module as it's socketed to the main board. Firmware loading can be done with the CPU removed.
 3. Use tweezers or a jumper wire to quickly short TWICE the two pads labeled `RESET` on the back of the module CPU. The orange LED will flicker and light up.
-4. Copy and overwrite the `CURRENT.UF2` file to the module USB drive named "Arduino" that will appear.
+4. Copy and overwrite the `CURRENT.UF2` file to the module USB drive named "Arduino" that will appear. After copy is finished, the module will reboot and the new firmware will be loaded.
 
-Ref: ![Module bootloader mode](../images/XIAO-reset.gif)
+![Module bootloader mode](../images/XIAO-reset.gif)
 
 ## Troubleshooting
 
