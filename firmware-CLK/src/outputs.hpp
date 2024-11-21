@@ -8,6 +8,7 @@ class Output {
   public:
     // Constructor
     Output(int ID, int type);
+
     // Pulse State
     void Pulse(int PPQN, unsigned long tickCounter);
     bool GetPulseState() { return _isPulseOn; }
@@ -15,11 +16,13 @@ class Output {
     void TogglePulse() { _isPulseOn = !_isPulseOn; }
     bool HasPulseChanged();
     void SetExternalClock(bool state) { _externalClock = state; }
+
     // Output State
     bool GetOutputState() { return _state; }
     void SetOutputState(bool state) { _state = state; }
     void ToggleOutputState() { _state = !_state; }
     void ToggleMasterState();
+
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
     void SetDivider(int index) { _dividerIndex = constrain(index, 0, dividerAmount - 1); }
@@ -27,12 +30,14 @@ class Output {
     void DecreaseDivider() { SetDivider(_dividerIndex - 1); }
     String GetDividerDescription() { return _dividerDescription[_dividerIndex]; }
     int GetDividerAmounts() { return dividerAmount; }
+
     // Duty Cycle
     int GetDutyCycle() { return _dutyCycle; }
     void SetDutyCycle(int dutyCycle) { _dutyCycle = constrain(dutyCycle, 1, 99); }
     void IncreaseDutyCycle() { SetDutyCycle(_dutyCycle + 1); }
     void DecreaseDutyCycle() { SetDutyCycle(_dutyCycle - 1); }
     String GetDutyCycleDescription() { return String(_dutyCycle) + "%"; }
+
     // Output Level
     int GetLevel() { return _level; }
     int GetOutputLevel(); // Output Level based on the output type
@@ -40,6 +45,7 @@ class Output {
     void SetLevel(int level) { _level = constrain(level, 0, 100); }
     void IncreaseLevel() { SetLevel(_level + 1); }
     void DecreaseLevel() { SetLevel(_level - 1); }
+
     // Swing
     void SetSwingAmount(int swingAmount) { _swingAmountIndex = constrain(swingAmount, 0, 6); }
     int GetSwingAmountIndex() { return _swingAmountIndex; }
@@ -51,12 +57,14 @@ class Output {
     int GetSwingEvery() { return _swingEvery; }
     void IncreaseSwingEvery() { SetSwingEvery(_swingEvery + 1); }
     void DecreaseSwingEvery() { SetSwingEvery(_swingEvery - 1); }
+
     // Pulse Probability
     void SetPulseProbability(int pulseProbability) { _pulseProbability = constrain(pulseProbability, 0, 100); }
     int GetPulseProbability() { return _pulseProbability; }
     String GetPulseProbabilityDescription() { return String(_pulseProbability) + "%"; }
     void IncreasePulseProbability() { SetPulseProbability(_pulseProbability + 1); }
     void DecreasePulseProbability() { SetPulseProbability(_pulseProbability - 1); }
+
     // Euclidean Rhythm
     void SetEuclidean(bool euclidean);
     void ToggleEuclidean() { SetEuclidean(!_euclideanParams.enabled); }
