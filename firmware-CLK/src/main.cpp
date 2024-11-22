@@ -213,13 +213,13 @@ void HandleEncoderClick() {
                 menuMode = 33;
                 break;
             case 34: // Set duty cycle
-                menuMode = 33;
-                break;
-            case 35: // Level control for output 3
                 menuMode = 34;
                 break;
-            case 36: // Level control for output 4
+            case 35: // Level control for output 3
                 menuMode = 35;
+                break;
+            case 36: // Level control for output 4
+                menuMode = 36;
                 break;
             case 37:
                 SetTapTempo();
@@ -232,7 +232,7 @@ void HandleEncoderClick() {
                     p.divIdx[i] = outputs[i].GetDividerIndex();
                     p.dutyCycle[i] = outputs[i].GetDutyCycle();
                     p.outputState[i] = outputs[i].GetOutputState();
-                    p.level[i] = outputs[i].GetLevel();
+                    p.outputLevel[i] = outputs[i].GetLevel();
                     p.swingIdx[i] = outputs[i].GetSwingAmountIndex();
                     p.swingEvery[i] = outputs[i].GetSwingEvery();
                     p.pulseProbability[i] = outputs[i].GetPulseProbability();
@@ -323,9 +323,7 @@ void HandleEncoderPosition() {
         case 4:
         case 5:
         case 6: // Set div1, div2, div3, div4
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 3].DecreaseDivider();
-            }
+            outputs[menuMode - 3].SetDivider(outputs[menuMode - 3].GetDividerIndex() - speedFactor);
             unsavedChanges = true;
             break;
         case 7: // External clock divider
@@ -333,117 +331,83 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 12:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[0].DecreaseSwingAmount();
-            }
+            outputs[0].SetSwingAmount(outputs[0].GetSwingAmountIndex() - speedFactor);
             unsavedChanges = true;
             break;
         case 13:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[0].DecreaseSwingEvery();
-            }
+            outputs[0].SetSwingEvery(outputs[0].GetSwingEvery() - speedFactor);
             unsavedChanges = true;
             break;
         case 14:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[1].DecreaseSwingAmount();
-            }
+            outputs[1].SetSwingAmount(outputs[1].GetSwingAmountIndex() - speedFactor);
             unsavedChanges = true;
             break;
         case 15:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[1].DecreaseSwingEvery();
-            }
+            outputs[1].SetSwingEvery(outputs[1].GetSwingEvery() - speedFactor);
             unsavedChanges = true;
             break;
         case 16:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[2].DecreaseSwingAmount();
-            }
+            outputs[2].SetSwingAmount(outputs[2].GetSwingAmountIndex() - speedFactor);
             unsavedChanges = true;
             break;
         case 17:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[2].DecreaseSwingEvery();
-            }
+            outputs[2].SetSwingEvery(outputs[2].GetSwingEvery() - speedFactor);
             unsavedChanges = true;
             break;
         case 18:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[3].DecreaseSwingAmount();
-            }
+            outputs[3].SetSwingAmount(outputs[3].GetSwingAmountIndex() - speedFactor);
             unsavedChanges = true;
             break;
         case 19:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[3].DecreaseSwingEvery();
-            }
+            outputs[3].SetSwingEvery(outputs[3].GetSwingEvery() - speedFactor);
             unsavedChanges = true;
             break;
         case 20:
         case 21:
         case 22:
         case 23: // Set Pulse Probability for outputs
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 20].DecreasePulseProbability();
-            }
+            outputs[menuMode - 20].SetPulseProbability(outputs[menuMode - 20].GetPulseProbability() - speedFactor);
             unsavedChanges = true;
             break;
         case 24:
         case 25:
         case 26:
         case 27: // Set phase shift for outputs
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 24].DecreasePhase();
-            }
+            outputs[menuMode - 24].SetPhase(outputs[menuMode - 24].GetPhase() - speedFactor);
             unsavedChanges = true;
             break;
         case 28: // Set euclidean output to edit
-            euclideanOutput = (euclideanOutput - speedFactor < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - speedFactor;
+            euclideanOutput = (euclideanOutput - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - 1;
             unsavedChanges = true;
             break;
         case 30: // Set Euclidean rhythm step length
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[euclideanOutput].DecreaseEuclideanSteps();
-            }
+            outputs[euclideanOutput].SetEuclideanSteps(outputs[euclideanOutput].GetEuclideanSteps() - speedFactor);
             unsavedChanges = true;
             break;
         case 31: // Set Euclidean rhythm number of triggers
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[euclideanOutput].DecreaseEuclideanTriggers();
-            }
+            outputs[euclideanOutput].SetEuclideanTriggers(outputs[euclideanOutput].GetEuclideanTriggers() - speedFactor);
             unsavedChanges = true;
             break;
         case 32: // Set Euclidean rhythm rotation
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[euclideanOutput].DecreaseEuclideanRotation();
-            }
+            outputs[euclideanOutput].SetEuclideanRotation(outputs[euclideanOutput].GetEuclideanRotation() - speedFactor);
             unsavedChanges = true;
             break;
         case 33: // Set Euclidean padding
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[euclideanOutput].DecreaseEuclideanPadding();
-            }
+            outputs[euclideanOutput].SetEuclideanPadding(outputs[euclideanOutput].GetEuclideanPadding() - speedFactor);
             unsavedChanges = true;
             break;
-        case 34: // Set duty cycle
+        case 34: // Set duty cycle (set for all outputs the same)
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                for (int j = 0; j < speedFactor; j++) {
-                    outputs[i].DecreaseDutyCycle();
-                }
+                outputs[i].SetDutyCycle(outputs[i].GetDutyCycle() - speedFactor);
             }
             unsavedChanges = true;
             break;
         case 35: // Set level for output 3
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[2].DecreaseLevel();
-            }
+            outputs[2].SetLevel(outputs[2].GetLevel() - speedFactor);
             unsavedChanges = true;
             break;
         case 36: // Set level for output 4
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[3].DecreaseLevel();
-            }
+            outputs[3].SetLevel(outputs[3].GetLevel() - speedFactor);
             unsavedChanges = true;
             break;
         }
@@ -463,9 +427,7 @@ void HandleEncoderPosition() {
         case 4:
         case 5:
         case 6: // Set div1, div2, div3, div4
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 3].IncreaseDivider();
-            }
+            outputs[menuMode - 3].SetDivider(outputs[menuMode - 3].GetDividerIndex() + speedFactor);
             unsavedChanges = true;
             break;
         case 7: // External clock divider
@@ -473,117 +435,83 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 12:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[0].IncreaseSwingAmount();
-            }
+            outputs[0].SetSwingAmount(outputs[0].GetSwingAmountIndex() + speedFactor);
             unsavedChanges = true;
             break;
         case 13:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[0].IncreaseSwingEvery();
-            }
+            outputs[0].SetSwingEvery(outputs[0].GetSwingEvery() + speedFactor);
             unsavedChanges = true;
             break;
         case 14:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[1].IncreaseSwingAmount();
-            }
+            outputs[1].SetSwingAmount(outputs[1].GetSwingAmountIndex() + speedFactor);
             unsavedChanges = true;
             break;
         case 15:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[1].IncreaseSwingEvery();
-            }
+            outputs[1].SetSwingEvery(outputs[1].GetSwingEvery() + speedFactor);
             unsavedChanges = true;
             break;
         case 16:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[2].IncreaseSwingAmount();
-            }
+            outputs[2].SetSwingAmount(outputs[2].GetSwingAmountIndex() + speedFactor);
             unsavedChanges = true;
             break;
         case 17:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[2].IncreaseSwingEvery();
-            }
+            outputs[2].SetSwingEvery(outputs[2].GetSwingEvery() + speedFactor);
             unsavedChanges = true;
             break;
         case 18:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[3].IncreaseSwingAmount();
-            }
+            outputs[3].SetSwingAmount(outputs[3].GetSwingAmountIndex() + speedFactor);
             unsavedChanges = true;
             break;
         case 19:
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[3].IncreaseSwingEvery();
-            }
+            outputs[3].SetSwingEvery(outputs[3].GetSwingEvery() + speedFactor);
             unsavedChanges = true;
             break;
         case 20:
         case 21:
         case 22:
         case 23: // Set Pulse Probability for outputs
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 20].IncreasePulseProbability();
-            }
+            outputs[menuMode - 20].SetPulseProbability(outputs[menuMode - 20].GetPulseProbability() + speedFactor);
             unsavedChanges = true;
             break;
         case 24:
         case 25:
         case 26:
         case 27: // Set phase shift for outputs
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 24].IncreasePhase();
-            }
+            outputs[menuMode - 24].SetPhase(outputs[menuMode - 24].GetPhase() + speedFactor);
             unsavedChanges = true;
             break;
         case 28: // Set euclidean output to edit
-            euclideanOutput = (euclideanOutput + speedFactor > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + speedFactor;
+            euclideanOutput = (euclideanOutput + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + 1;
             unsavedChanges = true;
             break;
         case 30: // Set Euclidean rhythm step length
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[euclideanOutput].IncreaseEuclideanSteps();
-            }
+            outputs[euclideanOutput].SetEuclideanSteps(outputs[euclideanOutput].GetEuclideanSteps() + speedFactor);
             unsavedChanges = true;
             break;
         case 31: // Set Euclidean rhythm number of triggers
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[euclideanOutput].IncreaseEuclideanTriggers();
-            }
+            outputs[euclideanOutput].SetEuclideanTriggers(outputs[euclideanOutput].GetEuclideanTriggers() + speedFactor);
             unsavedChanges = true;
             break;
         case 32: // Set Euclidean rhythm rotation
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[euclideanOutput].IncreaseEuclideanRotation();
-            }
+            outputs[euclideanOutput].SetEuclideanRotation(outputs[euclideanOutput].GetEuclideanRotation() + speedFactor);
             unsavedChanges = true;
             break;
         case 33: // Set Euclidean padding
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[euclideanOutput].IncreaseEuclideanPadding();
-            }
+            outputs[euclideanOutput].SetEuclideanPadding(outputs[euclideanOutput].GetEuclideanPadding() + speedFactor);
             unsavedChanges = true;
             break;
         case 34: // Set duty cycle
             for (int i = 0; i < NUM_OUTPUTS; i++) {
-                for (int j = 0; j < speedFactor; j++) {
-                    outputs[i].IncreaseDutyCycle();
-                }
+                outputs[i].SetDutyCycle(outputs[i].GetDutyCycle() + speedFactor);
             }
             unsavedChanges = true;
             break;
         case 35: // Set level for output 3
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[2].IncreaseLevel();
-            }
+            outputs[2].SetLevel(outputs[2].GetLevel() + speedFactor);
             unsavedChanges = true;
             break;
         case 36: // Set level for output 4
-            for (int i = 0; i < speedFactor; i++) {
-                outputs[3].IncreaseLevel();
-            }
+            outputs[3].SetLevel(outputs[3].GetLevel() + speedFactor);
             unsavedChanges = true;
             break;
         }
@@ -1104,7 +1032,7 @@ void UpdateParameters(LoadSaveParams p) {
         outputs[i].SetDivider(p.divIdx[i]);
         outputs[i].SetDutyCycle(p.dutyCycle[i]);
         outputs[i].SetOutputState(p.outputState[i]);
-        outputs[i].SetLevel(p.level[i]);
+        outputs[i].SetLevel(p.outputLevel[i]);
         outputs[i].SetSwingAmount(p.swingIdx[i]);
         outputs[i].SetSwingEvery(p.swingEvery[i]);
         outputs[i].SetPulseProbability(p.pulseProbability[i]);

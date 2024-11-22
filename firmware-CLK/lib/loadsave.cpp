@@ -15,7 +15,8 @@ struct LoadSaveParams {
     int divIdx[NUM_OUTPUTS];
     int dutyCycle[NUM_OUTPUTS];
     bool outputState[NUM_OUTPUTS];
-    int level[NUM_OUTPUTS];
+    int outputLevel[NUM_OUTPUTS];
+    int outputOffset[NUM_OUTPUTS];
     int swingIdx[NUM_OUTPUTS];
     int swingEvery[NUM_OUTPUTS];
     int pulseProbability[NUM_OUTPUTS];
@@ -40,7 +41,8 @@ void Save(const LoadSaveParams &p, int slot) { // save setting data to flash mem
         EEPROM.write(idx++, p.divIdx[i]);
         EEPROM.write(idx++, p.dutyCycle[i]);
         EEPROM.write(idx++, p.outputState[i]);
-        EEPROM.write(idx++, p.level[i]);
+        EEPROM.write(idx++, p.outputLevel[i]);
+        EEPROM.write(idx++, p.outputOffset[i]);
         EEPROM.write(idx++, p.swingIdx[i]);
         EEPROM.write(idx++, p.swingEvery[i]);
         EEPROM.write(idx++, p.pulseProbability[i]);
@@ -64,7 +66,8 @@ LoadSaveParams LoadDefaultParams() {
         p.divIdx[i] = 5;
         p.dutyCycle[i] = 50;
         p.outputState[i] = true;
-        p.level[i] = 100;
+        p.outputLevel[i] = 100;
+        p.outputOffset[i] = 0;
         p.swingIdx[i] = 0;
         p.swingEvery[i] = 2;
         p.pulseProbability[i] = 100;
@@ -93,7 +96,8 @@ LoadSaveParams Load(int slot) {
             p.divIdx[i] = EEPROM.read(idx++);
             p.dutyCycle[i] = EEPROM.read(idx++);
             p.outputState[i] = EEPROM.read(idx++);
-            p.level[i] = EEPROM.read(idx++);
+            p.outputLevel[i] = EEPROM.read(idx++);
+            p.outputOffset[i] = EEPROM.read(idx++);
             p.swingIdx[i] = EEPROM.read(idx++);
             p.swingEvery[i] = EEPROM.read(idx++);
             p.pulseProbability[i] = EEPROM.read(idx++);

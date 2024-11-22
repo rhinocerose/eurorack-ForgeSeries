@@ -26,16 +26,12 @@ class Output {
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
     void SetDivider(int index) { _dividerIndex = constrain(index, 0, dividerAmount - 1); }
-    void IncreaseDivider() { SetDivider(_dividerIndex + 1); }
-    void DecreaseDivider() { SetDivider(_dividerIndex - 1); }
     String GetDividerDescription() { return _dividerDescription[_dividerIndex]; }
     int GetDividerAmounts() { return dividerAmount; }
 
     // Duty Cycle
     int GetDutyCycle() { return _dutyCycle; }
     void SetDutyCycle(int dutyCycle) { _dutyCycle = constrain(dutyCycle, 1, 99); }
-    void IncreaseDutyCycle() { SetDutyCycle(_dutyCycle + 1); }
-    void DecreaseDutyCycle() { SetDutyCycle(_dutyCycle - 1); }
     String GetDutyCycleDescription() { return String(_dutyCycle) + "%"; }
 
     // Output Level
@@ -43,27 +39,19 @@ class Output {
     int GetOutputLevel(); // Output Level based on the output type
     String GetLevelDescription() { return String(_level) + "%"; }
     void SetLevel(int level) { _level = constrain(level, 0, 100); }
-    void IncreaseLevel() { SetLevel(_level + 1); }
-    void DecreaseLevel() { SetLevel(_level - 1); }
 
     // Swing
     void SetSwingAmount(int swingAmount) { _swingAmountIndex = constrain(swingAmount, 0, 6); }
     int GetSwingAmountIndex() { return _swingAmountIndex; }
     int GetSwingAmounts() { return 7; }
-    void IncreaseSwingAmount() { SetSwingAmount(_swingAmountIndex + 1); }
-    void DecreaseSwingAmount() { SetSwingAmount(_swingAmountIndex - 1); }
     String GetSwingAmountDescription() { return _swingAmountDescriptions[_swingAmountIndex]; }
     void SetSwingEvery(int swingEvery) { _swingEvery = constrain(swingEvery, 1, 16); }
     int GetSwingEvery() { return _swingEvery; }
-    void IncreaseSwingEvery() { SetSwingEvery(_swingEvery + 1); }
-    void DecreaseSwingEvery() { SetSwingEvery(_swingEvery - 1); }
 
     // Pulse Probability
     void SetPulseProbability(int pulseProbability) { _pulseProbability = constrain(pulseProbability, 0, 100); }
     int GetPulseProbability() { return _pulseProbability; }
     String GetPulseProbabilityDescription() { return String(_pulseProbability) + "%"; }
-    void IncreasePulseProbability() { SetPulseProbability(_pulseProbability + 1); }
-    void DecreasePulseProbability() { SetPulseProbability(_pulseProbability - 1); }
 
     // Euclidean Rhythm
     void SetEuclidean(bool euclidean);
@@ -72,26 +60,16 @@ class Output {
     int GetRhythmStep(int i) { return _euclideanRhythm[i]; }
     void SetEuclideanSteps(int steps);
     int GetEuclideanSteps() { return _euclideanParams.steps; }
-    void IncreaseEuclideanSteps() { SetEuclideanSteps(_euclideanParams.steps + 1); }
-    void DecreaseEuclideanSteps() { SetEuclideanSteps(_euclideanParams.steps - 1); }
     void SetEuclideanTriggers(int triggers);
     int GetEuclideanTriggers() { return _euclideanParams.triggers; }
-    void IncreaseEuclideanTriggers() { SetEuclideanTriggers(_euclideanParams.triggers + 1); }
-    void DecreaseEuclideanTriggers() { SetEuclideanTriggers(_euclideanParams.triggers - 1); }
     void SetEuclideanRotation(int rotation);
     int GetEuclideanRotation() { return _euclideanParams.rotation; }
-    void IncreaseEuclideanRotation() { SetEuclideanRotation(_euclideanParams.rotation + 1); }
-    void DecreaseEuclideanRotation() { SetEuclideanRotation(_euclideanParams.rotation - 1); }
     void SetEuclideanPadding(int pad);
     int GetEuclideanPadding() { return _euclideanParams.pad; }
-    void IncreaseEuclideanPadding() { SetEuclideanPadding(_euclideanParams.pad + 1); }
-    void DecreaseEuclideanPadding() { SetEuclideanPadding(_euclideanParams.pad - 1); }
 
     // Phase
     void SetPhase(int phase) { _phase = constrain(phase, 0, 100); }
     int GetPhase() { return _phase; }
-    void IncreasePhase() { SetPhase(_phase + 1); }
-    void DecreasePhase() { SetPhase(_phase - 1); }
     String GetPhaseDescription() { return String(_phase) + "%"; }
 
   private:
