@@ -145,28 +145,28 @@ void HandleEncoderClick() {
                 outputs[3].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 12: // Set swing amount for outputs
+            case 12: // Set swing amount for output 1
                 menuMode = 12;
                 break;
-            case 13:
+            case 13: // Set swing every for output 1
                 menuMode = 13;
                 break;
-            case 14:
+            case 14: // Set swing amount for output 2
                 menuMode = 14;
                 break;
-            case 15:
+            case 15: // Set swing every for output 2
                 menuMode = 15;
                 break;
-            case 16: // Set swing every for outputs
+            case 16: // Set swing amount for output 3
                 menuMode = 16;
                 break;
-            case 17:
+            case 17: // Set swing every for output 3
                 menuMode = 17;
                 break;
-            case 18:
+            case 18: // Set swing amount for output 4
                 menuMode = 18;
                 break;
-            case 19:
+            case 19: // Set swing every for output 4
                 menuMode = 19;
                 break;
             case 20: // Set pulse probability for outputs
@@ -333,20 +333,50 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 12:
-        case 13:
-        case 14:
-        case 15: // Set swing amount for outputs
             for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 12].DecreaseSwingAmount();
+                outputs[0].DecreaseSwingAmount();
+            }
+            unsavedChanges = true;
+            break;
+        case 13:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[0].DecreaseSwingEvery();
+            }
+            unsavedChanges = true;
+            break;
+        case 14:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[1].DecreaseSwingAmount();
+            }
+            unsavedChanges = true;
+            break;
+        case 15:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[1].DecreaseSwingEvery();
             }
             unsavedChanges = true;
             break;
         case 16:
-        case 17:
-        case 18:
-        case 19: // Set swing every for outputs
             for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 16].DecreaseSwingEvery();
+                outputs[2].DecreaseSwingAmount();
+            }
+            unsavedChanges = true;
+            break;
+        case 17:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[2].DecreaseSwingEvery();
+            }
+            unsavedChanges = true;
+            break;
+        case 18:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[3].DecreaseSwingAmount();
+            }
+            unsavedChanges = true;
+            break;
+        case 19:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[3].DecreaseSwingEvery();
             }
             unsavedChanges = true;
             break;
@@ -443,20 +473,50 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 12:
-        case 13:
-        case 14:
-        case 15: // Set swing amount for outputs
             for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 12].IncreaseSwingAmount();
+                outputs[0].IncreaseSwingAmount();
+            }
+            unsavedChanges = true;
+            break;
+        case 13:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[0].IncreaseSwingEvery();
+            }
+            unsavedChanges = true;
+            break;
+        case 14:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[1].IncreaseSwingAmount();
+            }
+            unsavedChanges = true;
+            break;
+        case 15:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[1].IncreaseSwingEvery();
             }
             unsavedChanges = true;
             break;
         case 16:
-        case 17:
-        case 18:
-        case 19: // Set swing every for outputs
             for (int i = 0; i < speedFactor; i++) {
-                outputs[menuMode - 16].IncreaseSwingEvery();
+                outputs[2].IncreaseSwingAmount();
+            }
+            unsavedChanges = true;
+            break;
+        case 17:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[2].IncreaseSwingEvery();
+            }
+            unsavedChanges = true;
+            break;
+        case 18:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[3].IncreaseSwingAmount();
+            }
+            unsavedChanges = true;
+            break;
+        case 19:
+            for (int i = 0; i < speedFactor; i++) {
+                outputs[3].IncreaseSwingEvery();
             }
             unsavedChanges = true;
             break;
@@ -678,19 +738,17 @@ void HandleDisplay() {
                 display.print(outputs[i].GetSwingAmountDescription());
                 display.setCursor(100, yPosition);
                 display.print(outputs[i].GetSwingEvery());
-                if (menuItem == i + menuIdx) {
+
+                if (menuItem % 2 == 0) {
                     display.fillTriangle(59, 20, 59, 26, 62, 23, 1);
-                    if (menuMode == 0) {
-                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == i + menuIdx) {
-                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    }
-                }
-                if (menuItem == i + menuIdx + 4) {
+                } else {
                     display.fillTriangle(89, 20, 89, 26, 92, 23, 1);
+                }
+
+                if (menuItem - menuIdx == i * 2 || menuItem - menuIdx == i * 2 + 1) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == i + menuIdx + 4) {
+                    } else {
                         display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     }
                 }
