@@ -120,9 +120,9 @@ An adjstment of 50% will shift the output by half a pulse width which means that
 
 Just be careful with phase wraps as shifting an output phase by more than 50% with a duty-cycle bigger than 50% can lead to unexpected triggers.
 
-### Output Level
+### Output Level and Offset
 
-Outputs 3 and 4 can output CV values so they support setting the output level which ranges from 0 to 100% corresponding to 0 to 5V.
+Outputs 3 and 4 can output CV values so they support setting the output level and offset which ranges from 0 to 100% corresponding to 0 to 5V.
 
 1. Navigate to the selected output. Click the encoder to enter edit mode.
 2. Use the encoder to select the desired output level from 0 to 100% which corresponds to 0 to 5V.

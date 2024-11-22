@@ -40,6 +40,11 @@ class Output {
     String GetLevelDescription() { return String(_level) + "%"; }
     void SetLevel(int level) { _level = constrain(level, 0, 100); }
 
+    // Output Offset
+    int GetOffset() { return _offset; }
+    void SetOffset(int offset) { _offset = constrain(offset, 0, 100); }
+    String GetOffsetDescription() { return String(_offset) + "%"; }
+
     // Swing
     void SetSwingAmount(int swingAmount) { _swingAmountIndex = constrain(swingAmount, 0, 6); }
     int GetSwingAmountIndex() { return _swingAmountIndex; }
@@ -92,7 +97,8 @@ class Output {
     int _dividerIndex = 5;                   // Default to 1
     int _dutyCycle = 50;                     // Default to 50%
     int _phase = 0;                          // Phase offset, default to 0% (in phase with master)
-    int _level = 100;                        // Default to 100%
+    int _level = 100;                        // Output voltage level for DAC outs (Default to 100%)
+    int _offset = 0;                         // Output voltage offset for DAC outs (default to 0%)
     bool _isPulseOn = false;                 // Pulse state
     bool _lastPulseState = false;            // Last pulse state
     bool _state = true;                      // Output state
@@ -199,16 +205,18 @@ void Output::ToggleMasterState() {
     }
 }
 
-// Output Level based on the output type
+// Output Level based on the output type and pulse state
 int Output::GetOutputLevel() {
     if (_outputType == 0) {
-        if (_level == 0) {
-            return LOW;
-        } else {
+        if (_isPulseOn) {
             return HIGH;
+        } else {
+            return LOW;
         }
     } else {
-        return _level * MaxDACValue / 100;
+        int adjustedLevel = _isPulseOn ? (_level + _offset) : _offset;
+        adjustedLevel = constrain(adjustedLevel, 0, 100);
+        return adjustedLevel * MaxDACValue / 100;
     }
 }
 

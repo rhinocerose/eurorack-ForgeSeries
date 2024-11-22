@@ -73,7 +73,7 @@ int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 39;
+int menuItems = 41;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 0;
@@ -212,19 +212,25 @@ void HandleEncoderClick() {
             case 33: // Set euclidean padding
                 menuMode = 33;
                 break;
-            case 34: // Set duty cycle
+            case 34: // Level control for output 3
                 menuMode = 34;
                 break;
-            case 35: // Level control for output 3
+            case 35: // Level offset for output 3
                 menuMode = 35;
                 break;
             case 36: // Level control for output 4
                 menuMode = 36;
                 break;
-            case 37:
+            case 37: // Level offset for output 4
+                menuMode = 37;
+                break;
+            case 38: // Set duty cycle
+                menuMode = 38;
+                break;
+            case 39:
                 SetTapTempo();
                 break; // Tap tempo
-            case 38: { // Save settings
+            case 40: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -233,6 +239,7 @@ void HandleEncoderClick() {
                     p.dutyCycle[i] = outputs[i].GetDutyCycle();
                     p.outputState[i] = outputs[i].GetOutputState();
                     p.outputLevel[i] = outputs[i].GetLevel();
+                    p.outputOffset[i] = outputs[i].GetOffset();
                     p.swingIdx[i] = outputs[i].GetSwingAmountIndex();
                     p.swingEvery[i] = outputs[i].GetSwingEvery();
                     p.pulseProbability[i] = outputs[i].GetPulseProbability();
@@ -260,7 +267,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 39: // Load default settings
+            case 41: // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -396,18 +403,26 @@ void HandleEncoderPosition() {
             outputs[euclideanOutput].SetEuclideanPadding(outputs[euclideanOutput].GetEuclideanPadding() - speedFactor);
             unsavedChanges = true;
             break;
-        case 34: // Set duty cycle (set for all outputs the same)
-            for (int i = 0; i < NUM_OUTPUTS; i++) {
-                outputs[i].SetDutyCycle(outputs[i].GetDutyCycle() - speedFactor);
-            }
+        case 34: // Set level for output 3
+            outputs[2].SetLevel(outputs[2].GetLevel() - speedFactor);
             unsavedChanges = true;
             break;
-        case 35: // Set level for output 3
-            outputs[2].SetLevel(outputs[2].GetLevel() - speedFactor);
+        case 35: // Set offset for output 3
+            outputs[2].SetOffset(outputs[2].GetOffset() - speedFactor);
             unsavedChanges = true;
             break;
         case 36: // Set level for output 4
             outputs[3].SetLevel(outputs[3].GetLevel() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 37: // Set offset for output 4
+            outputs[3].SetOffset(outputs[3].GetOffset() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 38: // Set duty cycle (set for all outputs the same)
+            for (int i = 0; i < NUM_OUTPUTS; i++) {
+                outputs[i].SetDutyCycle(outputs[i].GetDutyCycle() - speedFactor);
+            }
             unsavedChanges = true;
             break;
         }
@@ -500,18 +515,26 @@ void HandleEncoderPosition() {
             outputs[euclideanOutput].SetEuclideanPadding(outputs[euclideanOutput].GetEuclideanPadding() + speedFactor);
             unsavedChanges = true;
             break;
-        case 34: // Set duty cycle
-            for (int i = 0; i < NUM_OUTPUTS; i++) {
-                outputs[i].SetDutyCycle(outputs[i].GetDutyCycle() + speedFactor);
-            }
+        case 34: // Set level for output 3
+            outputs[2].SetLevel(outputs[2].GetLevel() + speedFactor);
             unsavedChanges = true;
             break;
-        case 35: // Set level for output 3
-            outputs[2].SetLevel(outputs[2].GetLevel() + speedFactor);
+        case 35: // Set offset for output 3
+            outputs[2].SetOffset(outputs[2].GetOffset() + speedFactor);
             unsavedChanges = true;
             break;
         case 36: // Set level for output 4
             outputs[3].SetLevel(outputs[3].GetLevel() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 37: // Set offset for output 4
+            outputs[3].SetOffset(outputs[3].GetOffset() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 38: // Set duty cycle
+            for (int i = 0; i < NUM_OUTPUTS; i++) {
+                outputs[i].SetDutyCycle(outputs[i].GetDutyCycle() + speedFactor);
+            }
             unsavedChanges = true;
             break;
         }
@@ -653,12 +676,13 @@ void HandleDisplay() {
         if (menuItem >= menuIdx && menuItem < menuIdx + 8) {
             display.setTextSize(1);
             display.setCursor(10, 1);
+            int yPosition = 20;
             display.println("OUTPUT SWING");
-            display.setCursor(64, 20);
+            display.setCursor(64, yPosition);
             display.println("AMT");
-            display.setCursor(94, 20);
+            display.setCursor(94, yPosition);
             display.println("EVERY");
-            int yPosition = 29;
+            yPosition += 9;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
                 display.print("OUTPUT " + String(i + 1) + ":");
@@ -796,7 +820,7 @@ void HandleDisplay() {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
-            display.setCursor(48, yPosition);
+            display.setCursor(50, yPosition);
             display.print("PD:");
             display.print(String(outputs[euclideanOutput].GetEuclideanPadding()));
             if (menuItem == menuIdx + 5 && menuMode == 0) {
@@ -836,61 +860,81 @@ void HandleDisplay() {
 
         // Duty cycle and level control menu
         menuIdx = 34;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
+        if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 0;
+            display.setCursor(10, yPosition);
+            display.println("OUTPUT SETTINGS");
+            yPosition += 9;
+
+            // Levels and offsets
+            display.setCursor(70, yPosition);
+            display.println("LVL");
+            display.setCursor(100, yPosition);
+            display.println("OFF");
+            if (menuItem == menuIdx || menuItem == menuIdx + 2) {
+                display.fillTriangle(65, yPosition, 65, yPosition + 6, 68, yPosition + 3, 1);
+            }
+            if (menuItem == menuIdx + 1 || menuItem == menuIdx + 3) {
+                display.fillTriangle(95, yPosition, 95, yPosition + 6, 98, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            for (int i = 2; i < NUM_OUTPUTS; i++) {
+                display.setCursor(10, yPosition);
+                display.print("OUTPUT " + String(i + 1) + ":");
+                display.setCursor(70, yPosition);
+                display.print(outputs[i].GetLevelDescription());
+                display.setCursor(100, yPosition);
+                display.print(outputs[i].GetOffsetDescription());
+
+                if (menuItem == 34 + (i - 2) * 2 || menuItem == 35 + (i - 2) * 2) {
+                    if (menuMode == 0) {
+                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    } else {
+                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    }
+                }
+
+                yPosition += 9;
+            }
             // Duty Cycle
             display.setCursor(10, yPosition);
             display.println("DUTY CYCLE:");
             display.setCursor(80, yPosition);
             display.print(outputs[0].GetDutyCycleDescription());
-            if (menuItem == menuIdx && menuMode == 0) {
+            if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
-            } else if (menuMode == menuIdx) {
+            } else if (menuMode == menuIdx + 4) {
                 display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
             }
-            yPosition += 9;
-            // Level output 3
-            display.setCursor(10, yPosition);
-            display.print("OUT 3 LVL:");
-            display.setCursor(80, yPosition);
-            display.print(outputs[2].GetLevelDescription());
-            if (menuItem == menuIdx + 1 && menuMode == 0) {
-                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuIdx + 1) {
-                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            }
-            yPosition += 9;
-            // Level output 4
-            display.setCursor(10, yPosition);
-            display.print("OUT 4 LVL:");
-            display.setCursor(80, yPosition);
-            display.print(outputs[3].GetLevelDescription());
-            if (menuItem == menuIdx + 2 && menuMode == 0) {
-                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuIdx + 2) {
-                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            }
-            yPosition += 15;
+
+            RedrawDisplay();
+            return;
+        }
+        // Other settings
+        menuIdx = 39;
+        if (menuItem >= menuIdx && menuItem < menuIdx + 3) {
+            display.setTextSize(1);
+            int yPosition = 20;
             // Tap tempo
             display.setCursor(10, yPosition);
             display.print("TAP TEMPO");
             display.print(" (" + String(BPM) + " BPM)");
-            if (menuItem == menuIdx + 3) {
+            if (menuItem == menuIdx) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
-            yPosition += 15;
+            yPosition += 27;
             // Save
             display.setCursor(10, yPosition);
             display.print("SAVE");
-            if (menuItem == menuIdx + 4) {
+            if (menuItem == menuIdx + 1) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
             // Load default settings
             display.setCursor(10, yPosition);
             display.print("LOAD DEFAULTS");
-            if (menuItem == menuIdx + 5) {
+            if (menuItem == menuIdx + 2) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
@@ -1006,11 +1050,7 @@ void InitializeTimer() {
 void HandleOutputs() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         // Set the output level based on the pulse state
-        if (outputs[i].GetPulseState()) {
-            SetPin(i, outputs[i].GetOutputLevel());
-        } else {
-            SetPin(i, LOW);
-        }
+        SetPin(i, outputs[i].GetOutputLevel());
     }
 }
 
@@ -1033,6 +1073,7 @@ void UpdateParameters(LoadSaveParams p) {
         outputs[i].SetDutyCycle(p.dutyCycle[i]);
         outputs[i].SetOutputState(p.outputState[i]);
         outputs[i].SetLevel(p.outputLevel[i]);
+        outputs[i].SetOffset(p.outputOffset[i]);
         outputs[i].SetSwingAmount(p.swingIdx[i]);
         outputs[i].SetSwingEvery(p.swingEvery[i]);
         outputs[i].SetPulseProbability(p.pulseProbability[i]);
