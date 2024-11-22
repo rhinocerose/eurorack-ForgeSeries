@@ -662,11 +662,11 @@ void HandleDisplay() {
         if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
             display.setCursor(10, 1);
-            display.println("Clock Dividers");
+            display.println("CLOCK DIVIDERS");
             int yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
-                display.print("Output " + String(i + 1) + ":");
+                display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(84, yPosition);
                 display.print(outputs[i].GetDividerDescription());
                 if (menuItem == i + menuIdx) {
@@ -680,7 +680,7 @@ void HandleDisplay() {
             }
             // For external clock divider
             display.setCursor(10, yPosition);
-            display.print("Ext. Div:");
+            display.print("EXT. DIV:");
             display.setCursor(84, yPosition);
             display.print(externalDividerDescription[externalDividerIndex]);
             if (menuItem == 7) {
@@ -700,13 +700,13 @@ void HandleDisplay() {
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
             display.setCursor(10, 1);
-            display.println("Output State");
+            display.println("OUTPUT STATE");
             int yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
-                display.print("Output " + String(i + 1) + ":");
+                display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
-                display.print(outputs[i].GetOutputState() ? "On" : "Off");
+                display.print(outputs[i].GetOutputState() ? "ON" : "OFF");
                 if (menuItem == i + menuIdx) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
@@ -725,15 +725,15 @@ void HandleDisplay() {
         if (menuItem >= menuIdx && menuItem < menuIdx + 8) {
             display.setTextSize(1);
             display.setCursor(10, 1);
-            display.println("Output Swing");
+            display.println("OUTPUT SWING");
             display.setCursor(64, 20);
-            display.println("Amt");
+            display.println("AMT");
             display.setCursor(94, 20);
-            display.println("Every");
+            display.println("EVERY");
             int yPosition = 29;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
-                display.print("Output " + String(i + 1) + ":");
+                display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
                 display.print(outputs[i].GetSwingAmountDescription());
                 display.setCursor(100, yPosition);
@@ -764,11 +764,11 @@ void HandleDisplay() {
             display.setTextSize(1);
             int yPosition = 0;
             display.setCursor(10, yPosition);
-            display.println("Pulse Probability");
+            display.println("PULSE PROBABILITY");
             yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
-                display.print("Output " + String(i + 1) + ":");
+                display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
                 display.print(outputs[i].GetPulseProbabilityDescription());
                 if (menuItem == menuIdx + i) {
@@ -790,11 +790,11 @@ void HandleDisplay() {
             display.setTextSize(1);
             int yPosition = 0;
             display.setCursor(10, yPosition);
-            display.println("Phase Shift");
+            display.println("PHASE SHIFT");
             yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
-                display.print("Output " + String(i + 1) + ":");
+                display.print("OUTPUT " + String(i + 1) + ":");
                 display.setCursor(70, yPosition);
                 display.print(outputs[i].GetPhaseDescription());
                 if (menuItem == menuIdx + i) {
@@ -816,11 +816,11 @@ void HandleDisplay() {
             display.setTextSize(1);
             int yPosition = 0;
             display.setCursor(10, yPosition);
-            display.println("Euclidean Rhythm");
+            display.println("EUCLIDEAN RHYTHM");
             yPosition = 20;
             int xPosition = 64;
             display.setCursor(10, yPosition);
-            display.print("Output: ");
+            display.print("OUTPUT: ");
             display.setCursor(xPosition, yPosition);
             display.print(String(euclideanOutput + 1));
             if (menuItem == menuIdx && menuMode == 0) {
@@ -830,9 +830,9 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("Enabled: ");
+            display.print("ENABLED: ");
             display.setCursor(xPosition, yPosition);
-            display.print(String(outputs[euclideanOutput].GetEuclidean() ? "Yes" : "No"));
+            display.print(String(outputs[euclideanOutput].GetEuclidean() ? "YES" : "NO"));
             if (menuItem == menuIdx + 1 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 1) {
@@ -840,7 +840,7 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("Steps: ");
+            display.print("STEPS: ");
             display.setCursor(xPosition, yPosition);
             display.print(String(outputs[euclideanOutput].GetEuclideanSteps()));
             if (menuItem == menuIdx + 2 && menuMode == 0) {
@@ -850,7 +850,7 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("Hits: ");
+            display.print("HITS: ");
             display.setCursor(xPosition, yPosition);
             display.print(String(outputs[euclideanOutput].GetEuclideanTriggers()));
             if (menuItem == menuIdx + 3 && menuMode == 0) {
@@ -860,7 +860,7 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("Rt:");
+            display.print("RT:");
             display.print(String(outputs[euclideanOutput].GetEuclideanRotation()));
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
@@ -869,7 +869,7 @@ void HandleDisplay() {
             }
 
             display.setCursor(48, yPosition);
-            display.print("Pd:");
+            display.print("PD:");
             display.print(String(outputs[euclideanOutput].GetEuclideanPadding()));
             if (menuItem == menuIdx + 5 && menuMode == 0) {
                 display.drawTriangle(42, yPosition - 1, 42, yPosition + 7, 46, yPosition + 3, 1);
@@ -913,7 +913,7 @@ void HandleDisplay() {
             int yPosition = 0;
             // Duty Cycle
             display.setCursor(10, yPosition);
-            display.println("Duty Cycle:");
+            display.println("DUTY CYCLE:");
             display.setCursor(80, yPosition);
             display.print(outputs[0].GetDutyCycleDescription());
             if (menuItem == menuIdx && menuMode == 0) {
@@ -924,7 +924,7 @@ void HandleDisplay() {
             yPosition += 9;
             // Level output 3
             display.setCursor(10, yPosition);
-            display.print("Out 3 Lvl:");
+            display.print("OUT 3 LVL:");
             display.setCursor(80, yPosition);
             display.print(outputs[2].GetLevelDescription());
             if (menuItem == menuIdx + 1 && menuMode == 0) {
@@ -935,7 +935,7 @@ void HandleDisplay() {
             yPosition += 9;
             // Level output 4
             display.setCursor(10, yPosition);
-            display.print("Out 4 Lvl:");
+            display.print("OUT 4 LVL:");
             display.setCursor(80, yPosition);
             display.print(outputs[3].GetLevelDescription());
             if (menuItem == menuIdx + 2 && menuMode == 0) {
@@ -954,14 +954,14 @@ void HandleDisplay() {
             yPosition += 15;
             // Save
             display.setCursor(10, yPosition);
-            display.print("Save");
+            display.print("SAVE");
             if (menuItem == menuIdx + 4) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
             // Load default settings
             display.setCursor(10, yPosition);
-            display.print("Load Defaults");
+            display.print("LOAD DEFAULTS");
             if (menuItem == menuIdx + 5) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
