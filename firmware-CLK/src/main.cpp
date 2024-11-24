@@ -56,7 +56,7 @@ unsigned int const minBPM = 10;
 unsigned int const maxBPM = 300;
 
 // Play/Stop state
-bool masterStop = false; // New variable to track play/stop state
+bool masterStop = false; // Track global play/stop state
 
 // Global tick counter
 unsigned long tickCounter = 0;
@@ -76,7 +76,7 @@ unsigned long externalTickCounter = 0;
 int menuItems = 41;
 int menuItem = 3;
 bool switchState = 1;
-bool oldSwitchState = 0;
+bool oldSwitchState = 1;
 int menuMode = 0;            // Menu mode for parameter editing
 bool displayRefresh = 1;     // Display refresh flag
 bool unsavedChanges = false; // Unsaved changes flag
@@ -1112,8 +1112,6 @@ void setup() {
     display.display();
     delay(1500);
 
-    display.setTextColor(WHITE);
-
     // Attach interrupt for external clock
     attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, RISING);
 
@@ -1141,7 +1139,6 @@ void HandleIO() {
 
 // Main loop
 void loop() {
-
     HandleIO();
 
     HandleDisplay();

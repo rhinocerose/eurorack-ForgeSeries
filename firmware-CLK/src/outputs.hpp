@@ -208,11 +208,7 @@ void Output::ToggleMasterState() {
 // Output Level based on the output type and pulse state
 int Output::GetOutputLevel() {
     if (_outputType == 0) {
-        if (_isPulseOn) {
-            return HIGH;
-        } else {
-            return LOW;
-        }
+        return _isPulseOn ? HIGH : LOW;
     } else {
         int adjustedLevel = _isPulseOn ? (_level + _offset) : _offset;
         adjustedLevel = constrain(adjustedLevel, 0, 100);
