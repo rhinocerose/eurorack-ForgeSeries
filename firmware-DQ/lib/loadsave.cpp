@@ -14,7 +14,7 @@ void Save(LoadSaveParams p, bool note1[], bool note2[]) {
     byte note1_str_pg1 = 0, note1_str_pg2 = 0;
     byte note2_str_pg1 = 0, note2_str_pg2 = 0;
 
-    for (int j = 0; j <= 7; j++) {  // Convert note setting to bits
+    for (int j = 0; j <= 7; j++) { // Convert note setting to bits
         bitWrite(note1_str_pg1, j, note1[j]);
         bitWrite(note2_str_pg1, j, note2[j]);
     }
@@ -59,10 +59,10 @@ void Load(LoadSaveParams p, bool note1[], bool note2[]) {
         *p.oct2 = EEPROM.read(12);
         *p.sensitivity_ch1 = EEPROM.read(13);
         *p.sensitivity_ch2 = EEPROM.read(14);
-    } else {                        // No eeprom data , setting defaults
-        note1_str_pg1 = B11111111;  // Initialize with chromatic scale
+    } else {                       // No eeprom data , setting defaults
+        note1_str_pg1 = B11111111; // Initialize with chromatic scale
         note1_str_pg2 = B00001111;
-        note2_str_pg1 = B10110101;  // Iniitialize with C major scale
+        note2_str_pg1 = B10110101; // Iniitialize with C major scale
         note2_str_pg2 = B00001010;
         *p.atk1 = 1;
         *p.dcy1 = 4;
@@ -70,8 +70,8 @@ void Load(LoadSaveParams p, bool note1[], bool note2[]) {
         *p.dcy2 = 6;
         *p.sync1 = 1;
         *p.sync2 = 1;
-        *p.oct1 = 2;
-        *p.oct2 = 2;
+        *p.oct1 = 3;
+        *p.oct2 = 3;
         *p.sensitivity_ch1 = 4;
         *p.sensitivity_ch2 = 4;
     }

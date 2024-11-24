@@ -2,10 +2,9 @@
 // Rotary encoder setting
 #define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
 #include <Encoder.h>
-// Use flash memory as eeprom
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include <FlashAsEEPROM.h>
 
 // Load local libraries
 #include "boardIO.cpp"
@@ -29,15 +28,15 @@ float ADCalibration[2] = {0.99728, 0.99728};
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // Rotary encoder initialization
-Encoder encoder1(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
-float oldPosition = -999;               // rotary encoder library setting
-float newPosition = -999;               // rotary encoder library setting
+Encoder encoder(ENC_PIN_1, ENC_PIN_2); // rotary encoder library setting
+float oldPosition = -999;              // rotary encoder library setting
+float newPosition = -999;              // rotary encoder library setting
 
 int menuItems = 38; // Amount of menu items
-int menuItem = 1;   // i is the current position of the encoder
+int menuItem = 1;   // Current position of the encoder
 
 bool switchState = 1;    // Encoder switch state
-bool oldSwitchState = 0; // Encoder switch state on last cycle
+bool oldSwitchState = 1; // Encoder switch state on last cycle
 bool clockInput = 0;     // Clock input state
 bool oldClockInput = 0;  // Clock input state on last cycle
 int menuMode = 0;        // 0=select,1=atk[0],2=dcy[0],3=atk[1],4=dcy[1], 5=scale, 6=note
@@ -71,12 +70,15 @@ int noteIndex = 0;
 bool activeNotes[2][12]; // 1=note valid,0=note invalid
 
 // display
-bool displayRefresh = 1; // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
+bool displayRefresh = 1;     // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
+bool unsavedChanges = false; // Unsaved changes flag
 
 // Function prototypes
 void HandleEncoderPosition();
 void HandleEncoderClick();
 void HandleInputs();
+void HandleOutputs();
+void HandleIO();
 
 // Handle encoder button click
 void HandleEncoderClick() {
@@ -107,39 +109,33 @@ void HandleEncoderClick() {
             menuMode = 0;
         } else if (menuItem == 28) { // CH1 sync setting
             syncSignal[0] = !syncSignal[0];
+            unsavedChanges = true;
         } else if (menuItem == 29) { // CH2 sync setting
             syncSignal[1] = !syncSignal[1];
-        } else if (menuItem == 30) { // CH1 oct setting
-            octaveShift[0]++;
-            if (octaveShift[0] > 4) {
-                octaveShift[0] = 0;
-            }
-        } else if (menuItem == 31) { // CH2 oct setting
-            octaveShift[1]++;
-            if (octaveShift[1] > 4) {
-                octaveShift[1] = 0;
-            }
-        } else if (menuItem == 32) { // CH1 sens setting
-            channelSensitivity[0]++;
-            if (channelSensitivity[0] > 8) {
-                channelSensitivity[0] = 0;
-            }
-        } else if (menuItem == 33) { // CH2 sens setting
-            channelSensitivity[1]++;
-            if (channelSensitivity[1] > 8) {
-                channelSensitivity[1] = 0;
-            }
-        }
-
-        else if (menuItem == 34 && menuMode == 0) // Scale setting
-        {
+            unsavedChanges = true;
+        } else if (menuItem == 30 && menuMode == 0) { // CH1 oct setting
             menuMode = 5;
-        } else if (menuItem == 34 && menuMode == 5) {
+        } else if (menuItem == 30 && menuMode == 5) {
             menuMode = 0;
-        } else if (menuItem == 35 && menuMode == 0) // Note setting
-        {
+        } else if (menuItem == 31 && menuMode == 0) { // CH2 oct setting
             menuMode = 6;
-        } else if (menuItem == 35 && menuMode == 6) {
+        } else if (menuItem == 31 && menuMode == 6) {
+            menuMode = 0;
+        } else if (menuItem == 32 && menuMode == 0) { // CH1 sens setting
+            menuMode = 7;
+        } else if (menuItem == 32 && menuMode == 7) {
+            menuMode = 0;
+        } else if (menuItem == 33 && menuMode == 0) { // CH2 sens setting
+            menuMode = 8;
+        } else if (menuItem == 33 && menuMode == 8) {
+            menuMode = 0;
+        } else if (menuItem == 34 && menuMode == 0) { // Scale setting
+            menuMode = 9;
+        } else if (menuItem == 34 && menuMode == 9) {
+            menuMode = 0;
+        } else if (menuItem == 35 && menuMode == 0) { // Note setting
+            menuMode = 10;
+        } else if (menuItem == 35 && menuMode == 10) {
             menuMode = 0;
         } else if (menuItem == 36) { // Load Scale into quantizer 1
             Serial.println("Loading scale " + String(scaleIndex) + "  for note " + String(noteIndex) + " into quantizer 1");
@@ -153,10 +149,9 @@ void HandleEncoderClick() {
             display.display();
             unsigned long saveMessageStartTime = millis();
             while (millis() - saveMessageStartTime < 1000) {
-                HandleEncoderClick();
-                HandleEncoderPosition();
-                HandleInputs();
+                HandleIO();
             }
+            unsavedChanges = true;
         } else if (menuItem == 37) { // Load Scale into quantizer 2
             Serial.println("Loading scale " + String(scaleIndex) + "  for note " + String(noteIndex) + " into quantizer 2");
             BuildScale(scaleIndex, noteIndex, activeNotes[1]);
@@ -169,10 +164,9 @@ void HandleEncoderClick() {
             display.display();
             unsigned long saveMessageStartTime = millis();
             while (millis() - saveMessageStartTime < 1000) {
-                HandleEncoderClick();
-                HandleEncoderPosition();
-                HandleInputs();
+                HandleIO();
             }
+            unsavedChanges = true;
         } else if (menuItem == 38) { // Save settings
             LoadSaveParams p = {
                 &attackEnvelope[0],
@@ -186,6 +180,7 @@ void HandleEncoderClick() {
                 &octaveShift[0],
                 &octaveShift[1]};
             Save(p, activeNotes[0], activeNotes[1]);
+            unsavedChanges = false;
             display.clearDisplay(); // clear display
             display.setTextSize(2);
             display.setTextColor(BLACK, WHITE);
@@ -194,93 +189,130 @@ void HandleEncoderClick() {
             display.display();
             unsigned long saveMessageStartTime = millis();
             while (millis() - saveMessageStartTime < 1000) {
-                HandleEncoderClick();
-                HandleEncoderPosition();
-                HandleInputs();
+                HandleIO();
             }
         }
     }
 }
 
-void HandleEncoderPosition() {
-    newPosition = encoder1.read();
-    if ((newPosition - 3) / 4 > oldPosition / 4) { // 4 is resolution of encoder
-        oldPosition = newPosition;
-        displayRefresh = 1;
-        switch (menuMode) {
-        case 0:
-            menuItem = menuItem - 1;
-            if (menuItem < 0) {
-                menuItem = menuItems;
-            }
-            break;
-        case 1:
-            attackEnvelope[0]--;
-            break;
-        case 2:
-            decayEnvelope[0]--;
-            break;
-        case 3:
-            attackEnvelope[1]--;
-            break;
-        case 4:
-            decayEnvelope[1]--;
-            break;
-        case 5:
-            scaleIndex--;
-            if (scaleIndex < 0) {
-                scaleIndex = numScales - 1;
-            }
-            break;
-        case 6:
-            noteIndex--;
-            if (noteIndex < 0) {
-                noteIndex = 11;
-            }
-        }
-        Serial.println("Menu index: " + String(menuItem));
-    } else if ((newPosition + 3) / 4 < oldPosition / 4) { // 4 is resolution of encoder
-        oldPosition = newPosition;
-        displayRefresh = 1;
-        switch (menuMode) {
-        case 0:
-            menuItem = menuItem + 1;
-            if (menuItem > menuItems) {
-                menuItem = 0;
-            }
-            break;
-        case 1:
-            attackEnvelope[0]++;
-            break;
-        case 2:
-            decayEnvelope[0]++;
-            break;
-        case 3:
-            attackEnvelope[1]++;
-            break;
-        case 4:
-            decayEnvelope[1]++;
-            break;
-        case 5:
-            scaleIndex++;
-            if (scaleIndex > numScales - 1) {
-                scaleIndex = 0;
-            }
-            break;
-        case 6:
-            noteIndex++;
-            if (noteIndex > 11) {
-                noteIndex = 0;
-            }
-            break;
-        }
-        Serial.println("Menu index: " + String(menuItem));
+// Calculate the speed of the encoder rotation
+float speedFactor;
+unsigned long lastEncoderTime = 0;
+void UpdateSpeedFactor() {
+    unsigned long currentEncoderTime = millis();
+    unsigned long timeDiff = currentEncoderTime - lastEncoderTime;
+    lastEncoderTime = currentEncoderTime;
+
+    if (timeDiff < 100) {
+        speedFactor = 3.0; // Fast rotation
+    } else if (timeDiff < 200) {
+        speedFactor = 2.0; // Medium rotation
+    } else {
+        speedFactor = 1.0; // Normal rotation
     }
-    menuItem = constrain(menuItem, 0, menuItems);
-    attackEnvelope[0] = constrain(attackEnvelope[0], 1, 26);
-    decayEnvelope[0] = constrain(decayEnvelope[0], 1, 26);
-    attackEnvelope[1] = constrain(attackEnvelope[1], 1, 26);
-    decayEnvelope[1] = constrain(decayEnvelope[1], 1, 26);
+}
+
+void HandleEncoderPosition() {
+    newPosition = encoder.read();
+    if ((newPosition - 3) / 4 > oldPosition / 4) { // Decrease, turned counter-clockwise
+        UpdateSpeedFactor();
+        oldPosition = newPosition;
+        displayRefresh = 1;
+        switch (menuMode) {
+        case 0:
+            menuItem = (menuItem - speedFactor < 1) ? menuItems : menuItem - speedFactor;
+            break;
+        case 1:
+            attackEnvelope[0] = constrain(attackEnvelope[0] - speedFactor, 1, 26);
+            unsavedChanges = true;
+            break;
+        case 2:
+            decayEnvelope[0] = constrain(decayEnvelope[0] - speedFactor, 1, 26);
+            unsavedChanges = true;
+            break;
+        case 3:
+            attackEnvelope[1] = constrain(attackEnvelope[1] - speedFactor, 1, 26);
+            unsavedChanges = true;
+            break;
+        case 4:
+            decayEnvelope[1] = constrain(decayEnvelope[1] - speedFactor, 1, 26);
+            unsavedChanges = true;
+            break;
+        case 5:
+            octaveShift[0] = (octaveShift[0] - 1 + 7) % 7;
+            unsavedChanges = true;
+            break;
+        case 6:
+            octaveShift[1] = (octaveShift[1] - 1 + 7) % 7;
+            unsavedChanges = true;
+            break;
+        case 7:
+            channelSensitivity[0] = constrain(channelSensitivity[0] - 1, 0, 8);
+            unsavedChanges = true;
+            break;
+        case 8:
+            channelSensitivity[1] = constrain(channelSensitivity[1] - 1, 0, 8);
+            unsavedChanges = true;
+            break;
+        case 9:
+            scaleIndex = (scaleIndex - 1 + numScales) % numScales;
+            unsavedChanges = true;
+            break;
+        case 10:
+            noteIndex = (noteIndex - 1 + 12) % 12;
+            unsavedChanges = true;
+            break;
+        }
+    } else if ((newPosition + 3) / 4 < oldPosition / 4) { // Increase, turned clockwise
+        UpdateSpeedFactor();
+        oldPosition = newPosition;
+        displayRefresh = 1;
+        switch (menuMode) {
+        case 0:
+            menuItem = (menuItem + speedFactor > menuItems) ? 0 : menuItem + speedFactor;
+            break;
+        case 1:
+            attackEnvelope[0] = constrain(attackEnvelope[0] + speedFactor, 1, 26);
+            unsavedChanges = true;
+            break;
+        case 2:
+            decayEnvelope[0] = constrain(decayEnvelope[0] + speedFactor, 1, 26);
+            unsavedChanges = true;
+            break;
+        case 3:
+            attackEnvelope[1] = constrain(attackEnvelope[1] + speedFactor, 1, 26);
+            unsavedChanges = true;
+            break;
+        case 4:
+            decayEnvelope[1] = constrain(decayEnvelope[1] + speedFactor, 1, 26);
+            unsavedChanges = true;
+            break;
+        case 5:
+            octaveShift[0] = (octaveShift[0] + 1) % 7;
+            unsavedChanges = true;
+            break;
+        case 6:
+            octaveShift[1] = (octaveShift[1] + 1) % 7;
+            unsavedChanges = true;
+            break;
+        case 7:
+            channelSensitivity[0] = constrain(channelSensitivity[0] + 1, 0, 8);
+            unsavedChanges = true;
+            break;
+        case 8:
+            channelSensitivity[1] = constrain(channelSensitivity[1] + 1, 0, 8);
+            unsavedChanges = true;
+            break;
+        case 9:
+            scaleIndex = (scaleIndex + 1) % numScales;
+            unsavedChanges = true;
+            break;
+        case 10:
+            noteIndex = (noteIndex + 1) % 12;
+            unsavedChanges = true;
+            break;
+        }
+    }
 }
 
 void NoteDisplay(int x0, int y0, boolean on, boolean playing) {
@@ -298,6 +330,18 @@ void NoteDisplay(int x0, int y0, boolean on, boolean playing) {
     } else {
         display.drawRoundRect(x0, y0, width, height, radius, color);
     }
+}
+
+// Redraw the display and show unsaved changes indicator
+void RedrawDisplay() {
+    // If there are unsaved changes, display an asterisk at the top right corner
+    if (unsavedChanges) {
+        display.setTextSize(1);
+        display.setCursor(120, 0);
+        display.print("*");
+    }
+    display.display();
+    displayRefresh = 0;
 }
 
 void HandleOLED() {
@@ -336,8 +380,8 @@ void HandleOLED() {
             NoteDisplay(0 + 14 * 6, 15 + 34, activeNotes[1][11] == 1, quantizedNoteIdx[1] == 11); // B
 
             // Debug print
-            Serial.print("Note 1: " + String(noteNames[quantizedNoteIdx[0]]) + " index: " + String(quantizedNoteIdx[0]) + "| Input CV: " + String(channelADC[0]) + " Quantized CV: " + String(CVOutput[0]) + "\n");
-            Serial.print("Note 2: " + String(noteNames[quantizedNoteIdx[1]]) + " index: " + String(quantizedNoteIdx[1]) + "| Input CV: " + String(channelADC[1]) + " Quantized CV: " + String(CVOutput[1]) + "\n");
+            // Serial.print("Note 1: " + String(noteNames[quantizedNoteIdx[0]]) + " index: " + String(quantizedNoteIdx[0]) + "| Input CV: " + String(channelADC[0]) + " Quantized CV: " + String(CVOutput[0]) + "\n");
+            // Serial.print("Note 2: " + String(noteNames[quantizedNoteIdx[1]]) + " index: " + String(quantizedNoteIdx[1]) + "| Input CV: " + String(channelADC[1]) + " Quantized CV: " + String(CVOutput[1]) + "\n");
             // Draw the selection triangle
             if (menuItem <= 4) {
                 display.fillTriangle(5 + menuItem * 7, 28, 2 + menuItem * 7, 33, 8 + menuItem * 7, 33, WHITE);
@@ -414,9 +458,9 @@ void HandleOLED() {
             display.setCursor(10, 27);
             display.print("     CH2:");
             display.setCursor(72, 18);
-            display.print(octaveShift[0] - 2);
+            display.print(octaveShift[0] - 3);
             display.setCursor(72, 27);
-            display.print(octaveShift[1] - 2);
+            display.print(octaveShift[1] - 3);
 
             // draw sensitivity
             display.setCursor(10, 36);
@@ -428,9 +472,19 @@ void HandleOLED() {
             display.setCursor(72, 45);
             display.print(channelSensitivity[1] - 4);
 
-            // Draw triangles
-            display.fillTriangle(1, (menuItem - 28) * 9, 1, (menuItem - 28) * 9 + 8, 5, (menuItem - 28) * 9 + 4, WHITE);
+            if (menuItem >= 28 && menuItem <= 29) {
+                display.fillTriangle(1, (menuItem - 28) * 9, 1, (menuItem - 28) * 9 + 8, 5, (menuItem - 28) * 9 + 4, WHITE);
+            }
+            if (menuItem >= 30 && menuItem <= 33) {
+                int menuModeOffset = menuItem - 30 + 5;
+                if (menuMode == 0) {
+                    display.drawTriangle(1, (menuItem - 30 + 2) * 9, 1, (menuItem - 30 + 2) * 9 + 8, 5, (menuItem - 30 + 2) * 9 + 4, WHITE);
+                } else if (menuMode == menuModeOffset) {
+                    display.fillTriangle(1, (menuItem - 30 + 2) * 9, 1, (menuItem - 30 + 2) * 9 + 8, 5, (menuItem - 30 + 2) * 9 + 4, WHITE);
+                }
+            }
         }
+
         // draw scale load setting
         if (menuItem >= 34 && menuItem <= 38) {
             display.setTextSize(1);
@@ -452,13 +506,13 @@ void HandleOLED() {
             if (menuItem == 34) {
                 if (menuMode == 0) {
                     display.drawTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
-                } else if (menuMode == 5) {
+                } else if (menuMode == 9) {
                     display.fillTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
                 }
             } else if (menuItem == 35) {
                 if (menuMode == 0) {
                     display.drawTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
-                } else if (menuMode == 6) {
+                } else if (menuMode == 10) {
                     display.fillTriangle(1, (menuItem - 34) * 9, 1, (menuItem - 34) * 9 + 8, 5, (menuItem - 34) * 9 + 4, WHITE);
                 }
             } else if (menuItem == 36) {
@@ -469,8 +523,8 @@ void HandleOLED() {
                 display.fillTriangle(1, (menuItem - 34) * 9 + 9, 1, (menuItem - 34) * 9 + 9 + 8, 5, (menuItem - 34) * 9 + 4 + 9, WHITE);
             }
         }
-        display.display();
-        displayRefresh = 0;
+
+        RedrawDisplay();
     }
 }
 
@@ -553,12 +607,17 @@ void HandleInputs() {
     }
 }
 
-void loop() {
+// Handle IO without the display
+void HandleIO() {
     HandleEncoderClick();
 
     HandleEncoderPosition();
 
     HandleInputs();
+}
+
+void loop() {
+    HandleIO();
 
     HandleOLED();
 }
