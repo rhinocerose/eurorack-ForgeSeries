@@ -45,6 +45,13 @@ Each of the four outputs can be individually configured with the following param
 
 ## Operation
 
+### Interface
+
+- TRIG: Optional Clock input (0-5V)
+- IN1, IN2: CV input to control internal parameters (0-5V)
+- GATE 1 / 2: Clock Outputs 1 and 2 (0-5V)
+- CV 1 / 2: Clock Outputs 3 and 4 (0-5V)
+
 ### Setting the BPM
 
 1. Use the encoder to navigate to the BPM setting.

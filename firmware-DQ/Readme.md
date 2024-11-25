@@ -29,6 +29,13 @@ NoteSmith is a versatile tool designed to quantize analog control voltages (CV) 
 2. The OLED display will show a splash screen followed by the module name and version number.
 3. Module will load default parameters for scale, root note and envelope/octave settings.
 
+### Interface
+
+- TRIG: Trigger input (0-5V)
+- IN1, IN2: CV input to be quantized (0-5V)
+- GATE 1 / 2: Gate with envelope curve output for each channel (0-5V)
+- CV 1 / 2: CV output with quantized scale output for each channel (CH1: 10bit, CH2: 12bit, 0-5V)
+
 ## Menu Navigation
 
 ### Rotary Encoder

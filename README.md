@@ -4,76 +4,30 @@
 
 This repository is a collection of Eurorack modules based on the fantastic work of Hagiwo and some of my creation. The modules are designed to be easy to build and modify and be built with through-hole components. The firmware is based on the Arduino platform.
 
-The concept is to have some generic hardware with a display, rotary encoder, trigger inputs and output, CV inputs and outputs allowing different modules by changing the firmware.
+The concept is to have a generic hardware with a display, rotary encoder, trigger inputs and output, CV inputs and outputs allowing different modules by changing the firmware.
 
 The module's core uses a Seeeduino Xiao (SAMD21/Cortex M0 chip) and a MCP4725 DAC.
 
 This project currently provides the following modules:
 
-- Clock Generator
-- Dual Quantizer
-- Sequencer
-- Generative Sequencer
+- [ClockForge](./firmware-CLK/) - A Clock Generator with multiple features like tap tempo, clock division, Euclidean rhythm and more.
+- [NoteSmith](./firmware-DQ/) - A Dual Quantizer with selectable scales and root notes for each channel, octave shift and envelopes.
+
+Modules can also be found on ModularGrid:
+
+- [ClockForge](https://modulargrid.net/e/other-unknown-clockforge-by-voltage-foundry-modular)
+- [NoteSmith](https://modulargrid.net/e/other-unknown-notesmith-by-voltage-foundry-modular)
 
 Each new module firmware will be in a separate folder which can be built and uploaded to the Seeeduino Xiao using PlatformIO.
 
-<img src="images/in_rack.jpg" alt="Eurorack module in rack" width="30%" height="30%">
-
-## Clock Generator
-
-This module provides a clock generator with a display and a rotary encoder to select the BPM and the division of the clock signal. The module has 4 (four) trigger outputs. The module has a configuration screen to change the clock division/multiplication parameters for each output and tap-tempo functionality. All configurations can saved in the EEPROM memory in the SAVE menu.
-
-Check details [here](./firmware-CLK/Readme.md) and the module [manual](./firmware-CLK/Manual.md).
-
-### Interface
-
-- TRIG: Optional Clock input (0-5V)
-- IN1, IN2: CV input to control internal parameters (0-5V)
-- GATE 1 / 2: Clock Outputs 1 and 2 (0-5V)
-- CV 1 / 2: Clock Outputs 3 and 4 (0-5V)
-
-### Operation
-
-The main screen shows the current BPM and a square shows each output status. Pushing the encoder enables the BPM edit mode which can be changed from 10 to 300 BPM. Pushing the encoder again returns to the parameter selection mode.
-
-Check the module's manual for more details.
-
-## Dual Quantizer
-
-This module is a dual quantizer with a display and a rotary encoder to select the scale and root note for each channel. The module has two CV inputs and two CV outputs with a trigger output for each channel. The module has an envelope generator for each channel with attack and decay parameters. The configuration screen allows changing the parameters for each channel and a preset screen to load predefined scales and notes for each channel.
-
-![quantizer module](./images/Quantizer.jpg)
-
-### Interface
-
-- TRIG: Trigger input (0-5V)
-- IN1, IN2: CV input to be quantized (0-5V)
-- GATE 1 / 2: Gate with envelope curve output for each channel (0-5V)
-- CV 1 / 2: CV output with quantized scale output for each channel (CH1: 10bit, CH2: 12bit, 0-5V)
-
-### Operation
-
-Use the rotary encoder to select the parameter, and the push the switch to change parameters.
-The upper half of the screen shows CH1, and the lower half CH2. Select the keyboard displayed as a rectangle to select the note for which quantization is enabled. Pushing the encoder enables or disables the selected note.
-The parameters on the right of the screen are for setting the envelope generator. You can control the attack and decay of each CH that will be applied to Gate.
-
-In the config screen, you can change the parameters for each channel.
-SYNC: Selects what the envelope generator output is synchronized to. You can choose to output it simultaneously with the change in pitch, or simultaneously with the trigger voltage input to CLK IN.
-OCT: Octave shift. Select from a range of -2 to +2 to shift the octave of the output pitch CV.
-SENS: Sensitivity to CV input. Functions equivalent to an attenuator or amplifier.
-SAVE: Saves each setting. Saved settings are loaded when the power is turned on.
-
-Next screen allows loading pre-defined presets for scale and note to each channel.
-SCALE: Selects which scale to use
-ROOT: Selects the root note for choosen scale
-LOAD CH1/CH2: Loads the selected Scale and Root into the channel overwriting the existing notes.
+![module](./images/Quantizer.jpg)
 
 ## Production specifications
 
 - Eurorack standard 3U 6HP size
-- Power supply: 30mA (at 5V)
+- Power supply: 60mA
 - Module depth: 40mm
-- On-board converter from 12V to internal 5V
+- On-board converter from 12V to internal 5V (jumper selectable)
 
 Power supply can be select from an on-board jumper where closing the the SEL with REG jumper, will take power from eurorack 12V supply and closing the SEL with BOARD jumper, will take power from 5V (requires 16 pin cable). It can also be powered by the USB-C jack on the Seeeduino Xiao.
 
@@ -107,11 +61,11 @@ When ordering the display module, make sure to choose an 0.96 I2C oled module th
 
 Also make sure you order a Seediuno XIAO (with a SAMD21/Cortex M0 chip) as opposed to the XIAO esp32c3 or the XIAO rp2040, those are different chips.
 
-<img src="images/display.jpg" width="20%" height="20%">
+<img src="images/display.jpg" alt="Display Module" width="20%" height="20%">
 
-<img src="images/side.jpg" width="20%" height="20%">
+<img src="images/side.jpg" alt="Module Side" width="20%" height="20%">
 
-<img src="images/back.jpg" width="20%" height="20%">
+<img src="images/back.jpg" alt="Module Back" width="20%" height="20%">
 
 Pinout Diagram:
 
