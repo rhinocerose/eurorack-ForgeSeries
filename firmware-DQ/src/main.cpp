@@ -640,10 +640,8 @@ void setup() {
     display.clearDisplay();
     display.setTextSize(2);
     display.setTextColor(WHITE);
-    display.setCursor(44, 10);
-    display.print("DUAL");
-    display.setCursor(6, 30);
-    display.print("QUANTIZER");
+    display.setCursor(10, 20);
+    display.print("NoteSmith");
     display.setTextSize(1);
     display.setCursor(80, 54);
     display.print("V" VERSION);
