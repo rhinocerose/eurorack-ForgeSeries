@@ -33,7 +33,7 @@ float oldPosition = -999;              // rotary encoder library setting
 float newPosition = -999;              // rotary encoder library setting
 
 int menuItems = 38; // Amount of menu items
-int menuItem = 1;   // Current position of the encoder
+int menuItem = 2;   // Current position of the encoder
 
 bool switchState = 1;    // Encoder switch state
 bool oldSwitchState = 1; // Encoder switch state on last cycle
