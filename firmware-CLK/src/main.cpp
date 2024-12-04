@@ -17,9 +17,7 @@
 #include "utils.hpp"
 #include "version.hpp"
 
-// Define the amount of clock outputs
-#define NUM_OUTPUTS 4
-
+// Timing
 #define PPQN 96
 
 #define OLED_ADDRESS 0x3C
@@ -39,10 +37,10 @@ float newPosition = -999;              // rotary encoder library setting
 
 // Output objects
 Output outputs[NUM_OUTPUTS] = {
-    Output(1, 0),
-    Output(2, 0),
-    Output(3, 1),
-    Output(4, 1)};
+    Output(1, OutputType::DigitalOut),
+    Output(2, OutputType::DigitalOut),
+    Output(3, OutputType::DACOut),
+    Output(4, OutputType::DACOut)};
 
 // ---- Global variables ----
 
