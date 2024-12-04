@@ -33,7 +33,7 @@ float oldPosition = -999;              // rotary encoder library setting
 float newPosition = -999;              // rotary encoder library setting
 
 int menuItems = 38; // Amount of menu items
-int menuItem = 2;   // Current position of the encoder
+int menuItem = 1;   // Current position of the encoder
 
 bool switchState = 1;    // Encoder switch state
 bool oldSwitchState = 1; // Encoder switch state on last cycle
@@ -195,47 +195,29 @@ void HandleEncoderClick() {
     }
 }
 
-// Calculate the speed of the encoder rotation
-float speedFactor;
-unsigned long lastEncoderTime = 0;
-void UpdateSpeedFactor() {
-    unsigned long currentEncoderTime = millis();
-    unsigned long timeDiff = currentEncoderTime - lastEncoderTime;
-    lastEncoderTime = currentEncoderTime;
-
-    if (timeDiff < 100) {
-        speedFactor = 3.0; // Fast rotation
-    } else if (timeDiff < 200) {
-        speedFactor = 2.0; // Medium rotation
-    } else {
-        speedFactor = 1.0; // Normal rotation
-    }
-}
-
 void HandleEncoderPosition() {
     newPosition = encoder.read();
     if ((newPosition - 3) / 4 > oldPosition / 4) { // Decrease, turned counter-clockwise
-        UpdateSpeedFactor();
         oldPosition = newPosition;
         displayRefresh = 1;
         switch (menuMode) {
         case 0:
-            menuItem = (menuItem - speedFactor < 1) ? menuItems : menuItem - speedFactor;
+            menuItem = (menuItem - 1 < 0) ? menuItems : menuItem - 1;
             break;
         case 1:
-            attackEnvelope[0] = constrain(attackEnvelope[0] - speedFactor, 1, 26);
+            attackEnvelope[0] = constrain(attackEnvelope[0] - 1, 1, 26);
             unsavedChanges = true;
             break;
         case 2:
-            decayEnvelope[0] = constrain(decayEnvelope[0] - speedFactor, 1, 26);
+            decayEnvelope[0] = constrain(decayEnvelope[0] - 1, 1, 26);
             unsavedChanges = true;
             break;
         case 3:
-            attackEnvelope[1] = constrain(attackEnvelope[1] - speedFactor, 1, 26);
+            attackEnvelope[1] = constrain(attackEnvelope[1] - 1, 1, 26);
             unsavedChanges = true;
             break;
         case 4:
-            decayEnvelope[1] = constrain(decayEnvelope[1] - speedFactor, 1, 26);
+            decayEnvelope[1] = constrain(decayEnvelope[1] - 1, 1, 26);
             unsavedChanges = true;
             break;
         case 5:
@@ -264,27 +246,26 @@ void HandleEncoderPosition() {
             break;
         }
     } else if ((newPosition + 3) / 4 < oldPosition / 4) { // Increase, turned clockwise
-        UpdateSpeedFactor();
         oldPosition = newPosition;
         displayRefresh = 1;
         switch (menuMode) {
         case 0:
-            menuItem = (menuItem + speedFactor > menuItems) ? 0 : menuItem + speedFactor;
+            menuItem = (menuItem + 1 > menuItems) ? 0 : menuItem + 1;
             break;
         case 1:
-            attackEnvelope[0] = constrain(attackEnvelope[0] + speedFactor, 1, 26);
+            attackEnvelope[0] = constrain(attackEnvelope[0] + 1, 1, 26);
             unsavedChanges = true;
             break;
         case 2:
-            decayEnvelope[0] = constrain(decayEnvelope[0] + speedFactor, 1, 26);
+            decayEnvelope[0] = constrain(decayEnvelope[0] + 1, 1, 26);
             unsavedChanges = true;
             break;
         case 3:
-            attackEnvelope[1] = constrain(attackEnvelope[1] + speedFactor, 1, 26);
+            attackEnvelope[1] = constrain(attackEnvelope[1] + 1, 1, 26);
             unsavedChanges = true;
             break;
         case 4:
-            decayEnvelope[1] = constrain(decayEnvelope[1] + speedFactor, 1, 26);
+            decayEnvelope[1] = constrain(decayEnvelope[1] + 1, 1, 26);
             unsavedChanges = true;
             break;
         case 5:
