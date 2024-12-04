@@ -16,8 +16,7 @@ enum WaveformType {
     Sine = 2,
     Sawtooth = 3,
     Random = 4,
-    SnH = 5,
-    SmoothRandom = 6,
+    SmoothRandom = 5,
 };
 
 class Output {
@@ -148,7 +147,6 @@ class Output {
     void GenerateSineWave(int);
     void GenerateSawtoothWave(int);
     void GenerateRandomWave(int);
-    void GenerateSnHWave(int);
     void GenerateSmoothRandomWave(int);
 };
 
@@ -158,27 +156,28 @@ Output::Output(int ID, OutputType type) {
     _outputType = type;
     // DEBUG for triangle wave
     if (_ID == 4) {
-        _waveformType = WaveformType::Sawtooth;
+        _waveformType = WaveformType::Sine;
     }
     GeneratePattern(_euclideanParams, _euclideanRhythm);
 }
 // Pulse function
 void Output::Pulse(int PPQN, unsigned long globalTick) {
-    // Calculate the tick counter with swing applied
-    unsigned long tickCounterSwing = globalTick;
-    int clockDividerExternal = 1 / _clockDividers[_dividerIndex];
-
-    if (int(globalTick / (PPQN / _clockDividers[_dividerIndex])) % _swingEvery == 0) {
-        tickCounterSwing = globalTick - _swingAmounts[_swingAmountIndex];
-    }
-
-    // Calculate the phase offset in ticks
-    unsigned long phaseOffsetTicks = (PPQN / _clockDividers[_dividerIndex]) * (_phase / 100.0);
-
     // If not stopped, generate the pulse
     if (_state) {
+        unsigned long tickCounterSwing = globalTick;
+        float periodTicks = PPQN / _clockDividers[_dividerIndex];
+        int clockDividerExternal = 1 / _clockDividers[_dividerIndex];
+
+        // Calculate the tick counter with swing applied
+        if (int(globalTick / periodTicks) % _swingEvery == 0) {
+            tickCounterSwing = globalTick - _swingAmounts[_swingAmountIndex];
+        }
+
+        // Calculate the phase offset in ticks
+        unsigned long phaseOffsetTicks = periodTicks * (_phase / 100.0);
+
         // Calculate the pulse duration (in ticks) based on the duty cycle
-        int _pulseDuration = int(PPQN / _clockDividers[_dividerIndex] * (_dutyCycle / 100.0));
+        int _pulseDuration = int(periodTicks * (_dutyCycle / 100.0));
         int _externalPulseDuration = int(clockDividerExternal * (_dutyCycle / 100.0));
 
         // Lambda function to handle timing
@@ -218,7 +217,7 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
             }
         } else {
             // Handle internal clock timing
-            if ((tickCounterSwing - phaseOffsetTicks) % int(PPQN / _clockDividers[_dividerIndex]) == 0 || (globalTick == 0)) {
+            if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == 0 || (globalTick == 0)) {
                 handleTiming();
             } else if ((tickCounterSwing - phaseOffsetTicks) % _pulseDuration == 0) {
                 StopWaveform();
@@ -237,9 +236,6 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
             break;
         case WaveformType::Random:
             GenerateRandomWave(PPQN);
-            break;
-        case WaveformType::SnH:
-            GenerateSnHWave(PPQN);
             break;
         case WaveformType::SmoothRandom:
             GenerateSmoothRandomWave(PPQN);
@@ -269,6 +265,8 @@ void Output::StartWaveform() {
         _sineWaveAngle = 0.0f;
         _waveValue = 0.0f; // Will be calculated in GenerateSineWave()
         break;
+    case WaveformType::Random:
+    case WaveformType::SmoothRandom:
     default:
         SetPulse(true);
         break;
@@ -282,6 +280,8 @@ void Output::StopWaveform() {
         SetPulse(false);
         _waveActive = false;
         break;
+    case WaveformType::SmoothRandom:
+    case WaveformType::Random:
     case WaveformType::Triangle:
     case WaveformType::Sawtooth:
     case WaveformType::Sine:
@@ -289,12 +289,6 @@ void Output::StopWaveform() {
         SetPulse(false);
         break;
     }
-}
-
-// Function to stop the waveform output
-void Output::StopWave() {
-    _waveActive = false;
-    _isPulseOn = false;
 }
 
 // Implement waveform generation functions
@@ -371,18 +365,16 @@ void Output::GenerateSawtoothWave(int PPQN) {
 
 void Output::GenerateRandomWave(int PPQN) {
     if (_waveActive) {
-        _isPulseOn = true;
-    }
-}
-
-void Output::GenerateSnHWave(int PPQN) {
-    if (_waveActive) {
+        // Generate white noise waveform
+        _waveValue = random(101); // Random value between 0 and 100
         _isPulseOn = true;
     }
 }
 
 void Output::GenerateSmoothRandomWave(int PPQN) {
     if (_waveActive) {
+        // Generate smooth random waveform
+        _waveValue = _waveValue + 0.1 * (random(101) - _waveValue); // Smooth random value between 0 and 100
         _isPulseOn = true;
     }
 }
@@ -419,6 +411,8 @@ int Output::GetOutputLevel() {
         case WaveformType::Triangle:
         case WaveformType::Sine:
         case WaveformType::Sawtooth:
+        case WaveformType::Random:
+        case WaveformType::SmoothRandom:
             // Take into account the triangle wave value and the _level and _offset values
             adjustedLevel = _isPulseOn ? constrain((_waveValue * _level) / 100 + _offset, 0, 100) : _offset;
             return adjustedLevel * MaxDACValue / 100;

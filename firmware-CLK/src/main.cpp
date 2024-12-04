@@ -1035,10 +1035,12 @@ void UpdateBPM(unsigned int newBPM) {
 }
 
 void HandleOutputs() {
+    noInterrupts();
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         // Set the output level based on the pulse state
         SetPin(i, outputs[i].GetOutputLevel());
     }
+    interrupts();
 }
 
 void ClockPulse(int ppqn) { // Inside the interrupt
