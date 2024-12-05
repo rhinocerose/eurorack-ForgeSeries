@@ -26,6 +26,7 @@ struct LoadSaveParams {
     int euclideanRotations[NUM_OUTPUTS];
     int euclideanPadding[NUM_OUTPUTS];
     int phaseShift[NUM_OUTPUTS];
+    int waveformType[NUM_OUTPUTS];
 };
 
 // Save data to flash memory
@@ -52,6 +53,7 @@ void Save(const LoadSaveParams &p, int slot) { // save setting data to flash mem
         EEPROM.write(idx++, p.euclideanRotations[i]);
         EEPROM.write(idx++, p.euclideanPadding[i]);
         EEPROM.write(idx++, p.phaseShift[i]);
+        EEPROM.write(idx++, p.waveformType[i]);
     }
     EEPROM.commit();
     interrupts();
@@ -77,6 +79,7 @@ LoadSaveParams LoadDefaultParams() {
         p.euclideanRotations[i] = 1;
         p.euclideanPadding[i] = 0;
         p.phaseShift[i] = 0;
+        p.waveformType[i] = 0;
     }
     return p;
 }
@@ -107,6 +110,7 @@ LoadSaveParams Load(int slot) {
             p.euclideanRotations[i] = EEPROM.read(idx++);
             p.euclideanPadding[i] = EEPROM.read(idx++);
             p.phaseShift[i] = EEPROM.read(idx++);
+            p.waveformType[i] = EEPROM.read(idx++);
         }
     } else {
         // If no eeprom data, set default values

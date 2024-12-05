@@ -12,10 +12,11 @@
 #define CV_2_IN_PIN 9 // channel 2 analog in
 #define ENCODER_SW 10 // pin for encoder switch
 
-// Pin definitions for simulator
-#ifdef IN_SIMULATOR
-#define CLK_IN_PIN 12
-#define ENCODER_SW 2
-#define ENC_PIN_1 4
-#define ENC_PIN_2 3
-#endif
+#define NUM_CV_INS 2
+#define NUM_OUTS 2
+
+int CV_IN_PINS[] = {CV_1_IN_PIN, CV_2_IN_PIN};
+int OUT_PINS[] = {OUT_PIN_1, OUT_PIN_2};
+
+// Define the amount of clock outputs
+#define NUM_OUTPUTS 4

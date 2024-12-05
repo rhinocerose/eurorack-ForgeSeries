@@ -29,13 +29,15 @@ void InitIO() {
     analogWriteResolution(10);
     analogReadResolution(12);
 
-    pinMode(LED_BUILTIN, OUTPUT);      // LED
-    pinMode(CLK_IN_PIN, INPUT);        // CLK in
-    pinMode(CV_1_IN_PIN, INPUT);       // IN1
-    pinMode(CV_2_IN_PIN, INPUT);       // IN2
+    pinMode(LED_BUILTIN, OUTPUT); // LED
+    pinMode(CLK_IN_PIN, INPUT);   // CLK in
+    for (int i = 0; i < NUM_CV_INS; i++) {
+        pinMode(CV_IN_PINS[i], INPUT); // CV in
+    }
     pinMode(ENCODER_SW, INPUT_PULLUP); // push sw
-    pinMode(OUT_PIN_1, OUTPUT);        // CH1 EG out
-    pinMode(OUT_PIN_2, OUTPUT);        // CH2 EG out
+    for (int i = 0; i < NUM_OUTS; i++) {
+        pinMode(OUT_PINS[i], OUTPUT); // Gate out
+    }
 
     // Initialize the DAC
     if (!dac.begin(0x60)) { // 0x60 is the default I2C address for MCP4725
@@ -59,65 +61,54 @@ void MCP(int value) {
     dac.setVoltage(value, false);
 }
 
-// Write to DAC pins indexed by 1
+// Write to DAC pins indexed by 0
 void DACWrite(int pin, int value) {
-    if (pin == 1) // Internal DAC
-    {
+    switch (pin) {
+    case 0: // Internal DAC
         InternalDAC(value);
-    } else if (pin == 2) // MCP DAC
-    {
+        break;
+    case 1: // MCP DAC
         MCP(value);
+        break;
+    default:
+        // Handle invalid pin case if necessary
+        break;
     }
 }
 
-// Handle PWM Outputs
-void PWM1(int duty1) {
-    pwm(OUT_PIN_1, 46000, duty1);
-    // Debug using LED on board
-    if (duty1 > 0) {
-        digitalWrite(LED_BUILTIN, HIGH);
-    } else {
-        digitalWrite(LED_BUILTIN, LOW);
-    }
-}
-
-void PWM2(int duty2) {
-    pwm(OUT_PIN_2, 46000, duty2);
-}
-
-// Write to PWM pins indexed by 1
+// Write to PWM pins indexed by 0
 void PWMWrite(int pin, int value) {
-    if (pin == 1) // PWM 1
-    {
-        PWM1(value);
-    } else if (pin == 2) // PWM 2
-    {
-        PWM2(value);
+    switch (pin) {
+    case 0: // PWM 1
+        pwm(OUT_PINS[0], 46000, value);
+        break;
+    case 1: // PWM 2
+        pwm(OUT_PINS[1], 46000, value);
+        break;
+    default:
+        // Handle invalid pin case if necessary
+        break;
     }
 }
 
 // Set the output pins. Value can be from 0 to 4095 (12bit).
 // For pins 0 and 1, 0 is low and anything else is high
 void SetPin(int pin, int value) {
-    if (pin == 0) // Gate Output 1
-    {
-        if (value > 0) {
-            digitalWrite(OUT_PIN_1, LOW);
-        } else {
-            digitalWrite(OUT_PIN_1, HIGH);
-        }
-    } else if (pin == 1) // Gate Output 2
-    {
-        if (value > 0) {
-            digitalWrite(OUT_PIN_2, LOW);
-        } else {
-            digitalWrite(OUT_PIN_2, HIGH);
-        }
-    } else if (pin == 2) // Internal DAC Output
-    {
+    switch (pin) {
+    case 0: // Gate Output 1
+        digitalWrite(OUT_PINS[0], value > 0 ? LOW : HIGH);
+        break;
+    case 1: // Gate Output 2
+        digitalWrite(OUT_PINS[1], value > 0 ? LOW : HIGH);
+        break;
+    case 2: // Internal DAC Output
+        DACWrite(0, value);
+        break;
+    case 3: // MCP DAC Output
         DACWrite(1, value);
-    } else if (pin == 3) // MCP DAC Output
-    {
-        DACWrite(2, value);
+        break;
+    default:
+        // Handle invalid pin case if necessary
+        break;
     }
 }
