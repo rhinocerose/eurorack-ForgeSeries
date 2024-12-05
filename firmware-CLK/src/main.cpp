@@ -435,11 +435,11 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 38: // Set Output 3 waveform type
-            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() - 1 + 6) % 6));
+            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
             unsavedChanges = true;
             break;
         case 39: // Set Output 4 waveform type
-            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + 6) % 6));
+            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
             unsavedChanges = true;
             break;
         case 41: // Select save slot
@@ -552,11 +552,11 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 38: // Set Output 3 waveform type
-            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() + 1) % 6));
+            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() + 1) % WaveformTypeLength));
             unsavedChanges = true;
             break;
         case 39: // Set Output 4 waveform type
-            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % 6));
+            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % WaveformTypeLength));
             unsavedChanges = true;
             break;
         case 41: // Select save slot
@@ -571,11 +571,18 @@ void RedrawDisplay() {
     // If there are unsaved changes, display an asterisk at the top right corner
     if (unsavedChanges) {
         display.setTextSize(1);
-        display.setCursor(120, 0);
+        display.setCursor(122, 56);
         display.print("*");
     }
     display.display();
     displayRefresh = 0;
+}
+
+void MenuHeader(const char *header) {
+    display.setTextSize(1);
+    int headerLength = (strlen(header) * 6) + 24; // Sum of the length of the header and the "- " sides
+    display.setCursor((SCREEN_WIDTH - headerLength) / 2, 1);
+    display.println("- " + String(header) + " -");
 }
 
 // Handle display drawing
@@ -638,8 +645,7 @@ void HandleDisplay() {
         menuItems = 5;
         if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
-            display.setCursor(10, 1);
-            display.println("CLOCK DIVIDERS");
+            MenuHeader("CLOCK DIVIDERS");
             int yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
@@ -676,8 +682,7 @@ void HandleDisplay() {
         menuIdx = 8;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
-            display.setCursor(10, 1);
-            display.println("OUTPUT STATE");
+            MenuHeader("OUTPUT STATE");
             int yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
@@ -701,9 +706,8 @@ void HandleDisplay() {
         menuIdx = 12;
         if (menuItem >= menuIdx && menuItem < menuIdx + 8) {
             display.setTextSize(1);
-            display.setCursor(10, 1);
+            MenuHeader("OUTPUT SWING");
             int yPosition = 20;
-            display.println("OUTPUT SWING");
             display.setCursor(64, yPosition);
             display.println("AMT");
             display.setCursor(94, yPosition);
@@ -740,10 +744,8 @@ void HandleDisplay() {
         menuIdx = 20;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
-            int yPosition = 0;
-            display.setCursor(10, yPosition);
-            display.println("PULSE PROBABILITY");
-            yPosition = 20;
+            MenuHeader("PULSE PROBABILITY");
+            int yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
                 display.print("OUTPUT " + String(i + 1) + ":");
@@ -766,9 +768,8 @@ void HandleDisplay() {
         menuIdx = 24;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
+            MenuHeader("PHASE SHIFT");
             int yPosition = 0;
-            display.setCursor(10, yPosition);
-            display.println("PHASE SHIFT");
             yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);
@@ -792,10 +793,8 @@ void HandleDisplay() {
         menuIdx = 28;
         if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
             display.setTextSize(1);
-            int yPosition = 0;
-            display.setCursor(10, yPosition);
-            display.println("EUCLIDEAN RHYTHM");
-            yPosition = 20;
+            MenuHeader("EUCLIDEAN RHYTHM");
+            int yPosition = 20;
             int xPosition = 64;
             display.setCursor(10, yPosition);
             display.print("OUTPUT: ");
@@ -888,10 +887,8 @@ void HandleDisplay() {
         menuIdx = 34;
         if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
             display.setTextSize(1);
-            int yPosition = 0;
-            display.setCursor(10, yPosition);
-            display.println("OUTPUT SETTINGS");
-            yPosition += 9;
+            MenuHeader("OUTPUT SETTINGS");
+            int yPosition = 14;
 
             // Levels and offsets
             display.setCursor(70, yPosition);
@@ -920,14 +917,13 @@ void HandleDisplay() {
                         display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     }
                 }
-
                 yPosition += 9;
             }
             // Waveform type
-            yPosition += 9;
+            yPosition += 7;
             display.setCursor(10, yPosition);
             display.println("OUT 3 WAV:");
-            display.setCursor(80, yPosition);
+            display.setCursor(70, yPosition);
             display.print(outputs[2].GetWaveformTypeDescription());
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
@@ -937,7 +933,7 @@ void HandleDisplay() {
             yPosition += 9;
             display.setCursor(10, yPosition);
             display.println("OUT 4 WAV:");
-            display.setCursor(80, yPosition);
+            display.setCursor(70, yPosition);
             display.print(outputs[3].GetWaveformTypeDescription());
             if (menuItem == menuIdx + 5 && menuMode == 0) {
                 display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);

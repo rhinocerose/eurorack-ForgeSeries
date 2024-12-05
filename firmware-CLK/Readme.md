@@ -18,7 +18,7 @@ ClockForge provides clock signals for synchronizing other modules in your Eurora
 
 ## Configuration Parameters
 
-Whenever a parameter is changed, a small asterisk will be shown in the top right corner of the screen. This indicates that the current settings were modified and not saved.
+Whenever a parameter is changed, a small asterisk (*) will be shown in the bottom right corner of the screen. This indicates that the current settings were modified and not saved.
 
 ### Global Parameters
 
