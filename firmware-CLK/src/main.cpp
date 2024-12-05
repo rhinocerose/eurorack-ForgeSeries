@@ -18,7 +18,7 @@
 #include "version.hpp"
 
 // Timing
-#define PPQN 96
+#define PPQN 192
 
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
@@ -71,7 +71,7 @@ int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 41;
+int menuItems = 42;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 1;
@@ -223,13 +223,16 @@ void HandleEncoderClick() {
             case 37: // Level offset for output 4
                 menuMode = 37;
                 break;
-            case 38: // Set duty cycle
+            case 38: // Set Waveform type for output 3
                 menuMode = 38;
                 break;
-            case 39:
+            case 39: // Set Waveform type for output 4
+                menuMode = 39;
+                break;
+            case 40:
                 SetTapTempo();
                 break; // Tap tempo
-            case 40: { // Save settings
+            case 41: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -248,6 +251,7 @@ void HandleEncoderClick() {
                     p.euclideanRotations[i] = outputs[i].GetEuclideanRotation();
                     p.euclideanPadding[i] = outputs[i].GetEuclideanPadding();
                     p.phaseShift[i] = outputs[i].GetPhase();
+                    p.waveformType[i] = int(outputs[i].GetWaveformType());
                 }
                 Save(p, 0);
                 unsavedChanges = false;
@@ -262,7 +266,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 41: // Load default settings
+            case 42: // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -410,10 +414,12 @@ void HandleEncoderPosition() {
             outputs[3].SetOffset(outputs[3].GetOffset() - speedFactor);
             unsavedChanges = true;
             break;
-        case 38: // Set duty cycle (set for all outputs the same)
-            for (int i = 0; i < NUM_OUTPUTS; i++) {
-                outputs[i].SetDutyCycle(outputs[i].GetDutyCycle() - speedFactor);
-            }
+        case 38: // Set Output 3 waveform type
+            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() - 1 + 6) % 6));
+            unsavedChanges = true;
+            break;
+        case 39: // Set Output 4 waveform type
+            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + 6) % 6));
             unsavedChanges = true;
             break;
         }
@@ -522,10 +528,12 @@ void HandleEncoderPosition() {
             outputs[3].SetOffset(outputs[3].GetOffset() + speedFactor);
             unsavedChanges = true;
             break;
-        case 38: // Set duty cycle
-            for (int i = 0; i < NUM_OUTPUTS; i++) {
-                outputs[i].SetDutyCycle(outputs[i].GetDutyCycle() + speedFactor);
-            }
+        case 38: // Set Output 3 waveform type
+            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() + 1) % 6));
+            unsavedChanges = true;
+            break;
+        case 39: // Set Output 4 waveform type
+            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % 6));
             unsavedChanges = true;
             break;
         }
@@ -852,7 +860,7 @@ void HandleDisplay() {
 
         // Duty cycle and level control menu
         menuIdx = 34;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
+        if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
             display.setTextSize(1);
             int yPosition = 0;
             display.setCursor(10, yPosition);
@@ -889,14 +897,25 @@ void HandleDisplay() {
 
                 yPosition += 9;
             }
-            // Duty Cycle
+            // Waveform type
+            yPosition += 9;
             display.setCursor(10, yPosition);
-            display.println("DUTY CYCLE:");
+            display.println("OUT 3 WAV:");
             display.setCursor(80, yPosition);
-            display.print(outputs[0].GetDutyCycleDescription());
+            display.print(outputs[2].GetWaveformTypeDescription());
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
             } else if (menuMode == menuIdx + 4) {
+                display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.println("OUT 4 WAV:");
+            display.setCursor(80, yPosition);
+            display.print(outputs[3].GetWaveformTypeDescription());
+            if (menuItem == menuIdx + 5 && menuMode == 0) {
+                display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
+            } else if (menuMode == menuIdx + 5) {
                 display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
             }
 
@@ -904,7 +923,7 @@ void HandleDisplay() {
             return;
         }
         // Other settings
-        menuIdx = 39;
+        menuIdx = 40;
         if (menuItem >= menuIdx && menuItem < menuIdx + 3) {
             display.setTextSize(1);
             int yPosition = 20;
@@ -1073,6 +1092,7 @@ void UpdateParameters(LoadSaveParams p) {
         outputs[i].SetEuclideanRotation(p.euclideanRotations[i]);
         outputs[i].SetEuclideanPadding(p.euclideanPadding[i]);
         outputs[i].SetPhase(p.phaseShift[i]);
+        outputs[i].SetWaveformType(static_cast<WaveformType>(p.waveformType[i]));
     }
 }
 

@@ -49,8 +49,8 @@ Each of the four outputs can be individually configured with the following param
 
 - TRIG: Optional Clock input (0-5V)
 - IN1, IN2: CV input to control internal parameters (0-5V)
-- GATE 1 / 2: Clock Outputs 1 and 2 (0-5V)
-- CV 1 / 2: Clock Outputs 3 and 4 (0-5V)
+- OUT 1 / 2: Clock Outputs 1 and 2 (0-5V)
+- OUT 3 / 4: Clock Outputs 3 and 4 which are waveform capable (0-5V)
 
 ### Setting the BPM
 
@@ -133,6 +133,16 @@ Outputs 3 and 4 can output CV values so they support setting the output level an
 
 1. Navigate to the selected output. Click the encoder to enter edit mode.
 2. Use the encoder to select the desired output level from 0 to 100% which corresponds to 0 to 5V.
+3. Click the encoder to exit edit mode.
+
+### Output Waveform
+
+Outputs 3 and 4 can output waveforms different from square. The waveform can be selected from the following options:
+
+The module supports outputting the square, triangle, sawtooth, and sine waveforms. In addition these outputs can generate random signals and smooth random waveforms.
+
+1. Navigate to the selected output. Click the encoder to enter edit mode.
+2. Use the encoder to select the desired waveform. The waveform will be updated in real-time.
 3. Click the encoder to exit edit mode.
 
 ### Tap Tempo
