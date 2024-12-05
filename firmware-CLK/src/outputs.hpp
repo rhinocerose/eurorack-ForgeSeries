@@ -19,6 +19,7 @@ enum WaveformType {
     SmoothRandom,
 };
 String WaveformTypeDescriptions[] = {"Square", "Triangle", "Sine", "Sawtooth", "Random", "SmoothRdn"};
+int WaveformTypeLength = sizeof(WaveformTypeDescriptions) / sizeof(WaveformTypeDescriptions[0]);
 
 class Output {
   public:
@@ -163,6 +164,7 @@ Output::Output(int ID, OutputType type) {
     _outputType = type;
     GeneratePattern(_euclideanParams, _euclideanRhythm);
 }
+
 // Pulse function
 void Output::Pulse(int PPQN, unsigned long globalTick) {
     // If not stopped, generate the pulse
@@ -382,8 +384,10 @@ void Output::GenerateRandomWave(int PPQN) {
 
 void Output::GenerateSmoothRandomWave(int PPQN) {
     if (_waveActive) {
-        // Generate smooth random waveform
-        _waveValue = _waveValue + 0.1 * (random(101) - _waveValue); // Smooth random value between 0 and 100
+        // Generate smooth random waveform using a low-pass filter approach
+        float alpha = 0.1;                                           // Smoothing factor
+        float randomValue = random(101);                             // Random value between 0 and 100
+        _waveValue = alpha * randomValue + (1 - alpha) * _waveValue; // Low-pass filter
         _isPulseOn = true;
     }
 }
