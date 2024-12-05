@@ -154,12 +154,15 @@ Instead of setting the BPM manually, the module can be set to the desired BPM by
 
 ### Save/Load Configuration
 
-1. Navigate to the save configuration parameter.
-2. Click the encoder to save the current configuration.
+The module has 5 memory slots to save and load configuration. The parameters saved into slot 0 is automatically loaded on boot.
 
-The last saved configuration is automatically loaded on boot.
+1. Navigate to the PRESET SLOT parameter.
+2. Click the encoder to enter the desired slot selection.
+3. Click to exit the slot selection.
+4. Select SAVE and click the encoder to save the current slot configuration.
+5. Select LOAD and click the encoder to load the selected slot configuration.
 
-The "LOAD DEFAULTS" option will load the default configuration but will not save it. To save the default configuration, navigate to the save configuration parameter and save it.
+The "LOAD DEFAULTS" option will load the default configuration to current parameters but will not save it. To save the default configuration, navigate to the save configuration parameter and save it to the selected preset slot.
 
 ### External Clock Sync
 

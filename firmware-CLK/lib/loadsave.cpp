@@ -113,8 +113,11 @@ LoadSaveParams Load(int slot) {
             p.waveformType[i] = EEPROM.read(idx++);
         }
     } else {
-        // If no eeprom data, set default values
+        // Initialize all slots with default values
         p = LoadDefaultParams();
+        for (int i = 0; i < NUM_SLOTS; i++) {
+            Save(p, i);
+        }
     }
     interrupts();
     return p;

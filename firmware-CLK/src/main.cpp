@@ -71,7 +71,7 @@ int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 42;
+int menuItems = 44;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 1;
@@ -79,6 +79,7 @@ int menuMode = 0;            // Menu mode for parameter editing
 bool displayRefresh = 1;     // Display refresh flag
 bool unsavedChanges = false; // Unsaved changes flag
 int euclideanOutput = 0;     // Euclidean rhythm output index
+int saveSlot = 0;            // Save slot index
 
 // Function prototypes
 void UpdateBPM(unsigned int);
@@ -232,7 +233,10 @@ void HandleEncoderClick() {
             case 40:
                 SetTapTempo();
                 break; // Tap tempo
-            case 41: { // Save settings
+            case 41:   // Select save slot
+                menuMode = 41;
+                break;
+            case 42: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -253,7 +257,7 @@ void HandleEncoderClick() {
                     p.phaseShift[i] = outputs[i].GetPhase();
                     p.waveformType[i] = int(outputs[i].GetWaveformType());
                 }
-                Save(p, 0);
+                Save(p, saveSlot);
                 unsavedChanges = false;
                 display.clearDisplay(); // clear display
                 display.setTextSize(2);
@@ -266,7 +270,22 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 42: // Load default settings
+            case 43: { // Load from slot
+                LoadSaveParams p = Load(saveSlot);
+                UpdateParameters(p);
+                unsavedChanges = false;
+                display.clearDisplay(); // clear display
+                display.setTextSize(2);
+                display.setCursor(SCREEN_WIDTH / 2 - 30, SCREEN_HEIGHT / 2 - 16);
+                display.print("LOADED");
+                display.display();
+                unsigned long loadMessageStartTime = millis();
+                while (millis() - loadMessageStartTime < 1000) {
+                    HandleIO();
+                }
+                break;
+            }
+            case 44: { // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -280,6 +299,7 @@ void HandleEncoderClick() {
                     HandleIO();
                 }
                 break;
+            }
             }
         } else {
             menuMode = 0;
@@ -422,6 +442,9 @@ void HandleEncoderPosition() {
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + 6) % 6));
             unsavedChanges = true;
             break;
+        case 41: // Select save slot
+            saveSlot = (saveSlot - 1 < 0) ? NUM_SLOTS : saveSlot - 1;
+            break;
         }
     } else if ((newPosition + 3) / 4 < oldPosition / 4) { // Increase, turned clockwise
         UpdateSpeedFactor();
@@ -535,6 +558,9 @@ void HandleEncoderPosition() {
         case 39: // Set Output 4 waveform type
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % 6));
             unsavedChanges = true;
+            break;
+        case 41: // Select save slot
+            saveSlot = (saveSlot + 1 > NUM_SLOTS) ? 0 : saveSlot + 1;
             break;
         }
     }
@@ -924,9 +950,9 @@ void HandleDisplay() {
         }
         // Other settings
         menuIdx = 40;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 3) {
+        if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
-            int yPosition = 20;
+            int yPosition = 10;
             // Tap tempo
             display.setCursor(10, yPosition);
             display.print("TAP TEMPO");
@@ -934,18 +960,31 @@ void HandleDisplay() {
             if (menuItem == menuIdx) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
-            yPosition += 27;
+            yPosition += 18;
             // Save
             display.setCursor(10, yPosition);
-            display.print("SAVE");
+            display.print("PRESET SLOT: ");
+            display.print(saveSlot);
             if (menuItem == menuIdx + 1) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("SAVE");
+            if (menuItem == menuIdx + 2) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("LOAD");
+            if (menuItem == menuIdx + 3) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
             // Load default settings
             display.setCursor(10, yPosition);
             display.print("LOAD DEFAULTS");
-            if (menuItem == menuIdx + 2) {
+            if (menuItem == menuIdx + 4) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
@@ -1135,7 +1174,7 @@ void setup() {
     // Attach interrupt for external clock
     attachInterrupt(digitalPinToInterrupt(CLK_IN_PIN), ClockReceived, RISING);
 
-    // Load settings from flash memory or set defaults
+    // Load settings from flash memory (slot 0) or set defaults
     LoadSaveParams p = Load(0);
     UpdateParameters(p);
 
