@@ -888,7 +888,7 @@ void HandleDisplay() {
         if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
             display.setTextSize(1);
             MenuHeader("OUTPUT SETTINGS");
-            int yPosition = 14;
+            int yPosition = 12;
 
             // Levels and offsets
             display.setCursor(70, yPosition);
@@ -926,9 +926,9 @@ void HandleDisplay() {
             display.setCursor(70, yPosition);
             display.print(outputs[2].GetWaveformTypeDescription());
             if (menuItem == menuIdx + 4 && menuMode == 0) {
-                display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 4) {
-                display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
@@ -936,9 +936,9 @@ void HandleDisplay() {
             display.setCursor(70, yPosition);
             display.print(outputs[3].GetWaveformTypeDescription());
             if (menuItem == menuIdx + 5 && menuMode == 0) {
-                display.drawTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 5) {
-                display.fillTriangle(1, yPosition, 1, yPosition + 8, 5, yPosition + 4, 1);
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
             RedrawDisplay();
