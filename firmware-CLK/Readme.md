@@ -1,10 +1,12 @@
 # ClockForge: Crafting Time, One Pulse at a Time
 
-![Logo](./Logo.webp)
+![Logo](./images/Logo-CLK.webp)
 
 ## Overview
 
 ClockForge provides clock signals for synchronizing other modules in your Eurorack system. It features a global BPM control, multiple clock outputs, adjustable clock multiplication and division per output, tap tempo functionality, sync to external clock sources, Euclidean rhythm generation, and custom swing patterns per output.
+
+![Module](./images/Front.jpg)
 
 ## Features
 
