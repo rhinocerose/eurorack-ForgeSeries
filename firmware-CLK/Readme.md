@@ -1,17 +1,20 @@
 # ClockForge: Crafting Time, One Pulse at a Time
 
-![Logo](./images/Logo-CLK.webp)
+<img src="./images/Logo-CLK.webp" alt="Logo" style="width:50%"/>
 
 ## Overview
 
-ClockForge provides clock signals for synchronizing other modules in your Eurorack system. It features a global BPM control, multiple clock outputs, adjustable clock multiplication and division per output, tap tempo functionality, sync to external clock sources, Euclidean rhythm generation, and custom swing patterns per output.
+ClockForge provides clock signals and waves for synchronizing and modulating other modules in your Eurorack system. It features a global BPM control, multiple clock outputs, adjustable clock multiplication and division per output, tap tempo functionality, sync to external clock sources, Euclidean rhythm generation, and custom swing patterns per output.
 
-![Module](./images/Front.jpg)
+<img src="./images/Front.jpg" alt="Logo" style="width:20%"/>
+
+[ModularGrid]([https://](https://modulargrid.net/e/other-unknown-clockforge-by-voltage-foundry-modular))
 
 ## Features
 
 - **Global BPM Control**: Set the global BPM for all outputs.
 - **Multiple Clock Outputs**: Four clock outputs with individual settings.
+- **Output Waveform Generation**: Outputs 3 and 4 can generate square, triangle, sawtooth, sine and random waveforms.
 - **Adjustable Clock Multiplication and Division**: Configure each output to multiply or divide the global BPM.
 - **Tap Tempo Functionality**: Manually set the BPM by tapping a button.
 - **Sync to External Clock Sources**: Automatically adjust BPM based on an external clock signal.
