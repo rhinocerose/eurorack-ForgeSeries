@@ -189,8 +189,8 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         int clockDividerExternal = 1 / _clockDividers[_dividerIndex];
 
         // Calculate the pulse duration (in ticks) based on the duty cycle
-        int _pulseDuration = int(periodTicks * (_dutyCycle / 100.0));
-        int _externalPulseDuration = int(clockDividerExternal * (_dutyCycle / 100.0));
+        unsigned int _pulseDuration = int(periodTicks * (_dutyCycle / 100.0));
+        unsigned int _externalPulseDuration = int(clockDividerExternal * (_dutyCycle / 100.0));
 
         // Lambda function to handle timing
         auto generatePulse = [this]() {
@@ -222,14 +222,14 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         if (_externalClock && _clockDividers[_dividerIndex] < 1) {
             if (_internalPulseCounter % clockDividerExternal == 0 || _internalPulseCounter == 0) {
                 generatePulse();
-            } else if (_internalPulseCounter % _externalPulseDuration == 0) {
+            } else if (_internalPulseCounter % clockDividerExternal == _externalPulseDuration) {
                 StopWaveform();
             }
         } else {
             // Handle internal clock timing
             if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == 0 || (globalTick == 0)) {
                 generatePulse();
-            } else if ((tickCounterSwing - phaseOffsetTicks) % _pulseDuration == 0) {
+            } else if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == _pulseDuration) {
                 StopWaveform();
             }
         }

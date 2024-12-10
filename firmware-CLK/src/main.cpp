@@ -71,7 +71,7 @@ int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 44;
+int menuItems = 46;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 1;
@@ -230,13 +230,19 @@ void HandleEncoderClick() {
             case 39: // Set Waveform type for output 4
                 menuMode = 39;
                 break;
-            case 40:
-                SetTapTempo();
-                break; // Tap tempo
-            case 41:   // Select save slot
+            case 40: // Duty Cycle for output 1
+                menuMode = 40;
+                break;
+            case 41: // Duty Cycle for output 2
                 menuMode = 41;
                 break;
-            case 42: { // Save settings
+            case 42:
+                SetTapTempo();
+                break; // Tap tempo
+            case 43:   // Select save slot
+                menuMode = 41;
+                break;
+            case 44: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -270,7 +276,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 43: { // Load from slot
+            case 45: { // Load from slot
                 LoadSaveParams p = Load(saveSlot);
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -285,7 +291,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 44: { // Load default settings
+            case 46: { // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -442,7 +448,15 @@ void HandleEncoderPosition() {
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
             unsavedChanges = true;
             break;
-        case 41: // Select save slot
+        case 40: // Duty Cycle for output 1
+            outputs[0].SetDutyCycle(outputs[0].GetDutyCycle() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 41: // Duty Cycle for output 2
+            outputs[1].SetDutyCycle(outputs[1].GetDutyCycle() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 43: // Select save slot
             saveSlot = (saveSlot - 1 < 0) ? NUM_SLOTS : saveSlot - 1;
             break;
         }
@@ -559,7 +573,15 @@ void HandleEncoderPosition() {
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % WaveformTypeLength));
             unsavedChanges = true;
             break;
-        case 41: // Select save slot
+        case 40: // Duty Cycle for output 1
+            outputs[0].SetDutyCycle(outputs[0].GetDutyCycle() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 41: // Duty Cycle for output 2
+            outputs[1].SetDutyCycle(outputs[1].GetDutyCycle() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 43: // Select save slot
             saveSlot = (saveSlot + 1 > NUM_SLOTS) ? 0 : saveSlot + 1;
             break;
         }
@@ -944,11 +966,38 @@ void HandleDisplay() {
             RedrawDisplay();
             return;
         }
-        // Other settings
         menuIdx = 40;
+        if (menuItem >= menuIdx && menuItem < menuIdx + 2) {
+            display.setTextSize(1);
+            MenuHeader("OUTPUT SETTINGS");
+            int yPosition = 21;
+
+            display.setCursor(10, yPosition);
+            display.print("OUT 1 DUTY: ");
+            display.print(outputs[0].GetDutyCycleDescription());
+            if (menuItem == menuIdx && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("OUT 2 DUTY: ");
+            display.print(outputs[1].GetDutyCycleDescription());
+            if (menuItem == menuIdx + 1 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 1) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+
+            RedrawDisplay();
+            return;
+        }
+        // Other settings
+        menuIdx = 42;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
-            int yPosition = 10;
+            int yPosition = 9;
             // Tap tempo
             display.setCursor(10, yPosition);
             display.print("TAP TEMPO");
@@ -956,7 +1005,8 @@ void HandleDisplay() {
             if (menuItem == menuIdx) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
-            yPosition += 18;
+            yPosition += 9;
+            yPosition += 9;
             // Save
             display.setCursor(10, yPosition);
             display.print("PRESET SLOT: ");
