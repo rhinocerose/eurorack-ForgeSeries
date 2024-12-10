@@ -140,7 +140,6 @@ class Output {
     float _triangleWaveStep = 0.0f;
     float _sineWaveAngle = 0.0f;
     float _inactiveTickCounter = 0.0f;
-    float _waveTickCounter = 0.0f;
 
     // Swing variables
     unsigned int _swingAmountIndex = 0; // Swing amount index
@@ -266,7 +265,7 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
     }
 }
 
-// Update the StartWaveform function to reset waveform variables
+// Start the waveform generation
 void Output::StartWaveform() {
     _waveActive = true;
     switch (_waveformType) {
@@ -281,7 +280,6 @@ void Output::StartWaveform() {
             _waveValue = 0.0f;
             _triangleWaveStep = 0.0f; // Will be calculated in GenerateTriangleWave()
             _sineWaveAngle = 0.0f;
-            _waveTickCounter = 0.0f; // Initialize tick counter
         }
         break;
     case WaveformType::Random:
@@ -292,6 +290,7 @@ void Output::StartWaveform() {
     }
 }
 
+// Reset the waveform values
 void Output::ResetWaveform() {
     _waveActive = false;
     _waveDirection = true;
@@ -319,7 +318,7 @@ void Output::StopWaveform() {
     }
 }
 
-// Implement waveform generation functions
+// Generate a triangle wave
 void Output::GenerateTriangleWave(int PPQN) {
     if (_waveActive) {
         float periodTicks = PPQN / _clockDividers[_dividerIndex];
@@ -348,37 +347,41 @@ void Output::GenerateTriangleWave(int PPQN) {
     }
 }
 
-// Function to generate a sine wave with skewed top based on duty cycle
+// Generate a sine wave
 void Output::GenerateSineWave(int PPQN) {
     if (_waveActive) {
-        float periodTicks = PPQN / _clockDividers[_dividerIndex];
-        float activeTicks = periodTicks * (_dutyCycle / 100.0f);
-        float inactiveTicks = periodTicks - activeTicks;
+        // Calculate the period of the waveform in ticks
+        float periodInTicks = PPQN / _clockDividers[_dividerIndex];
 
-        // Increment tick counter
-        _waveTickCounter++;
+        // Calculate the angle increment per tick
+        float angleIncrement = (2.0f * PI) / periodInTicks;
 
-        if (_waveTickCounter <= activeTicks) {
-            // Active (top skew) period
-            float angle = PI * (_waveTickCounter / activeTicks);
-            _waveValue = (sin(angle) * 50.0f) + 50.0f; // Scale to [0, 100]
-        } else if (_waveTickCounter <= periodTicks) {
-            // Inactive period
-            float angle = PI + PI * ((_waveTickCounter - activeTicks) / inactiveTicks);
-            _waveValue = (sin(angle) * 50.0f) + 50.0f;
-        } else {
-            // Reset for next period
-            _waveTickCounter = 0;
-            _waveValue = 0.0f;
+        // Update the angle for the sine function
+        _sineWaveAngle += angleIncrement;
+
+        // Keep the angle within 0 to 2*PI
+        if (_sineWaveAngle >= 2.0f * PI) {
+            _sineWaveAngle -= 2.0f * PI;
         }
 
+        // Apply phase shift to align the lowest point with pulse start
+        float shiftedAngle = _sineWaveAngle + (3.0f * PI / 2.0f);
+
+        // Calculate the sine value scaled to the amplitude range [0, 100]
+        // Adjust the sine value based on the duty cycle
+        float sineValue = sin(shiftedAngle);
+        if (sineValue > 0) {
+            sineValue = pow(sineValue, _dutyCycle / 50.0f);
+        } else {
+            sineValue = -pow(-sineValue, _dutyCycle / 50.0f);
+        }
+        _waveValue = (sineValue * 50.0f) + 50.0f;
+
         _isPulseOn = true;
-    } else {
-        _waveValue = 0.0f;
     }
 }
 
-// Function to generate a parabolic wave synchronized with PPQN
+// Generate a parabolic wave
 void Output::GenerateParabolicWave(int PPQN) {
     if (_waveActive) {
         float periodInTicks = PPQN / _clockDividers[_dividerIndex];
@@ -399,7 +402,7 @@ void Output::GenerateParabolicWave(int PPQN) {
     }
 }
 
-// Function to generate a sawtooth wave synchronized with PPQN
+// Generate a sawtooth wave
 void Output::GenerateSawtoothWave(int PPQN) {
     if (_waveActive) {
         float periodTicks = PPQN / _clockDividers[_dividerIndex];
@@ -428,6 +431,7 @@ void Output::GenerateSawtoothWave(int PPQN) {
     }
 }
 
+// Generate random values
 void Output::GenerateRandomWave(int PPQN) {
     if (_waveActive) {
         // Generate white noise waveform
@@ -436,12 +440,30 @@ void Output::GenerateRandomWave(int PPQN) {
     }
 }
 
+// Generate smooth random waveform
 void Output::GenerateSmoothRandomWave(int PPQN) {
     if (_waveActive) {
-        // Generate smooth random waveform using a low-pass filter approach
-        float alpha = 0.1;                                           // Smoothing factor
-        float randomValue = random(101);                             // Random value between 0 and 100
-        _waveValue = alpha * randomValue + (1 - alpha) * _waveValue; // Low-pass filter
+        // Generate smooth random waveform with smooth peaks and valleys
+        static float phase = 0.0f;
+        static float frequency = 0.3f;    // Adjust frequency for smoothness
+        static float amplitude = 50.0f;   // Amplitude for wave value range (0 to 100)
+        static float lastValue = 50.0f;   // Last generated value
+        static float smoothValue = 50.0f; // Smoothed value
+
+        // Increment phase
+        phase += frequency;
+
+        // Generate smooth random value using a random walk
+        float randomStep = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 2.0f; // Random step between -1 and 1
+        lastValue += randomStep * amplitude * frequency;                          // Adjust step size by amplitude and frequency
+        lastValue = fmin(fmax(lastValue, 0.0f), 100.0f);                          // Clamp value between 0 and 100
+
+        // Apply a low-pass filter to smooth out the waveform
+        float alpha = 0.01f; // Smoothing factor (0 < alpha < 1)
+        smoothValue = alpha * lastValue + (1.0f - alpha) * smoothValue;
+
+        _waveValue = smoothValue;
+
         _isPulseOn = true;
     }
 }
