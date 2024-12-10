@@ -109,6 +109,14 @@ Most parameters can be either clicked to toggle enable/disable or clicked to be 
 2. Press the encoder to save the current settings to flash memory.
 3. The display will show a "SAVED" message to confirm the operation.
 
+## Calibration
+
+The module requires calibration to properly quantize the input CV signals. The calibration process involves setting the minimum and maximum values for the input CV range.
+
+To enter calibration mode, power on the module while holding the encoder button. The display will guide you through the calibration process. Input 0V (C1) and 5V(C6) from a CV source like a keyboard or sequencer and press the encoder to confirm the values. The module will save the calibration settings to flash memory.
+
+It's required to re-calibrate the module everytime the firmware is updated.
+
 ## Firmware Update
 
 1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules/releases). The firmware file is named `CURRENT.UF2`.

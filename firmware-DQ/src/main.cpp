@@ -1,4 +1,5 @@
 #include <Arduino.h>
+
 // Rotary encoder setting
 #define ENCODER_OPTIMIZE_INTERRUPTS // counter measure of noise
 #include <Encoder.h>
@@ -8,22 +9,19 @@
 
 // Load local libraries
 #include "boardIO.cpp"
+#include "calibrate_ADC.cpp"
 #include "loadsave.cpp"
-#include "pinouts.h"
+#include "pinouts.hpp"
 #include "quantizer.cpp"
 #include "scales.cpp"
 #include "splash.hpp"
 #include "version.hpp"
 
+////////////////////////////////////////////
+
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
-
-////////////////////////////////////////////
-// Assign ADC calibration value for each channel based on the actual measurement
-float ADCalibration[2] = {0.99728, 0.99728};
-/////////////////////////////////////////
-
 // OLED display initialization
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
@@ -44,6 +42,8 @@ int menuMode = 0;        // 0=select,1=atk[0],2=dcy[0],3=atk[1],4=dcy[1], 5=scal
 // ADC input variables
 float channelADC[2], oldChannelADC[2];
 int quantizedNoteIdx[2], oldQuantizedNoteIdx[2] = {0, 0};
+// ADC input offset and scale from calibration
+float offsetScale[2][2]; // [channel][0: offset, 1: scale]
 
 float CVOutput[2], oldCVOutput[2] = {0, 0}; // CV output
 long gateTimer[2] = {0, 0};                 // EG curve progress speed
@@ -67,7 +67,7 @@ int scaleIndex = 1;
 int noteIndex = 0;
 
 // Note Storage
-bool activeNotes[2][12]; // 1=note valid,0=note invalid
+bool activeNotes[2][12] = {{false}}; // 1=note valid,0=note invalid
 
 // display
 bool displayRefresh = 1;     // 0=not refresh display , 1= refresh display , countermeasure of display refresh busy
@@ -361,8 +361,8 @@ void HandleOLED() {
             NoteDisplay(0 + 14 * 6, 15 + 34, activeNotes[1][11] == 1, quantizedNoteIdx[1] == 11); // B
 
             // Debug print
-            // Serial.print("Note 1: " + String(noteNames[quantizedNoteIdx[0]]) + " index: " + String(quantizedNoteIdx[0]) + "| Input CV: " + String(channelADC[0]) + " Quantized CV: " + String(CVOutput[0]) + "\n");
-            // Serial.print("Note 2: " + String(noteNames[quantizedNoteIdx[1]]) + " index: " + String(quantizedNoteIdx[1]) + "| Input CV: " + String(channelADC[1]) + " Quantized CV: " + String(CVOutput[1]) + "\n");
+            Serial.print("Note 1: " + String(noteNames[quantizedNoteIdx[0]]) + " index: " + String(quantizedNoteIdx[0]) + "| Input CV: " + String(channelADC[0]) + " Quantized CV: " + String(CVOutput[0]) + "\n");
+            Serial.print("Note 2: " + String(noteNames[quantizedNoteIdx[1]]) + " index: " + String(quantizedNoteIdx[1]) + "| Input CV: " + String(channelADC[1]) + " Quantized CV: " + String(CVOutput[1]) + "\n");
             // Draw the selection triangle
             if (menuItem <= 4) {
                 display.fillTriangle(5 + menuItem * 7, 28, 2 + menuItem * 7, 33, 8 + menuItem * 7, 33, WHITE);
@@ -509,6 +509,24 @@ void HandleOLED() {
     }
 }
 
+const int NUM_SAMPLES = 4;        // Number of samples to average
+const int DEBOUNCE_THRESHOLD = 5; // Threshold for debounce
+void AdjustADCReadings(int CV_IN_PIN, int ch) {
+    long sum = 0;
+    for (int i = 0; i < NUM_SAMPLES; i++) {
+        sum += analogRead(CV_IN_PIN);
+    }
+    int averageReading = sum / NUM_SAMPLES;
+
+    // Apply calibration
+    float calibratedReading = (averageReading - offsetScale[ch][0]) / (1 - offsetScale[ch][1]);
+
+    // Debounce the reading
+    if (abs(calibratedReading - channelADC[ch]) > DEBOUNCE_THRESHOLD) {
+        channelADC[ch] = calibratedReading;
+    }
+}
+
 void HandleInputs() {
     oldClockInput = clockInput;
     oldCVOutput[0] = CVOutput[0];
@@ -519,10 +537,10 @@ void HandleInputs() {
     oldQuantizedNoteIdx[1] = quantizedNoteIdx[1];
 
     //-------------------------------Analog read and qnt setting--------------------------
-    channelADC[0] = analogRead(CV_1_IN_PIN) / ADCalibration[0];
-    QuantizeCV(channelADC[0], oldChannelADC[0], quantizerThresholdBuff[0], channelSensitivity[0], octaveShift[0], &CVOutput[0]);
+    AdjustADCReadings(CV_1_IN_PIN, 0);
+    AdjustADCReadings(CV_2_IN_PIN, 1);
 
-    channelADC[1] = analogRead(CV_2_IN_PIN) / ADCalibration[1];
+    QuantizeCV(channelADC[0], oldChannelADC[0], quantizerThresholdBuff[0], channelSensitivity[0], octaveShift[0], &CVOutput[0]);
     QuantizeCV(channelADC[1], oldChannelADC[1], quantizerThresholdBuff[1], channelSensitivity[1], octaveShift[1], &CVOutput[1]);
 
     clockInput = digitalRead(CLK_IN_PIN);
@@ -610,8 +628,33 @@ void setup() {
     InitIO(); // Initialize IO pins
 
     // OLED initialize
-    display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+    display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS, false, true);
     display.clearDisplay();
+
+    // Check if encoder is pressed during startup to enter calibration mode
+    if (digitalRead(ENCODER_SW) == LOW) {
+        CalibrateADC(&display, offsetScale);
+    }
+
+    LoadCalibration(offsetScale);
+    // Check if the calibration values are valid (not zero)
+    if (offsetScale[0][0] == 0 || offsetScale[1][0] == 0) {
+        offsetScale[0][0] = 20;
+        offsetScale[0][1] = 0.001252;
+        offsetScale[1][0] = 20;
+        offsetScale[1][1] = 0.001252;
+    }
+
+    // print the calibration values to the serial monitor
+    Serial.println("Loaded calibration values:");
+    Serial.print("Ch1 - Offset: ");
+    Serial.println(offsetScale[0][0]);
+    Serial.print("Ch1 - Scale: ");
+    Serial.println(offsetScale[0][1], 6);
+    Serial.print("Ch2 - Offset: ");
+    Serial.println(offsetScale[1][0]);
+    Serial.print("Ch2 - Scale: ");
+    Serial.println(offsetScale[1][1], 6);
 
     display.clearDisplay();
     display.drawBitmap(30, 0, VFM_Splash, 68, 64, 1);
@@ -640,7 +683,8 @@ void setup() {
         &channelSensitivity[0],
         &channelSensitivity[1],
         &octaveShift[0],
-        &octaveShift[1]};
+        &octaveShift[1],
+    };
     Load(p, activeNotes[0], activeNotes[1]);
     BuildQuantBuffer(activeNotes[0], quantizerThresholdBuff[0]);
     BuildQuantBuffer(activeNotes[1], quantizerThresholdBuff[1]);

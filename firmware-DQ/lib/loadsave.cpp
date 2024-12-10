@@ -1,16 +1,62 @@
+#pragma once
+
 #include <Arduino.h>
 // Use flash memory as eeprom
 #include <FlashAsEEPROM.h>
+
+#define CALIBRATION_ADDR 0
+#define PARAMS_ADDR 50
 
 // Struct to hold params that are saved/loaded to/from EEPROM
 struct LoadSaveParams {
     u_int8_t *atk1, *atk2, *dcy1, *dcy2, *sync1, *sync2, *sensitivity_ch1, *sensitivity_ch2, *oct1, *oct2;
 };
 
-byte note_str1, note_str11, note_str2, note_str22;
+const uint8_t WRITTEN_SIGNATURE = 0xDA;
+
+void SaveCalibration(float calibrationValues[2][2]) {
+    int addr = CALIBRATION_ADDR;
+    EEPROM.write(addr, WRITTEN_SIGNATURE);
+    addr += sizeof(WRITTEN_SIGNATURE);
+    // Write the calibration values from data to the EEPROM
+    const size_t arraySize = sizeof(float) * 2 * 2;
+    byte data[arraySize];
+    memcpy(data, calibrationValues, arraySize);
+
+    for (size_t i = 0; i < arraySize; i++) {
+        EEPROM.write(addr, data[i]);
+        addr += sizeof(data[i]);
+    }
+    EEPROM.commit();
+}
+
+void LoadCalibration(float calibrationValues[2][2]) {
+    int addr = CALIBRATION_ADDR;
+    int signature = EEPROM.read(addr);
+    if (signature == WRITTEN_SIGNATURE) {
+        addr += sizeof(WRITTEN_SIGNATURE);
+        // Read the calibration values from the EEPROM to data
+        const size_t arraySize = sizeof(float) * 2 * 2;
+        byte data[arraySize];
+        for (size_t i = 0; i < arraySize; i++) {
+            data[i] = EEPROM.read(addr);
+            addr += sizeof(data[i]);
+        }
+        memcpy(calibrationValues, data, arraySize);
+    } else {
+        calibrationValues[0][0] = 0;
+        calibrationValues[0][1] = 0;
+        calibrationValues[1][0] = 0;
+        calibrationValues[1][1] = 0;
+    }
+}
 
 // Save data to flash memory
 void Save(LoadSaveParams p, bool note1[], bool note2[]) {
+    int addr = PARAMS_ADDR;
+    EEPROM.write(addr, WRITTEN_SIGNATURE);
+    addr += sizeof(WRITTEN_SIGNATURE);
+
     byte note1_str_pg1 = 0, note1_str_pg2 = 0;
     byte note2_str_pg1 = 0, note2_str_pg2 = 0;
 
@@ -22,21 +68,20 @@ void Save(LoadSaveParams p, bool note1[], bool note2[]) {
         bitWrite(note1_str_pg2, j, note1[j + 8]);
         bitWrite(note2_str_pg2, j, note2[j + 8]);
     }
-
-    EEPROM.write(1, note1_str_pg1);
-    EEPROM.write(2, note1_str_pg2);
-    EEPROM.write(3, note2_str_pg1);
-    EEPROM.write(4, note2_str_pg2);
-    EEPROM.write(5, *p.atk1);
-    EEPROM.write(6, *p.dcy1);
-    EEPROM.write(7, *p.atk2);
-    EEPROM.write(8, *p.dcy2);
-    EEPROM.write(9, *p.sync1);
-    EEPROM.write(10, *p.sync2);
-    EEPROM.write(11, *p.oct1);
-    EEPROM.write(12, *p.oct2);
-    EEPROM.write(13, *p.sensitivity_ch1);
-    EEPROM.write(14, *p.sensitivity_ch2);
+    EEPROM.write(addr++, note1_str_pg1);
+    EEPROM.write(addr++, note1_str_pg2);
+    EEPROM.write(addr++, note2_str_pg1);
+    EEPROM.write(addr++, note2_str_pg2);
+    EEPROM.write(addr++, *p.atk1);
+    EEPROM.write(addr++, *p.dcy1);
+    EEPROM.write(addr++, *p.atk2);
+    EEPROM.write(addr++, *p.dcy2);
+    EEPROM.write(addr++, *p.sync1);
+    EEPROM.write(addr++, *p.sync2);
+    EEPROM.write(addr++, *p.oct1);
+    EEPROM.write(addr++, *p.oct2);
+    EEPROM.write(addr++, *p.sensitivity_ch1);
+    EEPROM.write(addr++, *p.sensitivity_ch2);
     EEPROM.commit();
 }
 
@@ -44,21 +89,25 @@ void Save(LoadSaveParams p, bool note1[], bool note2[]) {
 void Load(LoadSaveParams p, bool note1[], bool note2[]) {
     byte note1_str_pg1 = 0, note1_str_pg2 = 0;
     byte note2_str_pg1 = 0, note2_str_pg2 = 0;
-    if (EEPROM.isValid() == 1) {
-        note1_str_pg1 = EEPROM.read(1);
-        note1_str_pg2 = EEPROM.read(2);
-        note2_str_pg1 = EEPROM.read(3);
-        note2_str_pg2 = EEPROM.read(4);
-        *p.atk1 = EEPROM.read(5);
-        *p.dcy1 = EEPROM.read(6);
-        *p.atk2 = EEPROM.read(7);
-        *p.dcy2 = EEPROM.read(8);
-        *p.sync1 = EEPROM.read(9);
-        *p.sync2 = EEPROM.read(10);
-        *p.oct1 = EEPROM.read(11);
-        *p.oct2 = EEPROM.read(12);
-        *p.sensitivity_ch1 = EEPROM.read(13);
-        *p.sensitivity_ch2 = EEPROM.read(14);
+
+    int addr = PARAMS_ADDR;
+    int signature = EEPROM.read(addr);
+    if (signature == WRITTEN_SIGNATURE) {
+        addr += sizeof(WRITTEN_SIGNATURE);
+        note1_str_pg1 = EEPROM.read(addr++);
+        note1_str_pg2 = EEPROM.read(addr++);
+        note2_str_pg1 = EEPROM.read(addr++);
+        note2_str_pg2 = EEPROM.read(addr++);
+        *p.atk1 = EEPROM.read(addr++);
+        *p.dcy1 = EEPROM.read(addr++);
+        *p.atk2 = EEPROM.read(addr++);
+        *p.dcy2 = EEPROM.read(addr++);
+        *p.sync1 = EEPROM.read(addr++);
+        *p.sync2 = EEPROM.read(addr++);
+        *p.oct1 = EEPROM.read(addr++);
+        *p.oct2 = EEPROM.read(addr++);
+        *p.sensitivity_ch1 = EEPROM.read(addr++);
+        *p.sensitivity_ch2 = EEPROM.read(addr++);
     } else {                       // No eeprom data , setting defaults
         note1_str_pg1 = B11111111; // Initialize with chromatic scale
         note1_str_pg2 = B00001111;
