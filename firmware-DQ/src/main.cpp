@@ -633,7 +633,7 @@ void setup() {
 
     // Check if encoder is pressed during startup to enter calibration mode
     if (digitalRead(ENCODER_SW) == LOW) {
-        CalibrateADC(&display, offsetScale);
+        CalibrateADC(display, offsetScale);
     }
 
     LoadCalibration(offsetScale);
