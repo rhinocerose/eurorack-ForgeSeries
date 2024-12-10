@@ -129,120 +129,120 @@ void HandleEncoderClick() {
             case 7: // External clock divider
                 menuMode = 7;
                 break;
-            case 8:
+            case 8: // Toggle output 1
                 outputs[0].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 9:
+            case 9: // Toggle output 2
                 outputs[1].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 10:
+            case 10: // Toggle output 3
                 outputs[2].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 11:
+            case 11: // Toggle output 4
                 outputs[3].ToggleOutputState();
                 unsavedChanges = true;
                 break;
-            case 12: // Set swing amount for output 1
+            case 12: // Set pulse probability for output 1
                 menuMode = 12;
                 break;
-            case 13: // Set swing every for output 1
+            case 13: // Set pulse probability for output 2
                 menuMode = 13;
                 break;
-            case 14: // Set swing amount for output 2
+            case 14: // Set pulse probability for output 3
                 menuMode = 14;
                 break;
-            case 15: // Set swing every for output 2
+            case 15: // Set pulse probability for output 4
                 menuMode = 15;
                 break;
-            case 16: // Set swing amount for output 3
+            case 16: // Select Euclidean rhythm output to edit
                 menuMode = 16;
                 break;
-            case 17: // Set swing every for output 3
-                menuMode = 17;
-                break;
-            case 18: // Set swing amount for output 4
-                menuMode = 18;
-                break;
-            case 19: // Set swing every for output 4
-                menuMode = 19;
-                break;
-            case 20: // Set pulse probability for outputs
-                menuMode = 20;
-                break;
-            case 21:
-                menuMode = 21;
-                break;
-            case 22:
-                menuMode = 22;
-                break;
-            case 23:
-                menuMode = 23;
-                break;
-            case 24: // Set phase shift for outputs
-                menuMode = 24;
-                break;
-            case 25:
-                menuMode = 25;
-                break;
-            case 26:
-                menuMode = 26;
-                break;
-            case 27:
-                menuMode = 27;
-                break;
-            case 28: // Select Euclidean rhythm output to edit
-                menuMode = 28;
-                break;
-            case 29:
+            case 17: // Toggle Euclidean rhythm for output
                 outputs[euclideanOutput].ToggleEuclidean();
                 unsavedChanges = true;
                 break;
-            case 30: // Set Euclidean rhythm step length
+            case 18: // Set Euclidean rhythm step length
+                menuMode = 18;
+                break;
+            case 19: // Set Euclidean rhythm number of triggers
+                menuMode = 19;
+                break;
+            case 20: // Set Euclidean rhythm rotation
+                menuMode = 20;
+                break;
+            case 21: // Set euclidean padding
+                menuMode = 21;
+                break;
+            case 22: // Set swing amount for output 1
+                menuMode = 22;
+                break;
+            case 23: // Set swing every for output 1
+                menuMode = 23;
+                break;
+            case 24: // Set swing amount for output 2
+                menuMode = 24;
+                break;
+            case 25: // Set swing every for output 2
+                menuMode = 25;
+                break;
+            case 26: // Set swing amount for output 3
+                menuMode = 26;
+                break;
+            case 27: // Set swing every for output 3
+                menuMode = 27;
+                break;
+            case 28: // Set swing amount for output 4
+                menuMode = 28;
+                break;
+            case 29: // Set swing every for output 4
+                menuMode = 29;
+                break;
+            case 30: // Set phase shift for output 1
                 menuMode = 30;
                 break;
-            case 31: // Set Euclidean rhythm number of triggers
+            case 31: // Set phase shift for output 2
                 menuMode = 31;
                 break;
-            case 32: // Set Euclidean rhythm rotation
+            case 32: // Set phase shift for output 3
                 menuMode = 32;
                 break;
-            case 33: // Set euclidean padding
+            case 33: // Set phase shift for output 4
                 menuMode = 33;
                 break;
-            case 34: // Level control for output 3
+            case 34: // Duty Cycle for output 1
                 menuMode = 34;
                 break;
-            case 35: // Level offset for output 3
+            case 35: // Duty Cycle for output 2
                 menuMode = 35;
                 break;
-            case 36: // Level control for output 4
+            case 36: // Duty Cycle for output 3
                 menuMode = 36;
                 break;
-            case 37: // Level offset for output 4
+            case 37: // Duty Cycle for output 4
                 menuMode = 37;
                 break;
-            case 38: // Set Waveform type for output 3
+            case 38: // Level control for output 3
                 menuMode = 38;
                 break;
-            case 39: // Set Waveform type for output 4
+            case 39: // Level offset for output 3
                 menuMode = 39;
                 break;
-            case 40: // Duty Cycle for output 1
+            case 40: // Level control for output 4
                 menuMode = 40;
                 break;
-            case 41: // Duty Cycle for output 2
+            case 41: // Level offset for output 4
                 menuMode = 41;
                 break;
-            case 42: // Duty Cycle for output 3
+            case 42: // Set Waveform type for output 3
                 menuMode = 42;
                 break;
-            case 43: // Duty Cycle for output 4
+            case 43: // Set Waveform type for output 4
                 menuMode = 43;
                 break;
-            case 44:
+            case 44: // Tap tempo
                 SetTapTempo();
                 break; // Tap tempo
             case 45:   // Select save slot
@@ -365,109 +365,109 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 12:
-            outputs[0].SetSwingAmount(outputs[0].GetSwingAmountIndex() - speedFactor);
-            unsavedChanges = true;
-            break;
         case 13:
-            outputs[0].SetSwingEvery(outputs[0].GetSwingEvery() - speedFactor);
-            unsavedChanges = true;
-            break;
         case 14:
-            outputs[1].SetSwingAmount(outputs[1].GetSwingAmountIndex() - speedFactor);
+        case 15: // Set Pulse Probability for outputs
+            outputs[menuMode - 12].SetPulseProbability(outputs[menuMode - 12].GetPulseProbability() - speedFactor);
             unsavedChanges = true;
             break;
-        case 15:
-            outputs[1].SetSwingEvery(outputs[1].GetSwingEvery() - speedFactor);
-            unsavedChanges = true;
-            break;
-        case 16:
-            outputs[2].SetSwingAmount(outputs[2].GetSwingAmountIndex() - speedFactor);
-            unsavedChanges = true;
-            break;
-        case 17:
-            outputs[2].SetSwingEvery(outputs[2].GetSwingEvery() - speedFactor);
-            unsavedChanges = true;
-            break;
-        case 18:
-            outputs[3].SetSwingAmount(outputs[3].GetSwingAmountIndex() - speedFactor);
-            unsavedChanges = true;
-            break;
-        case 19:
-            outputs[3].SetSwingEvery(outputs[3].GetSwingEvery() - speedFactor);
-            unsavedChanges = true;
-            break;
-        case 20:
-        case 21:
-        case 22:
-        case 23: // Set Pulse Probability for outputs
-            outputs[menuMode - 20].SetPulseProbability(outputs[menuMode - 20].GetPulseProbability() - speedFactor);
-            unsavedChanges = true;
-            break;
-        case 24:
-        case 25:
-        case 26:
-        case 27: // Set phase shift for outputs
-            outputs[menuMode - 24].SetPhase(outputs[menuMode - 24].GetPhase() - speedFactor);
-            unsavedChanges = true;
-            break;
-        case 28: // Set euclidean output to edit
+        case 16: // Set euclidean output to edit
             euclideanOutput = (euclideanOutput - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - 1;
             unsavedChanges = true;
             break;
-        case 30: // Set Euclidean rhythm step length
+        case 18: // Set Euclidean rhythm step length
             outputs[euclideanOutput].SetEuclideanSteps(outputs[euclideanOutput].GetEuclideanSteps() - speedFactor);
             unsavedChanges = true;
             break;
-        case 31: // Set Euclidean rhythm number of triggers
+        case 19: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].SetEuclideanTriggers(outputs[euclideanOutput].GetEuclideanTriggers() - speedFactor);
             unsavedChanges = true;
             break;
-        case 32: // Set Euclidean rhythm rotation
+        case 20: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].SetEuclideanRotation(outputs[euclideanOutput].GetEuclideanRotation() - speedFactor);
             unsavedChanges = true;
             break;
-        case 33: // Set Euclidean padding
+        case 21: // Set Euclidean padding
             outputs[euclideanOutput].SetEuclideanPadding(outputs[euclideanOutput].GetEuclideanPadding() - speedFactor);
             unsavedChanges = true;
             break;
-        case 34: // Set level for output 3
-            outputs[2].SetLevel(outputs[2].GetLevel() - speedFactor);
+        case 22:
+            outputs[0].SetSwingAmount(outputs[0].GetSwingAmountIndex() - speedFactor);
             unsavedChanges = true;
             break;
-        case 35: // Set offset for output 3
-            outputs[2].SetOffset(outputs[2].GetOffset() - speedFactor);
+        case 23:
+            outputs[0].SetSwingEvery(outputs[0].GetSwingEvery() - speedFactor);
             unsavedChanges = true;
             break;
-        case 36: // Set level for output 4
-            outputs[3].SetLevel(outputs[3].GetLevel() - speedFactor);
+        case 24:
+            outputs[1].SetSwingAmount(outputs[1].GetSwingAmountIndex() - speedFactor);
             unsavedChanges = true;
             break;
-        case 37: // Set offset for output 4
-            outputs[3].SetOffset(outputs[3].GetOffset() - speedFactor);
+        case 25:
+            outputs[1].SetSwingEvery(outputs[1].GetSwingEvery() - speedFactor);
             unsavedChanges = true;
             break;
-        case 38: // Set Output 3 waveform type
-            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
+        case 26:
+            outputs[2].SetSwingAmount(outputs[2].GetSwingAmountIndex() - speedFactor);
             unsavedChanges = true;
             break;
-        case 39: // Set Output 4 waveform type
-            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
+        case 27:
+            outputs[2].SetSwingEvery(outputs[2].GetSwingEvery() - speedFactor);
             unsavedChanges = true;
             break;
-        case 40: // Duty Cycle for output 1
+        case 28:
+            outputs[3].SetSwingAmount(outputs[3].GetSwingAmountIndex() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 29:
+            outputs[3].SetSwingEvery(outputs[3].GetSwingEvery() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 30:
+        case 31:
+        case 32:
+        case 33: // Set phase shift for outputs
+            outputs[menuMode - 30].SetPhase(outputs[menuMode - 30].GetPhase() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 34: // Duty Cycle for output 1
             outputs[0].SetDutyCycle(outputs[0].GetDutyCycle() - speedFactor);
             unsavedChanges = true;
             break;
-        case 41: // Duty Cycle for output 2
+        case 35: // Duty Cycle for output 2
             outputs[1].SetDutyCycle(outputs[1].GetDutyCycle() - speedFactor);
             unsavedChanges = true;
             break;
-        case 42: // Duty Cycle for output 3
+        case 36: // Duty Cycle for output 3
             outputs[2].SetDutyCycle(outputs[2].GetDutyCycle() - speedFactor);
             unsavedChanges = true;
             break;
-        case 43: // Duty Cycle for output 4
+        case 37: // Duty Cycle for output 4
             outputs[3].SetDutyCycle(outputs[3].GetDutyCycle() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 38: // Set level for output 3
+            outputs[2].SetLevel(outputs[2].GetLevel() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 39: // Set offset for output 3
+            outputs[2].SetOffset(outputs[2].GetOffset() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 40: // Set level for output 4
+            outputs[3].SetLevel(outputs[3].GetLevel() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 41: // Set offset for output 4
+            outputs[3].SetOffset(outputs[3].GetOffset() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 42: // Set Output 3 waveform type
+            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
+            unsavedChanges = true;
+            break;
+        case 43: // Set Output 4 waveform type
+            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
             unsavedChanges = true;
             break;
         case 45: // Select save slot
@@ -498,109 +498,109 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 12:
-            outputs[0].SetSwingAmount(outputs[0].GetSwingAmountIndex() + speedFactor);
-            unsavedChanges = true;
-            break;
         case 13:
-            outputs[0].SetSwingEvery(outputs[0].GetSwingEvery() + speedFactor);
-            unsavedChanges = true;
-            break;
         case 14:
-            outputs[1].SetSwingAmount(outputs[1].GetSwingAmountIndex() + speedFactor);
+        case 15: // Set Pulse Probability for outputs
+            outputs[menuMode - 12].SetPulseProbability(outputs[menuMode - 12].GetPulseProbability() + speedFactor);
             unsavedChanges = true;
             break;
-        case 15:
-            outputs[1].SetSwingEvery(outputs[1].GetSwingEvery() + speedFactor);
-            unsavedChanges = true;
-            break;
-        case 16:
-            outputs[2].SetSwingAmount(outputs[2].GetSwingAmountIndex() + speedFactor);
-            unsavedChanges = true;
-            break;
-        case 17:
-            outputs[2].SetSwingEvery(outputs[2].GetSwingEvery() + speedFactor);
-            unsavedChanges = true;
-            break;
-        case 18:
-            outputs[3].SetSwingAmount(outputs[3].GetSwingAmountIndex() + speedFactor);
-            unsavedChanges = true;
-            break;
-        case 19:
-            outputs[3].SetSwingEvery(outputs[3].GetSwingEvery() + speedFactor);
-            unsavedChanges = true;
-            break;
-        case 20:
-        case 21:
-        case 22:
-        case 23: // Set Pulse Probability for outputs
-            outputs[menuMode - 20].SetPulseProbability(outputs[menuMode - 20].GetPulseProbability() + speedFactor);
-            unsavedChanges = true;
-            break;
-        case 24:
-        case 25:
-        case 26:
-        case 27: // Set phase shift for outputs
-            outputs[menuMode - 24].SetPhase(outputs[menuMode - 24].GetPhase() + speedFactor);
-            unsavedChanges = true;
-            break;
-        case 28: // Set euclidean output to edit
+        case 16: // Set euclidean output to edit
             euclideanOutput = (euclideanOutput + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + 1;
             unsavedChanges = true;
             break;
-        case 30: // Set Euclidean rhythm step length
+        case 18: // Set Euclidean rhythm step length
             outputs[euclideanOutput].SetEuclideanSteps(outputs[euclideanOutput].GetEuclideanSteps() + speedFactor);
             unsavedChanges = true;
             break;
-        case 31: // Set Euclidean rhythm number of triggers
+        case 19: // Set Euclidean rhythm number of triggers
             outputs[euclideanOutput].SetEuclideanTriggers(outputs[euclideanOutput].GetEuclideanTriggers() + speedFactor);
             unsavedChanges = true;
             break;
-        case 32: // Set Euclidean rhythm rotation
+        case 20: // Set Euclidean rhythm rotation
             outputs[euclideanOutput].SetEuclideanRotation(outputs[euclideanOutput].GetEuclideanRotation() + speedFactor);
             unsavedChanges = true;
             break;
-        case 33: // Set Euclidean padding
+        case 21: // Set Euclidean padding
             outputs[euclideanOutput].SetEuclideanPadding(outputs[euclideanOutput].GetEuclideanPadding() + speedFactor);
             unsavedChanges = true;
             break;
-        case 34: // Set level for output 3
-            outputs[2].SetLevel(outputs[2].GetLevel() + speedFactor);
+        case 22:
+            outputs[0].SetSwingAmount(outputs[0].GetSwingAmountIndex() + speedFactor);
             unsavedChanges = true;
             break;
-        case 35: // Set offset for output 3
-            outputs[2].SetOffset(outputs[2].GetOffset() + speedFactor);
+        case 23:
+            outputs[0].SetSwingEvery(outputs[0].GetSwingEvery() + speedFactor);
             unsavedChanges = true;
             break;
-        case 36: // Set level for output 4
-            outputs[3].SetLevel(outputs[3].GetLevel() + speedFactor);
+        case 24:
+            outputs[1].SetSwingAmount(outputs[1].GetSwingAmountIndex() + speedFactor);
             unsavedChanges = true;
             break;
-        case 37: // Set offset for output 4
-            outputs[3].SetOffset(outputs[3].GetOffset() + speedFactor);
+        case 25:
+            outputs[1].SetSwingEvery(outputs[1].GetSwingEvery() + speedFactor);
             unsavedChanges = true;
             break;
-        case 38: // Set Output 3 waveform type
-            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() + 1) % WaveformTypeLength));
+        case 26:
+            outputs[2].SetSwingAmount(outputs[2].GetSwingAmountIndex() + speedFactor);
             unsavedChanges = true;
             break;
-        case 39: // Set Output 4 waveform type
-            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % WaveformTypeLength));
+        case 27:
+            outputs[2].SetSwingEvery(outputs[2].GetSwingEvery() + speedFactor);
             unsavedChanges = true;
             break;
-        case 40: // Duty Cycle for output 1
+        case 28:
+            outputs[3].SetSwingAmount(outputs[3].GetSwingAmountIndex() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 29:
+            outputs[3].SetSwingEvery(outputs[3].GetSwingEvery() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 30:
+        case 31:
+        case 32:
+        case 33: // Set phase shift for outputs
+            outputs[menuMode - 30].SetPhase(outputs[menuMode - 30].GetPhase() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 34: // Duty Cycle for output 1
             outputs[0].SetDutyCycle(outputs[0].GetDutyCycle() + speedFactor);
             unsavedChanges = true;
             break;
-        case 41: // Duty Cycle for output 2
+        case 35: // Duty Cycle for output 2
             outputs[1].SetDutyCycle(outputs[1].GetDutyCycle() + speedFactor);
             unsavedChanges = true;
             break;
-        case 42: // Duty Cycle for output 3
+        case 36: // Duty Cycle for output 3
             outputs[2].SetDutyCycle(outputs[2].GetDutyCycle() + speedFactor);
             unsavedChanges = true;
             break;
-        case 43: // Duty Cycle for output 4
+        case 37: // Duty Cycle for output 4
             outputs[3].SetDutyCycle(outputs[3].GetDutyCycle() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 38: // Set level for output 3
+            outputs[2].SetLevel(outputs[2].GetLevel() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 39: // Set offset for output 3
+            outputs[2].SetOffset(outputs[2].GetOffset() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 40: // Set level for output 4
+            outputs[3].SetLevel(outputs[3].GetLevel() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 41: // Set offset for output 4
+            outputs[3].SetOffset(outputs[3].GetOffset() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 42: // Set Output 3 waveform type
+            outputs[2].SetWaveformType(static_cast<WaveformType>((outputs[2].GetWaveformType() + 1) % WaveformTypeLength));
+            unsavedChanges = true;
+            break;
+        case 43: // Set Output 4 waveform type
+            outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % WaveformTypeLength));
             unsavedChanges = true;
             break;
         case 44: // Select save slot
@@ -642,10 +642,8 @@ void HandleDisplay() {
     if (displayRefresh == 1) {
         display.clearDisplay();
         MenuIndicator();
-        int menuIdx = 0;
-        int menuAmt = 0;
-        int menuItems = 0;
-
+        int menuIdx = 1;
+        int menuItems = 2;
         // Draw the menu
         if (menuItem == 1 || menuItem == 2) {
             display.setCursor(10, 0);
@@ -695,7 +693,7 @@ void HandleDisplay() {
         }
 
         // Clock dividers menu
-        menuIdx = 3;
+        menuIdx = menuIdx + menuItems;
         menuItems = 5;
         if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
@@ -733,8 +731,9 @@ void HandleDisplay() {
         }
 
         // Clock outputs state menu
-        menuIdx = 8;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
+        menuIdx = menuIdx + menuItems;
+        menuItems = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
             MenuHeader("OUTPUT STATE");
             int yPosition = 20;
@@ -756,47 +755,10 @@ void HandleDisplay() {
             return;
         }
 
-        // Swing amount menu
-        menuIdx = 12;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 8) {
-            display.setTextSize(1);
-            MenuHeader("OUTPUT SWING");
-            int yPosition = 20;
-            display.setCursor(64, yPosition);
-            display.println("AMT");
-            display.setCursor(94, yPosition);
-            display.println("EVERY");
-            yPosition += 9;
-            for (int i = 0; i < NUM_OUTPUTS; i++) {
-                display.setCursor(10, yPosition);
-                display.print("OUTPUT " + String(i + 1) + ":");
-                display.setCursor(70, yPosition);
-                display.print(outputs[i].GetSwingAmountDescription());
-                display.setCursor(100, yPosition);
-                display.print(outputs[i].GetSwingEvery());
-
-                if (menuItem % 2 == 0) {
-                    display.fillTriangle(59, 20, 59, 26, 62, 23, 1);
-                } else {
-                    display.fillTriangle(89, 20, 89, 26, 92, 23, 1);
-                }
-
-                if (menuItem - menuIdx == i * 2 || menuItem - menuIdx == i * 2 + 1) {
-                    if (menuMode == 0) {
-                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else {
-                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    }
-                }
-                yPosition += 9;
-            }
-            RedrawDisplay();
-            return;
-        }
-
         // Pulse Probability menu
-        menuIdx = 20;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
+        menuIdx = menuIdx + menuItems;
+        menuItems = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
             MenuHeader("PROBABILITY");
             int yPosition = 20;
@@ -818,34 +780,10 @@ void HandleDisplay() {
             return;
         }
 
-        // Phase shift menu
-        menuIdx = 24;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
-            display.setTextSize(1);
-            MenuHeader("PHASE SHIFT");
-            int yPosition = 0;
-            yPosition = 20;
-            for (int i = 0; i < NUM_OUTPUTS; i++) {
-                display.setCursor(10, yPosition);
-                display.print("OUTPUT " + String(i + 1) + ":");
-                display.setCursor(70, yPosition);
-                display.print(outputs[i].GetPhaseDescription());
-                if (menuItem == menuIdx + i) {
-                    if (menuMode == 0) {
-                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    } else if (menuMode == menuIdx + i) {
-                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                    }
-                }
-                yPosition += 9;
-            }
-            RedrawDisplay();
-            return;
-        }
-
         // Euclidean rhythm menu
-        menuIdx = 28;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
+        menuIdx = menuIdx + menuItems;
+        menuItems = 6;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
             MenuHeader("EUCLIDEAN RHYTHM");
             int yPosition = 20;
@@ -937,9 +875,99 @@ void HandleDisplay() {
             return;
         }
 
-        // Duty cycle and level control menu
-        menuIdx = 34;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 6) {
+        // Swing amount menu
+        menuIdx = menuIdx + menuItems;
+        menuItems = 8;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+            display.setTextSize(1);
+            MenuHeader("OUTPUT SWING");
+            int yPosition = 20;
+            display.setCursor(64, yPosition);
+            display.println("AMT");
+            display.setCursor(94, yPosition);
+            display.println("EVERY");
+            yPosition += 9;
+            for (int i = 0; i < NUM_OUTPUTS; i++) {
+                display.setCursor(10, yPosition);
+                display.print("OUTPUT " + String(i + 1) + ":");
+                display.setCursor(70, yPosition);
+                display.print(outputs[i].GetSwingAmountDescription());
+                display.setCursor(100, yPosition);
+                display.print(outputs[i].GetSwingEvery());
+
+                if (menuItem % 2 == 0) {
+                    display.fillTriangle(59, 20, 59, 26, 62, 23, 1);
+                } else {
+                    display.fillTriangle(89, 20, 89, 26, 92, 23, 1);
+                }
+
+                if (menuItem - menuIdx == i * 2 || menuItem - menuIdx == i * 2 + 1) {
+                    if (menuMode == 0) {
+                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    } else {
+                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    }
+                }
+                yPosition += 9;
+            }
+            RedrawDisplay();
+            return;
+        }
+
+        // Phase shift menu
+        menuIdx = menuIdx + menuItems;
+        menuItems = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+            display.setTextSize(1);
+            MenuHeader("PHASE SHIFT");
+            int yPosition = 0;
+            yPosition = 20;
+            for (int i = 0; i < NUM_OUTPUTS; i++) {
+                display.setCursor(10, yPosition);
+                display.print("OUTPUT " + String(i + 1) + ":");
+                display.setCursor(70, yPosition);
+                display.print(outputs[i].GetPhaseDescription());
+                if (menuItem == menuIdx + i) {
+                    if (menuMode == 0) {
+                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    } else if (menuMode == menuIdx + i) {
+                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    }
+                }
+                yPosition += 9;
+            }
+            RedrawDisplay();
+            return;
+        }
+
+        // Duty cycle menu
+        menuIdx = menuIdx + menuItems;
+        menuItems = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+            display.setTextSize(1);
+            MenuHeader("OUTPUT SETTINGS");
+            int yPosition = 21;
+
+            for (int i = 0; i < menuItems; i++) {
+                display.setCursor(10, yPosition);
+                display.print("OUT " + String(i + 1) + " DUTY: ");
+                display.print(outputs[i].GetDutyCycleDescription());
+                if (menuItem == menuIdx + i && menuMode == 0) {
+                    display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                } else if (menuMode == menuIdx + i) {
+                    display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                }
+                yPosition += 9;
+            }
+
+            RedrawDisplay();
+            return;
+        }
+
+        // Level/Offset/Waveform control menu
+        menuIdx = menuIdx + menuItems;
+        menuItems = 6;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
             MenuHeader("OUTPUT SETTINGS");
             int yPosition = 12;
@@ -964,7 +992,7 @@ void HandleDisplay() {
                 display.setCursor(100, yPosition);
                 display.print(outputs[i].GetOffsetDescription());
 
-                if (menuItem == 34 + (i - 2) * 2 || menuItem == 35 + (i - 2) * 2) {
+                if (menuItem == menuIdx + (i - 2) * 2 || menuItem == menuIdx + 1 + (i - 2) * 2) {
                     if (menuMode == 0) {
                         display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
                     } else {
@@ -998,31 +1026,11 @@ void HandleDisplay() {
             RedrawDisplay();
             return;
         }
-        menuIdx = 40;
-        menuAmt = 4;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuAmt) {
-            display.setTextSize(1);
-            MenuHeader("OUTPUT SETTINGS");
-            int yPosition = 21;
 
-            for (int i = 0; i < menuAmt; i++) {
-                display.setCursor(10, yPosition);
-                display.print("OUT " + String(i + 1) + " DUTY: ");
-                display.print(outputs[i].GetDutyCycleDescription());
-                if (menuItem == menuIdx + i && menuMode == 0) {
-                    display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                } else if (menuMode == menuIdx + i) {
-                    display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-                }
-                yPosition += 9;
-            }
-
-            RedrawDisplay();
-            return;
-        }
         // Other settings
-        menuIdx = 44;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
+        menuIdx = menuIdx + menuItems;
+        menuItems = 5;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
             display.setTextSize(1);
             int yPosition = 9;
             // Tap tempo

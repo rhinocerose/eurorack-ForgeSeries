@@ -14,14 +14,15 @@ ClockForge provides clock signals and waves for synchronizing and modulating oth
 
 - **Global BPM Control**: Set the global BPM for all outputs.
 - **Multiple Clock Outputs**: Four clock outputs with individual settings.
-- **Output Waveform Generation**: Outputs 3 and 4 can generate different waveforms for modulation.
 - **Adjustable Clock Multiplication and Division**: Configure each output to multiply or divide the global BPM.
-- **Tap Tempo Functionality**: Manually set the BPM by tapping a button.
-- **Waveform Duty Cycle**: Adjust the pulse width of the clock signal.
-- **Sync to External Clock Sources**: Automatically adjust BPM based on an external clock signal.
+- **Output Waveform Generation**: Outputs 3 and 4 can generate different waveforms for modulation.
 - **Pulse Probability**: Set the probability of a pulse occurring.
 - **Euclidean Rhythm Generation**: Generate complex rhythms using Euclidean algorithm.
 - **Custom Swing Patterns**: Apply swing to each output individually.
+- **Sync to External Clock Sources**: Automatically adjust BPM based on an external clock signal.
+- **Phase Shift**: Adjust the phase of the output in relation to the master clock.
+- **Waveform Duty Cycle**: Adjust the pulse width of the clock signal.
+- **Tap Tempo Functionality**: Manually set the BPM by tapping a button.
 - **Save/Load Configuration**: Save and load up to 5 configurations.
 
 ## Configuration Parameters
@@ -43,21 +44,21 @@ The small squares on main screen shows the status of each output. If the square 
 
 Each of the four outputs can be individually configured with the following parameters:
 
-- **Divider**: Set the clock multiplication or division ratio.
-- **Duty Cycle**: Adjust the pulse width of the clock signal.
-- **Output State**: Stop or resume the specific output.
-- **Level**: Set the output voltage level (only for CV outputs 3 and 4).
-- **Offset**: Set the output voltage offset (only for CV outputs 3 and 4).
-- **Waveform**: Select the waveform for outputs 3 and 4.
-- **Phase Shift**: Adjust the phase of the output in relation to the master clock.
-- **Swing Amount**: Adjust the swing amount for the output.
-- **Swing Every**: Set the pulse interval for applying swing.
+- **Divider/Multiplier**: Set the clock multiplication or division ratio.
+- **Output State**: Enable or disable the specific output.
 - **Pulse Probability**: Probability of a pulse occurring.
 - **Euclidean Enabled**: Enable or disable Euclidean rhythm generation.
 - **Euclidean Steps**: Number of steps in the Euclidean pattern.
 - **Euclidean Triggers**: Number of triggers in the Euclidean pattern.
 - **Euclidean Rotation**: Rotate the Euclidean pattern.
 - **Euclidean Pad**: Add empty steps to the end of the Euclidean pattern.
+- **Swing Amount**: Adjust the swing amount for the output.
+- **Swing Every**: Set the pulse interval for applying swing.
+- **Phase Shift**: Adjust the phase of the output in relation to the master clock.
+- **Duty Cycle**: Adjust the pulse width of the clock signal.
+- **Level**: Set the output voltage level (only for CV outputs 3 and 4).
+- **Offset**: Set the output voltage offset (only for CV outputs 3 and 4).
+- **Waveform**: Select the waveform for outputs 3 and 4.
 
 ## Operation
 
@@ -95,19 +96,6 @@ Outputs can be stopped individually. When stopped, the output will not generate 
 1. Navigate to the selected output.
 2. Click the encoder to set the output to ON or OFF
 
-### Swing Configuration
-
-The outputs can have a swing pattern applied to them. The swing amount is in 1/96th of a note based on current BPM and the swing every is the interval between applying the swing. The swing amount can be set from 2/96th to 12/96th delay and the swing every from 1 to 16 pulses.
-
-1. Navigate to the selected output. The first parameter to be edited is the swing amount.
-2. Click the encoder to enter edit mode.
-3. Use the encoder to select the desired swing amount.
-4. Click the encoder to exit edit mode.
-5. Navigate to the selected output, the second parameter to be edited is the swing every.
-6. Click the encoder to enter edit mode.
-7. Use the encoder to select the desired swing every value.
-8. Click the encoder to exit edit mode.
-
 ### Pulse Probability
 
 This is the percentage of probability that a pulse will be generated on the output. This is useful for creating random patterns or adding some variation to the output.
@@ -128,13 +116,18 @@ Additional empty steps can be added to the pattern using the pad(PD) parameter. 
 3. Select the Steps, Triggers and Rotation parameters, click the encoder to edit the values.
 4. The pattern will be updated in real-time and displayed on the right of the screen. Euclidean rhythm allows up to 64 steps but only the first 47 are displayed. Rhythm steps are shown in columns, top to bottom, left to right.
 
-### Duty Cycle (pulse width)
+### Swing Configuration
 
-Duty cycle or width is the percentage of the pulse that remains high or low. The default value is 50% which means the pulse is a square wave. The duty cycle can be set from 1 to 99% where 1% will generate a very short pulse and 99% a very long high pulse.
+The outputs can have a swing pattern applied to them. The swing amount is in 1/96th of a note based on current BPM and the swing every is the interval between applying the swing. The swing amount can be set from 2/96th to 12/96th delay and the swing every from 1 to 16 pulses.
 
-1. Select the duty cycle parameter. Click the encoder to enter edit mode.
-2. Use the encoder to select the desired duty cycle value from 1 to 99%. Value applies to all outputs.
-3. Click the encoder to exit edit mode.
+1. Navigate to the selected output. The first parameter to be edited is the swing amount.
+2. Click the encoder to enter edit mode.
+3. Use the encoder to select the desired swing amount.
+4. Click the encoder to exit edit mode.
+5. Navigate to the selected output, the second parameter to be edited is the swing every.
+6. Click the encoder to enter edit mode.
+7. Use the encoder to select the desired swing every value.
+8. Click the encoder to exit edit mode.
 
 ### Output Phase Shift
 
@@ -143,6 +136,16 @@ An adjstment of 50% will shift the output by half a pulse width which means that
 
 Just be careful with phase wraps as shifting an output phase by more than 50% with a duty-cycle bigger than 50% can lead to unexpected triggers.
 
+### Duty Cycle (pulse width)
+
+Duty cycle or width is the percentage of the pulse that remains high or low. The default value is 50% which means the pulse high cycle has the same lenght as the low cycle. The duty cycle can be set from 1 to 99% where 1% will generate a very short pulse and 99% a very long high pulse.
+
+The alternative waveforms generated by outputs 3 and 4 can also have their shape modified by the duty cycle parameter. For example, a 50% duty cycle in the triangle wave output will generate a perfect triangle wave, setting the duty cycle to 1% will generate a sawtooth wave and setting it to 100% will generate an inverted sawtooth wave.
+
+1. Select the duty cycle parameter for the desired output. Click the encoder to enter edit mode.
+2. Use the encoder to select the desired duty cycle value from 1 to 99%.
+3. Click the encoder to exit edit mode.
+
 ### Output Level and Offset
 
 Outputs 3 and 4 can output CV values so they support setting the output level and offset which ranges from 0 to 100% corresponding to 0 to 5V.
@@ -150,12 +153,6 @@ Outputs 3 and 4 can output CV values so they support setting the output level an
 1. Navigate to the selected output. Click the encoder to enter edit mode.
 2. Use the encoder to select the desired output level from 0 to 100% which corresponds to 0 to 5V.
 3. Click the encoder to exit edit mode.
-
-### Duty Cycle (pulse width)
-
-Duty cycle or width is the percentage of the pulse that remains high or low. The default value is 50% which means the pulse high cycle has the same lenght as the low cycle. The duty cycle can be set from 1 to 99% where 1% will generate a very short pulse and 99% a very long high pulse.
-
-The alternative waveforms generated by outputs 3 and 4 can also have their shape modified by the duty cycle parameter. For example, a 50% duty cycle in the triangle wave output will generate a perfect triangle wave, setting the duty cycle to 1% will generate a sawtooth wave and setting it to 100% will generate an inverted sawtooth wave.
 
 ### Output Waveform
 
@@ -171,10 +168,10 @@ The duty cycle parameter can also be used to adjust the waveform shape as explai
 
 ### Tap Tempo
 
-Instead of setting the BPM manually, the module can be set to the desired BPM by tapping a button. The module will calculate the BPM based on the interval between taps.
+In addition to setting the BPM manually, the module can be set to the desired BPM by clicking the encoder. The module will calculate the BPM based on the interval between taps.
 
 1. Select the tap tempo parameter.
-2. Press the tap tempo button at least 3 times to set the BPM based on the interval between taps. If more than 3 taps are entered, the average time between the last 3 is used. BPM is updated in real-time.
+2. Press the encoder button at least 3 times to set the BPM based on the interval between taps. If more than 3 taps are entered, the average time between the last 3 is used. BPM is updated in real-time.
 
 ### Save/Load Configuration
 
@@ -223,7 +220,7 @@ The module can be powered by either 12V or 5V if your power supply supports it. 
 - **Input CV Range**: 5V
 - **Output CV Range**: 5V
 - **Dimensions**: 6HP
-- - **Depth**: 40mm
+- **Depth**: 40mm
 - **Current Draw**: 60mA @ +12V or +5V
 
 ## Contact
@@ -245,4 +242,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 
 ---
 
-Thank you for choosing the Dual Quantizer module. We hope it enhances your musical creativity and performance.
+Thank you for choosing the ClockForge module. We hope it enhances your musical creativity and performance.
