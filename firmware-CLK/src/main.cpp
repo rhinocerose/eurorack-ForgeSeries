@@ -64,9 +64,9 @@ volatile unsigned long clockInterval = 0;
 volatile unsigned long lastClockInterruptTime = 0;
 volatile bool usingExternalClock = false;
 
-static int const dividerAmount = 5;
-int externalClockDividers[dividerAmount] = {1, 2, 4, 8, 16};
-String externalDividerDescription[dividerAmount] = {"x1", "/2 ", "/4", "/8", "/16"};
+static int const dividerAmount = 7;
+int externalClockDividers[dividerAmount] = {1, 2, 4, 8, 16, 24, 48};
+String externalDividerDescription[dividerAmount] = {"x1", "/2 ", "/4", "/8", "/16", "/24", "/48"};
 int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
@@ -612,14 +612,22 @@ void HandleEncoderPosition() {
 
 // Redraw the display and show unsaved changes indicator
 void RedrawDisplay() {
-    // If there are unsaved changes, display an asterisk at the top right corner
+    // If there are unsaved changes, display a circle at the top left corner
     if (unsavedChanges) {
-        display.setTextSize(1);
-        display.setCursor(122, 56);
-        display.print("*");
+        display.fillCircle(1, 1, 1, WHITE);
     }
     display.display();
     displayRefresh = 0;
+}
+
+// Draw a menu position indicator at the right side of the display
+void MenuIndicator() {
+    if (!(menuItem == 1 || menuItem == 2)) {
+        // Draw a vertical line at the right side of the display
+        display.drawLine(127, 0, 127, 63, WHITE);
+        // Draw a dot at the current menu position proportional to the menu items
+        display.drawRect(125, map(menuItem, 1, menuItems, 0, 62), 3, 3, WHITE);
+    }
 }
 
 void MenuHeader(const char *header) {
@@ -633,6 +641,7 @@ void MenuHeader(const char *header) {
 void HandleDisplay() {
     if (displayRefresh == 1) {
         display.clearDisplay();
+        MenuIndicator();
         int menuIdx = 0;
         int menuAmt = 0;
         int menuItems = 0;
@@ -789,7 +798,7 @@ void HandleDisplay() {
         menuIdx = 20;
         if (menuItem >= menuIdx && menuItem < menuIdx + 4) {
             display.setTextSize(1);
-            MenuHeader("PULSE PROBABILITY");
+            MenuHeader("PROBABILITY");
             int yPosition = 20;
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 display.setCursor(10, yPosition);

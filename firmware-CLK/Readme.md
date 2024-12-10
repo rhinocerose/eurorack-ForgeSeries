@@ -14,16 +14,23 @@ ClockForge provides clock signals and waves for synchronizing and modulating oth
 
 - **Global BPM Control**: Set the global BPM for all outputs.
 - **Multiple Clock Outputs**: Four clock outputs with individual settings.
-- **Output Waveform Generation**: Outputs 3 and 4 can generate square, triangle, sawtooth, sine and random waveforms.
+- **Output Waveform Generation**: Outputs 3 and 4 can generate different waveforms for modulation.
 - **Adjustable Clock Multiplication and Division**: Configure each output to multiply or divide the global BPM.
 - **Tap Tempo Functionality**: Manually set the BPM by tapping a button.
+- **Waveform Duty Cycle**: Adjust the pulse width of the clock signal.
 - **Sync to External Clock Sources**: Automatically adjust BPM based on an external clock signal.
+- **Pulse Probability**: Set the probability of a pulse occurring.
 - **Euclidean Rhythm Generation**: Generate complex rhythms using Euclidean algorithm.
 - **Custom Swing Patterns**: Apply swing to each output individually.
+- **Save/Load Configuration**: Save and load up to 5 configurations.
 
 ## Configuration Parameters
 
-Whenever a parameter is changed, a small asterisk (*) will be shown in the bottom right corner of the screen. This indicates that the current settings were modified and not saved.
+The right side of the screen shows a navigation line to indicate the current position of the cursor in the menu. The navigation is not shown in the main (BPM) screen.
+
+Whenever a parameter is changed, a small circle will be shown in the top-left corner of the screen. This indicates that the current settings were modified and not saved.
+
+Expect some glitches in waveform generation when changing parameters. The module will stabilize right after the parameter is set.
 
 ### Global Parameters
 
@@ -40,6 +47,9 @@ Each of the four outputs can be individually configured with the following param
 - **Duty Cycle**: Adjust the pulse width of the clock signal.
 - **Output State**: Stop or resume the specific output.
 - **Level**: Set the output voltage level (only for CV outputs 3 and 4).
+- **Offset**: Set the output voltage offset (only for CV outputs 3 and 4).
+- **Waveform**: Select the waveform for outputs 3 and 4.
+- **Phase Shift**: Adjust the phase of the output in relation to the master clock.
 - **Swing Amount**: Adjust the swing amount for the output.
 - **Swing Every**: Set the pulse interval for applying swing.
 - **Pulse Probability**: Probability of a pulse occurring.
@@ -47,6 +57,7 @@ Each of the four outputs can be individually configured with the following param
 - **Euclidean Steps**: Number of steps in the Euclidean pattern.
 - **Euclidean Triggers**: Number of triggers in the Euclidean pattern.
 - **Euclidean Rotation**: Rotate the Euclidean pattern.
+- **Euclidean Pad**: Add empty steps to the end of the Euclidean pattern.
 
 ## Operation
 
