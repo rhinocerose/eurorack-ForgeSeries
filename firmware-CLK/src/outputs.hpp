@@ -14,11 +14,12 @@ enum WaveformType {
     Square = 0,
     Triangle,
     Sine,
+    Parabolic,
     Sawtooth,
     Random,
     SmoothRandom,
 };
-String WaveformTypeDescriptions[] = {"Square", "Triangle", "Sine", "Sawtooth", "Random", "SmoothRdn"};
+String WaveformTypeDescriptions[] = {"Square", "Triangle", "Sine", "Parabolic", "Sawtooth", "Random", "SmoothRdn"};
 int WaveformTypeLength = sizeof(WaveformTypeDescriptions) / sizeof(WaveformTypeDescriptions[0]);
 
 class Output {
@@ -138,6 +139,7 @@ class Output {
     float _waveValue = 0.0f;
     float _triangleWaveStep = 0.0f;
     float _sineWaveAngle = 0.0f;
+    float _inactiveTickCounter = 0.0f;
 
     // Swing variables
     unsigned int _swingAmountIndex = 0; // Swing amount index
@@ -155,6 +157,7 @@ class Output {
     void StopWave();
     void GenerateTriangleWave(int);
     void GenerateSineWave(int);
+    void GenerateParabolicWave(int);
     void GenerateSawtoothWave(int);
     void GenerateRandomWave(int);
     void GenerateSmoothRandomWave(int);
@@ -241,6 +244,9 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         case WaveformType::Sine:
             GenerateSineWave(PPQN);
             break;
+        case WaveformType::Parabolic:
+            GenerateParabolicWave(PPQN);
+            break;
         case WaveformType::Sawtooth:
             GenerateSawtoothWave(PPQN);
             break;
@@ -269,6 +275,7 @@ void Output::StartWaveform() {
     case WaveformType::Triangle:
     case WaveformType::Sawtooth:
     case WaveformType::Sine:
+    case WaveformType::Parabolic:
         if (!_externalClock) {
             _waveValue = 0.0f;
             _triangleWaveStep = 0.0f; // Will be calculated in GenerateTriangleWave()
@@ -303,6 +310,7 @@ void Output::StopWaveform() {
     case WaveformType::Triangle:
     case WaveformType::Sawtooth:
     case WaveformType::Sine:
+    case WaveformType::Parabolic:
     default:
         SetPulse(false);
         break;
@@ -312,32 +320,37 @@ void Output::StopWaveform() {
 // Implement waveform generation functions
 void Output::GenerateTriangleWave(int PPQN) {
     if (_waveActive) {
-        // Calculate the total ticks for one full waveform period
-        float ticksPerPeriod = (PPQN / _clockDividers[_dividerIndex]);
+        float periodTicks = PPQN / _clockDividers[_dividerIndex];
+        float risingTicks = periodTicks * (_dutyCycle / 100.0f);
+        float fallingTicks = periodTicks - risingTicks;
 
-        // Calculate the step size based on the amplitude range and ticks per period
-        _triangleWaveStep = (200.0f) / ticksPerPeriod; // Amplitude range [0,100]
+        // Calculate step sizes
+        float risingStep = 100.0f / risingTicks;
+        float fallingStep = 100.0f / fallingTicks;
 
-        // Update waveform value based on direction
-        _waveValue += _waveDirection ? _triangleWaveStep : -_triangleWaveStep;
-
-        // Reverse direction at peak values
-        if (_waveValue >= 100.0f) {
-            _waveValue = 100.0f;
-            _waveDirection = false;
-        } else if (_waveValue <= 0.0f) {
-            _waveValue = 0.0f;
-            _waveDirection = true;
+        // Update waveform value
+        if (_waveDirection) {
+            _waveValue += risingStep;
+            if (_waveValue >= 100.0f) {
+                _waveValue = 100.0f;
+                _waveDirection = false;
+            }
+        } else {
+            _waveValue -= fallingStep;
+            if (_waveValue <= 0.0f) {
+                _waveValue = 0.0f;
+                _waveDirection = true;
+            }
         }
         _isPulseOn = true;
     }
 }
 
-// Function to generate a sine wave synchronized with PPQN
+// Function to generate a sine wave with skewed top based on duty cycle
 void Output::GenerateSineWave(int PPQN) {
     if (_waveActive) {
         // Calculate the period of the waveform in ticks
-        float periodInTicks = (PPQN / _clockDividers[_dividerIndex]);
+        float periodInTicks = PPQN / _clockDividers[_dividerIndex];
 
         // Calculate the angle increment per tick
         float angleIncrement = (2.0f * PI) / periodInTicks;
@@ -349,35 +362,84 @@ void Output::GenerateSineWave(int PPQN) {
         if (_sineWaveAngle >= 2.0f * PI) {
             _sineWaveAngle -= 2.0f * PI;
         }
-        // Apply phase shift to align the lowest point with pulse start
-        float shiftedAngle = _sineWaveAngle + (3.0f * PI / 2.0f);
 
-        // Calculate the sine value scaled to the amplitude range [0, 100]
-        _waveValue = (sin(shiftedAngle) * 50.0f) + 50.0f;
+        // Normalize the angle to a value between 0 and 1
+        float t = _sineWaveAngle / (2.0f * PI);
 
-        // Set the output level based on the waveform value
+        // Skew the time parameter based on duty cycle
+        float skew = _dutyCycle / 100.0f;
+        if (skew != 0.5f) {
+            if (t < skew) {
+                t = 0.5f * t / skew;
+            } else {
+                t = 0.5f + 0.5f * (t - skew) / (1.0f - skew);
+            }
+        }
+
+        // Calculate the skewed angle
+        float skewedAngle = t * 2.0f * PI;
+
+        // Calculate the sine value scaled to amplitude range [0, 100]
+        _waveValue = (sin(skewedAngle) * 50.0f) + 50.0f;
+
         _isPulseOn = true;
+    }
+}
+
+// Function to generate a parabolic wave synchronized with PPQN
+void Output::GenerateParabolicWave(int PPQN) {
+    if (_waveActive) {
+        float periodInTicks = PPQN / _clockDividers[_dividerIndex];
+        float activeTicks = periodInTicks * (_dutyCycle / 100.0f);
+        float angleIncrement = (PI) / activeTicks; // Half sine wave for duty cycle
+
+        _sineWaveAngle += angleIncrement;
+        if (_sineWaveAngle >= PI) {
+            _sineWaveAngle = 0.0f;
+            // Inactive period
+            _waveActive = false;
+            _inactiveTickCounter = periodInTicks - activeTicks;
+        }
+
+        // Calculate sine value
+        _waveValue = sin(_sineWaveAngle) * 100.0f;
+        _isPulseOn = true;
+    } else {
+        // Handle inactive period
+        _inactiveTickCounter--;
+        if (_inactiveTickCounter <= 0) {
+            _waveActive = true;
+        }
+        _isPulseOn = false;
     }
 }
 
 // Function to generate a sawtooth wave synchronized with PPQN
 void Output::GenerateSawtoothWave(int PPQN) {
     if (_waveActive) {
-        // Calculate the period of the waveform in ticks
-        float periodInTicks = (PPQN / _clockDividers[_dividerIndex]) * 2;
+        float periodTicks = PPQN / _clockDividers[_dividerIndex];
+        float activeTicks = periodTicks * (_dutyCycle / 100.0f);
+        float inactiveTicks = periodTicks - activeTicks;
 
-        // Calculate the step size based on the amplitude range and ticks per period
-        _triangleWaveStep = (200.0f) / periodInTicks; // Amplitude range [0,100]
+        // Calculate step size
+        float step = 100.0f / activeTicks;
 
-        // Update waveform value based on direction
-        _waveValue += _triangleWaveStep;
-
-        // Reset the waveform value at peak value
+        // Update waveform value
+        _waveValue += step;
         if (_waveValue >= 100.0f) {
             _waveValue = 0.0f;
+            // Adjust for inactive period
+            _waveActive = false;
+            _inactiveTickCounter = inactiveTicks;
         }
-
         _isPulseOn = true;
+    } else {
+        // Handle inactive period
+        _inactiveTickCounter--;
+        if (_inactiveTickCounter <= 0) {
+            _waveActive = true;
+        }
+        _isPulseOn = false;
     }
 }
 
@@ -430,6 +492,7 @@ int Output::GetOutputLevel() {
             return adjustedLevel * MaxDACValue / 100;
         case WaveformType::Triangle:
         case WaveformType::Sine:
+        case WaveformType::Parabolic:
         case WaveformType::Sawtooth:
         case WaveformType::Random:
         case WaveformType::SmoothRandom:
