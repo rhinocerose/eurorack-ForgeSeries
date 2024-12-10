@@ -182,7 +182,7 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
 
         // Calculate the tick counter with swing applied
         if (int(globalTick / periodTicks) % _swingEvery == 0) {
-            tickCounterSwing = globalTick - _swingAmounts[_swingAmountIndex];
+            tickCounterSwing = globalTick - (_swingAmounts[_swingAmountIndex] * PPQN / 96); // Since our swing is in 96th notes
         }
 
         // Calculate the clock divider for external clock
