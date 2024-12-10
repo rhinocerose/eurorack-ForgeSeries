@@ -140,6 +140,7 @@ class Output {
     float _triangleWaveStep = 0.0f;
     float _sineWaveAngle = 0.0f;
     float _inactiveTickCounter = 0.0f;
+    float _waveTickCounter = 0.0f;
 
     // Swing variables
     unsigned int _swingAmountIndex = 0; // Swing amount index
@@ -280,6 +281,7 @@ void Output::StartWaveform() {
             _waveValue = 0.0f;
             _triangleWaveStep = 0.0f; // Will be calculated in GenerateTriangleWave()
             _sineWaveAngle = 0.0f;
+            _waveTickCounter = 0.0f; // Initialize tick counter
         }
         break;
     case WaveformType::Random:
@@ -349,40 +351,30 @@ void Output::GenerateTriangleWave(int PPQN) {
 // Function to generate a sine wave with skewed top based on duty cycle
 void Output::GenerateSineWave(int PPQN) {
     if (_waveActive) {
-        // Calculate the period of the waveform in ticks
-        float periodInTicks = PPQN / _clockDividers[_dividerIndex];
+        float periodTicks = PPQN / _clockDividers[_dividerIndex];
+        float activeTicks = periodTicks * (_dutyCycle / 100.0f);
+        float inactiveTicks = periodTicks - activeTicks;
 
-        // Calculate the angle increment per tick
-        float angleIncrement = (2.0f * PI) / periodInTicks;
+        // Increment tick counter
+        _waveTickCounter++;
 
-        // Update the angle for the sine function
-        _sineWaveAngle += angleIncrement;
-
-        // Keep the angle within 0 to 2*PI
-        if (_sineWaveAngle >= 2.0f * PI) {
-            _sineWaveAngle -= 2.0f * PI;
+        if (_waveTickCounter <= activeTicks) {
+            // Active (top skew) period
+            float angle = PI * (_waveTickCounter / activeTicks);
+            _waveValue = (sin(angle) * 50.0f) + 50.0f; // Scale to [0, 100]
+        } else if (_waveTickCounter <= periodTicks) {
+            // Inactive period
+            float angle = PI + PI * ((_waveTickCounter - activeTicks) / inactiveTicks);
+            _waveValue = (sin(angle) * 50.0f) + 50.0f;
+        } else {
+            // Reset for next period
+            _waveTickCounter = 0;
+            _waveValue = 0.0f;
         }
-
-        // Normalize the angle to a value between 0 and 1
-        float t = _sineWaveAngle / (2.0f * PI);
-
-        // Skew the time parameter based on duty cycle
-        float skew = _dutyCycle / 100.0f;
-        if (skew != 0.5f) {
-            if (t < skew) {
-                t = 0.5f * t / skew;
-            } else {
-                t = 0.5f + 0.5f * (t - skew) / (1.0f - skew);
-            }
-        }
-
-        // Calculate the skewed angle
-        float skewedAngle = t * 2.0f * PI;
-
-        // Calculate the sine value scaled to amplitude range [0, 100]
-        _waveValue = (sin(skewedAngle) * 50.0f) + 50.0f;
 
         _isPulseOn = true;
+    } else {
+        _waveValue = 0.0f;
     }
 }
 
@@ -404,13 +396,6 @@ void Output::GenerateParabolicWave(int PPQN) {
         // Calculate sine value
         _waveValue = sin(_sineWaveAngle) * 100.0f;
         _isPulseOn = true;
-    } else {
-        // Handle inactive period
-        _inactiveTickCounter--;
-        if (_inactiveTickCounter <= 0) {
-            _waveActive = true;
-        }
-        _isPulseOn = false;
     }
 }
 
