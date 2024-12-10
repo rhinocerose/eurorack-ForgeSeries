@@ -71,7 +71,7 @@ int externalDividerIndex = 0;
 unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 46;
+int menuItems = 48;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 1;
@@ -236,13 +236,19 @@ void HandleEncoderClick() {
             case 41: // Duty Cycle for output 2
                 menuMode = 41;
                 break;
-            case 42:
+            case 42: // Duty Cycle for output 3
+                menuMode = 42;
+                break;
+            case 43: // Duty Cycle for output 4
+                menuMode = 43;
+                break;
+            case 44:
                 SetTapTempo();
                 break; // Tap tempo
-            case 43:   // Select save slot
+            case 45:   // Select save slot
                 menuMode = 41;
                 break;
-            case 44: { // Save settings
+            case 46: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -276,7 +282,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 45: { // Load from slot
+            case 47: { // Load from slot
                 LoadSaveParams p = Load(saveSlot);
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -291,7 +297,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 46: { // Load default settings
+            case 48: { // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -456,7 +462,15 @@ void HandleEncoderPosition() {
             outputs[1].SetDutyCycle(outputs[1].GetDutyCycle() - speedFactor);
             unsavedChanges = true;
             break;
-        case 43: // Select save slot
+        case 42: // Duty Cycle for output 3
+            outputs[2].SetDutyCycle(outputs[2].GetDutyCycle() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 43: // Duty Cycle for output 4
+            outputs[3].SetDutyCycle(outputs[3].GetDutyCycle() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 45: // Select save slot
             saveSlot = (saveSlot - 1 < 0) ? NUM_SLOTS : saveSlot - 1;
             break;
         }
@@ -581,7 +595,15 @@ void HandleEncoderPosition() {
             outputs[1].SetDutyCycle(outputs[1].GetDutyCycle() + speedFactor);
             unsavedChanges = true;
             break;
-        case 43: // Select save slot
+        case 42: // Duty Cycle for output 3
+            outputs[2].SetDutyCycle(outputs[2].GetDutyCycle() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 43: // Duty Cycle for output 4
+            outputs[3].SetDutyCycle(outputs[3].GetDutyCycle() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 44: // Select save slot
             saveSlot = (saveSlot + 1 > NUM_SLOTS) ? 0 : saveSlot + 1;
             break;
         }
@@ -612,6 +634,7 @@ void HandleDisplay() {
     if (displayRefresh == 1) {
         display.clearDisplay();
         int menuIdx = 0;
+        int menuAmt = 0;
         int menuItems = 0;
 
         // Draw the menu
@@ -967,34 +990,29 @@ void HandleDisplay() {
             return;
         }
         menuIdx = 40;
-        if (menuItem >= menuIdx && menuItem < menuIdx + 2) {
+        menuAmt = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + menuAmt) {
             display.setTextSize(1);
             MenuHeader("OUTPUT SETTINGS");
             int yPosition = 21;
 
-            display.setCursor(10, yPosition);
-            display.print("OUT 1 DUTY: ");
-            display.print(outputs[0].GetDutyCycleDescription());
-            if (menuItem == menuIdx && menuMode == 0) {
-                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuIdx) {
-                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            }
-            yPosition += 9;
-            display.setCursor(10, yPosition);
-            display.print("OUT 2 DUTY: ");
-            display.print(outputs[1].GetDutyCycleDescription());
-            if (menuItem == menuIdx + 1 && menuMode == 0) {
-                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
-            } else if (menuMode == menuIdx + 1) {
-                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            for (int i = 0; i < menuAmt; i++) {
+                display.setCursor(10, yPosition);
+                display.print("OUT " + String(i + 1) + " DUTY: ");
+                display.print(outputs[i].GetDutyCycleDescription());
+                if (menuItem == menuIdx + i && menuMode == 0) {
+                    display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                } else if (menuMode == menuIdx + i) {
+                    display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                }
+                yPosition += 9;
             }
 
             RedrawDisplay();
             return;
         }
         // Other settings
-        menuIdx = 42;
+        menuIdx = 44;
         if (menuItem >= menuIdx && menuItem < menuIdx + 5) {
             display.setTextSize(1);
             int yPosition = 9;
