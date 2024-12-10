@@ -65,7 +65,7 @@ LoadSaveParams LoadDefaultParams() {
     p.BPM = 120;
     p.externalClockDivIdx = 0;
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        p.divIdx[i] = 7;
+        p.divIdx[i] = 9;
         p.dutyCycle[i] = 50;
         p.outputState[i] = true;
         p.outputLevel[i] = 100;

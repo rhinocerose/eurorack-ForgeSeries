@@ -104,9 +104,9 @@ class Output {
   private:
     // Constants
     const int MaxDACValue = 4095;
-    static int const dividerAmount = 13;
-    float _clockDividers[dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0};
-    String _dividerDescription[dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/2", "x1", "x2", "x4", "x8", "x16", "x32"};
+    static int const dividerAmount = 17;
+    float _clockDividers[dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.3333333333, 0.5, 0.6666666667, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0, 32.0};
+    String _dividerDescription[dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/3", "/2", "/1.5", "x1", "x1.5", "x2", "x3", "x4", "x8", "x16", "x32"};
     static int const MaxEuclideanSteps = 64;
 
     // The shuffle of the TR-909 delays each even-numbered 1/16th by 2/96 of a beat for shuffle setting 1,
@@ -118,7 +118,7 @@ class Output {
     int _ID;
     bool _externalClock = false;             // External clock state
     OutputType _outputType;                  // 0 = Digital, 1 = DAC
-    int _dividerIndex = 7;                   // Default to 1
+    int _dividerIndex = 9;                   // Default to 1
     int _dutyCycle = 50;                     // Default to 50%
     int _phase = 0;                          // Phase offset, default to 0% (in phase with master)
     int _level = 100;                        // Output voltage level for DAC outs (Default to 100%)
