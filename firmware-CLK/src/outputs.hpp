@@ -16,10 +16,12 @@ enum WaveformType {
     Sine,
     Parabolic,
     Sawtooth,
+    ExpEnvelope,
+    LogEnvelope,
     Random,
     SmoothRandom,
 };
-String WaveformTypeDescriptions[] = {"Square", "Triangle", "Sine", "Parabolic", "Sawtooth", "Random", "SmoothRdn"};
+String WaveformTypeDescriptions[] = {"Square", "Triangle", "Sine", "Parabolic", "Sawtooth", "ExpEnvelope", "LogEnvelope", "Random", "SmoothRdn"};
 int WaveformTypeLength = sizeof(WaveformTypeDescriptions) / sizeof(WaveformTypeDescriptions[0]);
 
 class Output {
@@ -140,6 +142,7 @@ class Output {
     float _triangleWaveStep = 0.0f;
     float _sineWaveAngle = 0.0f;
     float _inactiveTickCounter = 0.0f;
+    int _logTicks = 0; // Logarithmic envelope ticks
 
     // Swing variables
     unsigned int _swingAmountIndex = 0; // Swing amount index
@@ -161,6 +164,8 @@ class Output {
     void GenerateSawtoothWave(int);
     void GenerateRandomWave(int);
     void GenerateSmoothRandomWave(int);
+    void GenerateExpEnvelope(int);
+    void GenerateLogEnvelope(int);
 };
 
 // Constructor
@@ -170,7 +175,6 @@ Output::Output(int ID, OutputType type) {
     GeneratePattern(_euclideanParams, _euclideanRhythm);
 }
 
-// Pulse function
 void Output::Pulse(int PPQN, unsigned long globalTick) {
     // If not stopped, generate the pulse
     if (_state) {
@@ -256,6 +260,12 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         case WaveformType::SmoothRandom:
             GenerateSmoothRandomWave(PPQN);
             break;
+        case WaveformType::ExpEnvelope:
+            GenerateExpEnvelope(PPQN);
+            break;
+        case WaveformType::LogEnvelope:
+            GenerateLogEnvelope(PPQN);
+            break;
         default:
             // For square wave or other types
             break;
@@ -278,9 +288,14 @@ void Output::StartWaveform() {
     case WaveformType::Parabolic:
         if (!_externalClock) {
             _waveValue = 0.0f;
-            _triangleWaveStep = 0.0f; // Will be calculated in GenerateTriangleWave()
+            _triangleWaveStep = 0.0f;
             _sineWaveAngle = 0.0f;
         }
+        break;
+    case WaveformType::ExpEnvelope:
+    case WaveformType::LogEnvelope:
+        _waveValue = 100.0f; // Start at maximum value for envelopes
+        _logTicks = 0;
         break;
     case WaveformType::Random:
     case WaveformType::SmoothRandom:
@@ -292,11 +307,17 @@ void Output::StartWaveform() {
 
 // Reset the waveform values
 void Output::ResetWaveform() {
-    _waveActive = false;
-    _waveDirection = true;
-    _waveValue = 0.0f;
-    _triangleWaveStep = 0.0f;
-    _sineWaveAngle = 0.0f;
+    switch (_waveformType) {
+    case WaveformType::ExpEnvelope:
+    case WaveformType::LogEnvelope:
+        break;
+    default:
+        _waveActive = false;
+        _waveDirection = true;
+        _waveValue = 0.0f;
+        _triangleWaveStep = 0.0f;
+        _sineWaveAngle = 0.0f;
+    }
 }
 
 // Function to stop waveform generation
@@ -305,6 +326,9 @@ void Output::StopWaveform() {
     case WaveformType::Square:
         SetPulse(false);
         _waveActive = false;
+        break;
+    case WaveformType::ExpEnvelope:
+    case WaveformType::LogEnvelope:
         break;
     case WaveformType::SmoothRandom:
     case WaveformType::Random:
@@ -393,6 +417,7 @@ void Output::GenerateParabolicWave(int PPQN) {
             _sineWaveAngle = 0.0f;
             // Inactive period
             _waveActive = false;
+            _isPulseOn = false;
             _inactiveTickCounter = periodInTicks - activeTicks;
         }
 
@@ -468,6 +493,52 @@ void Output::GenerateSmoothRandomWave(int PPQN) {
     }
 }
 
+// Generate an exponential envelope waveform
+void Output::GenerateExpEnvelope(int PPQN) {
+    if (_waveActive) {
+        float periodTicks = PPQN / _clockDividers[_dividerIndex];
+        float decayTicks = periodTicks * (_dutyCycle / 100.0f);
+
+        if (_logTicks >= decayTicks) {
+            _waveValue = 0.0f;
+            _waveActive = false;
+            _logTicks = 0; // Reset for the next pulse
+            return;
+        }
+
+        // Calculate decay factor for the exponential decay
+        float k = 6.90776f / decayTicks; // ln(100) ≈ 4.60517, total decay over decayTicks
+        _waveValue = 100.0f * exp(-k * _logTicks);
+
+        _logTicks++;
+        _isPulseOn = true;
+    }
+}
+
+// Generate a logarithm envelope waveform
+void Output::GenerateLogEnvelope(int PPQN) {
+    if (_waveActive) {
+        float periodTicks = PPQN / _clockDividers[_dividerIndex];
+        float decayTicks = periodTicks * (_dutyCycle / 100.0f);
+
+        if (_logTicks >= decayTicks) {
+            _waveValue = 0.0f;
+            _waveActive = false;
+            _logTicks = 0; // Reset for the next pulse
+            return;
+        }
+
+        // Calculate decay factor to span the entire pulse duration
+        float decayFactor = log10(decayTicks - _logTicks + 1) / log10(decayTicks + 1);
+
+        // Update waveform value
+        _waveValue = decayFactor * 100.0f; // Scale to 0-100%
+
+        _logTicks++;
+        _isPulseOn = true;
+    }
+}
+
 // Check if the pulse state has changed
 bool Output::HasPulseChanged() {
     bool pulseChanged = (_isPulseOn != _lastPulseState);
@@ -503,6 +574,8 @@ int Output::GetOutputLevel() {
         case WaveformType::Sawtooth:
         case WaveformType::Random:
         case WaveformType::SmoothRandom:
+        case WaveformType::ExpEnvelope:
+        case WaveformType::LogEnvelope:
             // Take into account the wave value and the _level and _offset values
             adjustedLevel = _isPulseOn ? constrain((_waveValue * _level) / 100 + _offset, 0, 100) : _offset;
             return adjustedLevel * MaxDACValue / 100;
