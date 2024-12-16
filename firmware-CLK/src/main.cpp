@@ -10,22 +10,25 @@
 
 // Load local libraries
 #include "boardIO.cpp"
+#include "calibrate_ADC.cpp"
+#include "definitions.hpp"
 #include "loadsave.cpp"
 #include "outputs.hpp"
 #include "pinouts.hpp"
 #include "splash.hpp"
-#include "utils.hpp"
 #include "version.hpp"
 
-// Timing
+// Configuration
 #define PPQN 192
+#define MAXDAC 4095
+#define NUM_INPUTS 2
 
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 
-// Assign ADC calibration value for each channel based on the actual measurement
-float ADCalibration[2] = {0.99728, 0.99728};
+// ADC input offset and scale from calibration
+float offsetScale[2][2]; // [channel][0: offset, 1: scale]
 
 // OLED display object
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
@@ -44,6 +47,76 @@ Output outputs[NUM_OUTPUTS] = {
 
 // ---- Global variables ----
 
+// CV modulation targets
+enum CVTarget {
+    None = 0,
+    StartStop,
+    SetBPM,
+    Div1,
+    Div2,
+    Div3,
+    Div4,
+    Output1Prob,
+    Output2Prob,
+    Output3Prob,
+    Output4Prob,
+    Swing1Amount,
+    Swing1Every,
+    Swing2Amount,
+    Swing2Every,
+    Swing3Amount,
+    Swing3Every,
+    Swing4Amount,
+    Swing4Every,
+    Output3Level,
+    Output4Level,
+    Output3Offset,
+    Output4Offset,
+    Output3Waveform,
+    Output4Waveform,
+    Output1Duty,
+    Output2Duty,
+    Output3Duty,
+    Output4Duty,
+};
+static int const CVTargetLength = 29;
+String CVTargetDescription[CVTargetLength] = {
+    "None",
+    "Start/Stop",
+    "Set BPM",
+    "Output 1 Div",
+    "Output 2 Div",
+    "Output 3 Div",
+    "Output 4 Div",
+    "Output 1 Prob",
+    "Output 2 Prob",
+    "Output 3 Prob",
+    "Output 4 Prob",
+    "Swing 1 Amt",
+    "Swing 1 Every",
+    "Swing 2 Amt",
+    "Swing 2 Every",
+    "Swing 3 Amt",
+    "Swing 3 Every",
+    "Swing 4 Amt",
+    "Swing 4 Every",
+    "Output 3 Lvl",
+    "Output 4 Lvl",
+    "Output 3 Off",
+    "Output 4 Off",
+    "Output 3 Wav",
+    "Output 4 Wav",
+    "Output 1 Duty",
+    "Output 2 Duty",
+    "Output 3 Duty",
+    "Output 4 Duty"};
+
+// // CV modulation target values
+const int CVInputs = 2;
+CVTarget CVInputTarget[CVInputs] = {CVTarget::None, CVTarget::None};
+int CVInputAttenuation[CVInputs] = {0, 0};
+int CVInputOffset[CVInputs] = {0, 0};
+
 // ADC input variables
 float channelADC[2], oldChannelADC[2];
 
@@ -54,10 +127,10 @@ unsigned int const minBPM = 10;
 unsigned int const maxBPM = 300;
 
 // Play/Stop state
-bool masterStop = false; // Track global play/stop state
+bool masterState = true; // Track global play/stop state (true = playing, false = stopped)
 
 // Global tick counter
-unsigned long tickCounter = 0;
+volatile unsigned long tickCounter = 0;
 
 // External clock variables
 volatile unsigned long clockInterval = 0;
@@ -66,12 +139,12 @@ volatile bool usingExternalClock = false;
 
 static int const dividerAmount = 7;
 int externalClockDividers[dividerAmount] = {1, 2, 4, 8, 16, 24, 48};
-String externalDividerDescription[dividerAmount] = {"x1", "/2 ", "/4", "/8", "/16", "/24", "/48"};
+String externalDividerDescription[dividerAmount] = {"x1", "/2 ", "/4", "/8", "/16", "24PPQN", "48PPQN"};
 int externalDividerIndex = 0;
-unsigned long externalTickCounter = 0;
+volatile unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 48;
+int menuItems = 54;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 1;
@@ -85,13 +158,15 @@ int saveSlot = 0;            // Save slot index
 void UpdateBPM(unsigned int);
 void SetTapTempo();
 void HandleIO();
-void ToggleMasterStop();
+void SetMasterState(bool);
+void ToggleMasterState();
 void HandleEncoderClick();
 void HandleEncoderPosition();
 void UpdateSpeedFactor();
 void HandleDisplay();
 void HandleExternalClock();
 void HandleCVInputs();
+void HandleCVTarget(int, float, CVTarget);
 void HandleOutputs();
 void ClockPulse(int);
 void ClockPulseInternal();
@@ -112,7 +187,7 @@ void HandleEncoderClick() {
                 menuMode = 1;
                 break;
             case 2: // Toggle stopped state
-                ToggleMasterStop();
+                ToggleMasterState();
                 break;
             case 3: // Set div1
                 menuMode = 3;
@@ -242,13 +317,31 @@ void HandleEncoderClick() {
             case 43: // Set Waveform type for output 4
                 menuMode = 43;
                 break;
-            case 44: // Tap tempo
-                SetTapTempo();
-                break; // Tap tempo
-            case 45:   // Select save slot
-                menuMode = 41;
+            case 44: // CV Input 1 target
+                menuMode = 44;
                 break;
-            case 46: { // Save settings
+            case 45: // CV Input 2 target
+                menuMode = 45;
+                break;
+            case 46: // CV Input 1 attenuation
+                menuMode = 46;
+                break;
+            case 47: // CV Input 1 offset
+                menuMode = 47;
+                break;
+            case 48: // CV Input 2 attenuation
+                menuMode = 48;
+                break;
+            case 49: // CV Input 2 offset
+                menuMode = 49;
+                break;
+            case 50: // Tap tempo
+                SetTapTempo();
+                break;
+            case 51: // Select save slot
+                menuMode = 47;
+                break;
+            case 52: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -269,6 +362,11 @@ void HandleEncoderClick() {
                     p.phaseShift[i] = outputs[i].GetPhase();
                     p.waveformType[i] = int(outputs[i].GetWaveformType());
                 }
+                for (int i = 0; i < NUM_INPUTS; i++) {
+                    p.CVInputTarget[i] = CVInputTarget[i];
+                    p.CVInputAttenuation[i] = CVInputAttenuation[i];
+                    p.CVInputOffset[i] = CVInputOffset[i];
+                }
                 Save(p, saveSlot);
                 unsavedChanges = false;
                 display.clearDisplay(); // clear display
@@ -282,7 +380,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 47: { // Load from slot
+            case 53: { // Load from slot
                 LoadSaveParams p = Load(saveSlot);
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -297,7 +395,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 48: { // Load default settings
+            case 54: { // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -470,7 +568,37 @@ void HandleEncoderPosition() {
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
             unsavedChanges = true;
             break;
-        case 45: // Select save slot
+        case 44: { // CV Input 1 target
+            CVTarget tmp = static_cast<CVTarget>((CVInputTarget[0] - 1 + CVTargetLength) % CVTargetLength);
+            if (tmp != CVInputTarget[1] || tmp == CVTarget::None) {
+                CVInputTarget[0] = tmp;
+            } else {
+                CVInputTarget[0] = static_cast<CVTarget>((CVInputTarget[0] - 2 + CVTargetLength) % CVTargetLength);
+            }
+            break;
+        }
+        case 45: { // CV Input 2 target
+            CVTarget tmp = static_cast<CVTarget>((CVInputTarget[1] - 1 + CVTargetLength) % CVTargetLength);
+            if (tmp != CVInputTarget[0] || tmp == CVTarget::None) {
+                CVInputTarget[1] = tmp;
+            } else {
+                CVInputTarget[1] = static_cast<CVTarget>((CVInputTarget[1] - 2 + CVTargetLength) % CVTargetLength);
+            }
+            break;
+        }
+        case 46: // CV Input 1 attenuation
+            CVInputAttenuation[0] = constrain(CVInputAttenuation[0] - speedFactor, 0, 100);
+            break;
+        case 47: // CV Input 1 offset
+            CVInputOffset[0] = constrain(CVInputOffset[0] - speedFactor, 0, 100);
+            break;
+        case 48: // CV Input 2 attenuation
+            CVInputAttenuation[1] = constrain(CVInputAttenuation[1] - speedFactor, 0, 100);
+            break;
+        case 49: // CV Input 2 offset
+            CVInputOffset[1] = constrain(CVInputOffset[1] - speedFactor, 0, 100);
+            break;
+        case 51: // Select save slot
             saveSlot = (saveSlot - 1 < 0) ? NUM_SLOTS : saveSlot - 1;
             break;
         }
@@ -603,7 +731,37 @@ void HandleEncoderPosition() {
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % WaveformTypeLength));
             unsavedChanges = true;
             break;
-        case 44: // Select save slot
+        case 44: {
+            CVTarget tmp = static_cast<CVTarget>((CVInputTarget[0] + 1) % CVTargetLength);
+            if (tmp != CVInputTarget[1] || tmp == CVTarget::None) {
+                CVInputTarget[0] = tmp;
+            } else {
+                CVInputTarget[0] = static_cast<CVTarget>((CVInputTarget[0] + 2) % CVTargetLength);
+            }
+            break;
+        }
+        case 45: {
+            CVTarget tmp = static_cast<CVTarget>((CVInputTarget[1] + 1) % CVTargetLength);
+            if (tmp != CVInputTarget[0] || tmp == CVTarget::None) {
+                CVInputTarget[1] = tmp;
+            } else {
+                CVInputTarget[1] = static_cast<CVTarget>((CVInputTarget[1] + 2) % CVTargetLength);
+            }
+            break;
+        }
+        case 46: // CV Input 1 attenuation
+            CVInputAttenuation[0] = constrain(CVInputAttenuation[0] + speedFactor, 0, 100);
+            break;
+        case 47: // CV Input 1 offset
+            CVInputOffset[0] = constrain(CVInputOffset[0] + speedFactor, 0, 100);
+            break;
+        case 48: // CV Input 2 attenuation
+            CVInputAttenuation[1] = constrain(CVInputAttenuation[1] + speedFactor, 0, 100);
+            break;
+        case 49: // CV Input 2 offset
+            CVInputOffset[1] = constrain(CVInputOffset[1] + speedFactor, 0, 100);
+            break;
+        case 51: // Select save slot
             saveSlot = (saveSlot + 1 > NUM_SLOTS) ? 0 : saveSlot + 1;
             break;
         }
@@ -643,7 +801,7 @@ void HandleDisplay() {
         display.clearDisplay();
         MenuIndicator();
         int menuIdx = 1;
-        int menuItems = 2;
+        int itemAmount = 2;
         // Draw the menu
         if (menuItem == 1 || menuItem == 2) {
             display.setCursor(10, 0);
@@ -668,7 +826,7 @@ void HandleDisplay() {
                 if (menuItem == 2) {
                     display.drawLine(43, 42, 88, 42, 1);
                 }
-                if (masterStop) {
+                if (!masterState) {
                     display.fillRoundRect(23, 26, 17, 17, 2, 1);
                     display.print("STOP");
                 } else {
@@ -693,9 +851,9 @@ void HandleDisplay() {
         }
 
         // Clock dividers menu
-        menuIdx = menuIdx + menuItems;
-        menuItems = 5;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 5;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             MenuHeader("CLOCK DIVIDERS");
             int yPosition = 20;
@@ -731,9 +889,9 @@ void HandleDisplay() {
         }
 
         // Clock outputs state menu
-        menuIdx = menuIdx + menuItems;
-        menuItems = 4;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             MenuHeader("OUTPUT STATE");
             int yPosition = 20;
@@ -756,9 +914,9 @@ void HandleDisplay() {
         }
 
         // Pulse Probability menu
-        menuIdx = menuIdx + menuItems;
-        menuItems = 4;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             MenuHeader("PROBABILITY");
             int yPosition = 20;
@@ -781,9 +939,9 @@ void HandleDisplay() {
         }
 
         // Euclidean rhythm menu
-        menuIdx = menuIdx + menuItems;
-        menuItems = 6;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 6;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             MenuHeader("EUCLIDEAN RHYTHM");
             int yPosition = 20;
@@ -876,9 +1034,9 @@ void HandleDisplay() {
         }
 
         // Swing amount menu
-        menuIdx = menuIdx + menuItems;
-        menuItems = 8;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 8;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             MenuHeader("OUTPUT SWING");
             int yPosition = 20;
@@ -915,9 +1073,9 @@ void HandleDisplay() {
         }
 
         // Phase shift menu
-        menuIdx = menuIdx + menuItems;
-        menuItems = 4;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             MenuHeader("PHASE SHIFT");
             int yPosition = 0;
@@ -941,14 +1099,14 @@ void HandleDisplay() {
         }
 
         // Duty cycle menu
-        menuIdx = menuIdx + menuItems;
-        menuItems = 4;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 4;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             MenuHeader("OUTPUT SETTINGS");
             int yPosition = 21;
 
-            for (int i = 0; i < menuItems; i++) {
+            for (int i = 0; i < itemAmount; i++) {
                 display.setCursor(10, yPosition);
                 display.print("OUT " + String(i + 1) + " DUTY: ");
                 display.print(outputs[i].GetDutyCycleDescription());
@@ -965,9 +1123,9 @@ void HandleDisplay() {
         }
 
         // Level/Offset/Waveform control menu
-        menuIdx = menuIdx + menuItems;
-        menuItems = 6;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 6;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             MenuHeader("OUTPUT SETTINGS");
             int yPosition = 12;
@@ -1027,10 +1185,70 @@ void HandleDisplay() {
             return;
         }
 
+        // CV input target menu
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 6;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
+            display.setTextSize(1);
+            MenuHeader("CV INPUT TARGETS");
+            int yPosition = 20;
+            display.setCursor(10, yPosition);
+            display.print("CV 1: ");
+            display.print(CVTargetDescription[CVInputTarget[0]]);
+            if (menuItem == menuIdx && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("CV 2: ");
+            display.print(CVTargetDescription[CVInputTarget[1]]);
+            if (menuItem == menuIdx + 1 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 1) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            // Levels and offsets
+            display.setCursor(60, yPosition);
+            display.println("ATTN");
+            display.setCursor(100, yPosition);
+            display.println("OFF");
+            if (menuItem == menuIdx + 2 || menuItem == menuIdx + 4) {
+                display.fillTriangle(55, yPosition, 55, yPosition + 6, 58, yPosition + 3, 1);
+            }
+            if (menuItem == menuIdx + 3 || menuItem == menuIdx + 5) {
+                display.fillTriangle(95, yPosition, 95, yPosition + 6, 98, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            for (int i = 0; i < NUM_CV_INS; i++) {
+                display.setCursor(10, yPosition);
+                display.print("CV " + String(i + 1) + ":");
+                display.setCursor(60, yPosition);
+                display.print(String(CVInputAttenuation[i]) + "%");
+                display.setCursor(100, yPosition);
+                display.print(String(CVInputOffset[i]) + "%");
+
+                if (menuItem == menuIdx + 2 + (i) * 2 || menuItem == menuIdx + 3 + (i) * 2) {
+                    if (menuMode == 0) {
+                        display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    } else {
+                        display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+                    }
+                }
+                yPosition += 9;
+            }
+
+            RedrawDisplay();
+            return;
+        }
+
         // Other settings
-        menuIdx = menuIdx + menuItems;
-        menuItems = 5;
-        if (menuItem >= menuIdx && menuItem < menuIdx + menuItems) {
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 5;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
             display.setTextSize(1);
             int yPosition = 9;
             // Tap tempo
@@ -1101,21 +1319,138 @@ void SetTapTempo() {
     }
 }
 
-// Stop all outputs
-void ToggleMasterStop() {
-    masterStop = !masterStop;
+// Toggle the master state and update all outputs
+void ToggleMasterState() {
+    SetMasterState(!masterState);
+}
+
+// Set the master state and update all outputs
+void SetMasterState(bool state) {
+    masterState = state;
     for (int i = 0; i < NUM_OUTPUTS; i++) {
-        outputs[i].ToggleMasterState();
+        outputs[i].SetMasterState(state);
     }
 }
 
 void HandleCVInputs() {
-    oldChannelADC[0] = channelADC[0];
-    oldChannelADC[1] = channelADC[1];
-    channelADC[0] = analogRead(CV_1_IN_PIN) / ADCalibration[0];
-    channelADC[1] = analogRead(CV_2_IN_PIN) / ADCalibration[1];
+    for (int i = 0; i < NUM_CV_INS; i++) {
+        oldChannelADC[i] = channelADC[i];
+        long read = analogRead(CV_IN_PINS[i]);
+        float calibratedReading = (read - offsetScale[i][0]) / (1 - offsetScale[i][1]);
+        ONE_POLE(channelADC[i], calibratedReading, 0.5f);
+        if (abs(channelADC[i] - oldChannelADC[i]) > 10) {
+            HandleCVTarget(i, channelADC[i], CVInputTarget[i]);
+        }
+    }
+}
 
-    // Use CV input 1 to control play/stop
+unsigned long lastDisplayUpdateTime = 0;
+// Handle the CV target based on the CV value
+void HandleCVTarget(int ch, float CVValue, CVTarget cvTarget) {
+    // Attenuate and offset the CVValue
+    float attenuatedValue = CVValue * ((100 - CVInputAttenuation[ch]) / 100.0f);
+    float offsetValue = attenuatedValue + (CVInputOffset[ch] / 100.0f * MAXDAC);
+    CVValue = constrain(offsetValue, 0, MAXDAC);
+
+    // DEBUG_PRINT("Ch: " + String(ch) + " CV Target: " + String(cvTarget) + " CV Value: " + String(CVValue) + "\n");
+    switch (cvTarget) {
+    case CVTarget::None:
+        break;
+    case CVTarget::StartStop:
+        if (CVValue > MAXDAC / 2) {
+            SetMasterState(true);
+        } else {
+            SetMasterState(false);
+        }
+        break;
+    case CVTarget::SetBPM:
+        // Convert float value to BPM range
+        UpdateBPM(map(CVValue, 0, MAXDAC, minBPM, maxBPM));
+        break;
+    case CVTarget::Div1:
+        outputs[0].SetDivider(map(CVValue, 0, MAXDAC, 0, outputs[0].GetDividerAmounts()));
+        break;
+    case CVTarget::Div2:
+        outputs[1].SetDivider(map(CVValue, 0, MAXDAC, 0, outputs[1].GetDividerAmounts()));
+        break;
+    case CVTarget::Div3:
+        outputs[2].SetDivider(map(CVValue, 0, MAXDAC, 0, outputs[2].GetDividerAmounts()));
+        break;
+    case CVTarget::Div4:
+        outputs[3].SetDivider(map(CVValue, 0, MAXDAC, 0, outputs[3].GetDividerAmounts()));
+        break;
+    case CVTarget::Output1Prob:
+        outputs[0].SetPulseProbability(map(CVValue, 0, MAXDAC, 1, 100));
+        break;
+    case CVTarget::Output2Prob:
+        outputs[1].SetPulseProbability(map(CVValue, 0, MAXDAC, 1, 100));
+        break;
+    case CVTarget::Output3Prob:
+        outputs[2].SetPulseProbability(map(CVValue, 0, MAXDAC, 1, 100));
+        break;
+    case CVTarget::Output4Prob:
+        outputs[3].SetPulseProbability(map(CVValue, 0, MAXDAC, 1, 100));
+        break;
+    case CVTarget::Swing1Amount:
+        outputs[0].SetSwingAmount(map(CVValue, 0, MAXDAC, 0, outputs[0].GetSwingAmounts()));
+        break;
+    case CVTarget::Swing1Every:
+        outputs[0].SetSwingEvery(map(CVValue, 0, MAXDAC, 1, outputs[0].GetSwingEveryAmounts()));
+        break;
+    case CVTarget::Swing2Amount:
+        outputs[1].SetSwingAmount(map(CVValue, 0, MAXDAC, 0, outputs[1].GetSwingAmounts()));
+        break;
+    case CVTarget::Swing2Every:
+        outputs[1].SetSwingEvery(map(CVValue, 0, MAXDAC, 1, outputs[1].GetSwingEveryAmounts()));
+        break;
+    case CVTarget::Swing3Amount:
+        outputs[2].SetSwingAmount(map(CVValue, 0, MAXDAC, 0, outputs[2].GetSwingAmounts()));
+        break;
+    case CVTarget::Swing3Every:
+        outputs[2].SetSwingEvery(map(CVValue, 0, MAXDAC, 1, outputs[2].GetSwingEveryAmounts()));
+        break;
+    case CVTarget::Swing4Amount:
+        outputs[3].SetSwingAmount(map(CVValue, 0, MAXDAC, 0, outputs[3].GetSwingAmounts()));
+        break;
+    case CVTarget::Swing4Every:
+        outputs[3].SetSwingEvery(map(CVValue, 0, MAXDAC, 1, outputs[3].GetSwingEveryAmounts()));
+        break;
+    case CVTarget::Output3Offset:
+        outputs[2].SetOffset(map(CVValue, 0, MAXDAC, 0, 100));
+        break;
+    case CVTarget::Output4Offset:
+        outputs[3].SetOffset(map(CVValue, 0, MAXDAC, 0, 100));
+        break;
+    case CVTarget::Output3Level:
+        outputs[2].SetLevel(map(CVValue, 0, MAXDAC, 0, 100));
+        break;
+    case CVTarget::Output4Level:
+        outputs[3].SetLevel(map(CVValue, 0, MAXDAC, 0, 100));
+        break;
+    case CVTarget::Output3Waveform:
+        outputs[2].SetWaveformType(static_cast<WaveformType>(map(CVValue, 0, MAXDAC, 0, WaveformTypeLength)));
+        break;
+    case CVTarget::Output4Waveform:
+        outputs[3].SetWaveformType(static_cast<WaveformType>(map(CVValue, 0, MAXDAC, 0, WaveformTypeLength)));
+        break;
+    case CVTarget::Output1Duty:
+        outputs[0].SetDutyCycle(map(CVValue, 0, MAXDAC, 0, 100));
+        break;
+    case CVTarget::Output2Duty:
+        outputs[1].SetDutyCycle(map(CVValue, 0, MAXDAC, 0, 100));
+        break;
+    case CVTarget::Output3Duty:
+        outputs[2].SetDutyCycle(map(CVValue, 0, MAXDAC, 0, 100));
+        break;
+    case CVTarget::Output4Duty:
+        outputs[3].SetDutyCycle(map(CVValue, 0, MAXDAC, 0, 100));
+        break;
+    }
+    // // Update the display if the CV target is not None
+    if (cvTarget != CVTarget::None && menuMode == 0 && millis() - lastDisplayUpdateTime > 1000) {
+        displayRefresh = 1;
+        lastDisplayUpdateTime = millis();
+    }
 }
 
 // External clock interrupt service routine
@@ -1153,6 +1488,7 @@ void ClockReceived() {
     externalTickCounter++;
 }
 
+// Called on loop to check if the external clock is still connected and revert to internal clock if not
 void HandleExternalClock() {
     unsigned long currentTime = millis();
     if (usingExternalClock && (currentTime - lastClockInterruptTime) > 2000) {
@@ -1214,6 +1550,11 @@ void UpdateParameters(LoadSaveParams p) {
         outputs[i].SetPhase(p.phaseShift[i]);
         outputs[i].SetWaveformType(static_cast<WaveformType>(p.waveformType[i]));
     }
+    for (int i = 0; i < NUM_CV_INS; i++) {
+        CVInputTarget[i] = static_cast<CVTarget>(p.CVInputTarget[i]);
+        CVInputAttenuation[i] = p.CVInputAttenuation[i];
+        CVInputOffset[i] = p.CVInputOffset[i];
+    }
 }
 
 // Initialize the hardware timer
@@ -1236,6 +1577,31 @@ void setup() {
         for (;;)
             ; // Don't proceed, loop forever
     }
+    display.clearDisplay();
+
+    // Check if encoder is pressed during startup to enter calibration mode
+    if (digitalRead(ENCODER_SW) == LOW) {
+        CalibrateADC(display, offsetScale);
+    }
+
+    LoadCalibration(offsetScale);
+    // Check if the calibration values are valid (not zero)
+    if (offsetScale[0][0] == 0 && offsetScale[1][0] == 0 && offsetScale[0][1] == 0 && offsetScale[1][1] == 0) {
+        offsetScale[0][0] = 20;
+        offsetScale[0][1] = 0.001252;
+        offsetScale[1][0] = 20;
+        offsetScale[1][1] = 0.001252;
+    }
+    Serial.println("Calibration values: ");
+    Serial.print("CV1 Offset: ");
+    Serial.print(offsetScale[0][0], 6);
+    Serial.print(" Scale: ");
+    Serial.println(offsetScale[0][1], 6);
+    Serial.print("CV2 Offset: ");
+    Serial.print(offsetScale[1][0], 6);
+    Serial.print(" Scale: ");
+    Serial.println(offsetScale[1][1], 6);
+
     display.clearDisplay();
     display.drawBitmap(30, 0, VFM_Splash, 68, 64, 1);
     display.display();

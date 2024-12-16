@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
+#include "definitions.hpp"
 #include "euclidean.hpp"
-#include "utils.hpp"
 
 // Define a type for the DAC output type
 enum OutputType {
@@ -43,12 +43,13 @@ class Output {
     void SetOutputState(bool state) { _state = state; }
     void ToggleOutputState() { _state = !_state; }
     void ToggleMasterState();
+    void SetMasterState(bool state);
 
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
-    void SetDivider(int index) { _dividerIndex = constrain(index, 0, dividerAmount - 1); }
+    void SetDivider(int index) { _dividerIndex = constrain(index, 0, _dividerAmount - 1); }
     String GetDividerDescription() { return _dividerDescription[_dividerIndex]; }
-    int GetDividerAmounts() { return dividerAmount; }
+    int GetDividerAmounts() { return _dividerAmount; }
 
     // Duty Cycle
     int GetDutyCycle() { return _dutyCycle; }
@@ -69,10 +70,11 @@ class Output {
     // Swing
     void SetSwingAmount(int swingAmount) { _swingAmountIndex = constrain(swingAmount, 0, 6); }
     int GetSwingAmountIndex() { return _swingAmountIndex; }
-    int GetSwingAmounts() { return 7; }
+    int GetSwingAmounts() { return _swingAmount; }
     String GetSwingAmountDescription() { return _swingAmountDescriptions[_swingAmountIndex]; }
-    void SetSwingEvery(int swingEvery) { _swingEvery = constrain(swingEvery, 1, 16); }
+    void SetSwingEvery(int swingEvery) { _swingEvery = constrain(swingEvery, 1, _swingEveryAmount); }
     int GetSwingEvery() { return _swingEvery; }
+    int GetSwingEveryAmounts() { return _swingEveryAmount; }
 
     // Pulse Probability
     void SetPulseProbability(int pulseProbability) { _pulseProbability = constrain(pulseProbability, 0, 100); }
@@ -107,15 +109,16 @@ class Output {
   private:
     // Constants
     const int MaxDACValue = 4095;
-    static int const dividerAmount = 18;
-    float _clockDividers[dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.3333333333, 0.5, 0.6666666667, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0, 24.0, 32.0};
-    String _dividerDescription[dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/3", "/2", "/1.5", "x1", "x1.5", "x2", "x3", "x4", "x8", "x16", "x24", "x32"};
+    static int const _dividerAmount = 18;
+    float _clockDividers[_dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.3333333333, 0.5, 0.6666666667, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0, 24.0, 32.0};
+    String _dividerDescription[_dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/3", "/2", "/1.5", "x1", "x1.5", "x2", "x3", "x4", "x8", "x16", "x24", "x32"};
     static int const MaxEuclideanSteps = 64;
 
     // The shuffle of the TR-909 delays each even-numbered 1/16th by 2/96 of a beat for shuffle setting 1,
     // 4/96 for 2, 6/96 for 3, 8/96 for 4, 10/96 for 5 and 12/96 for 6.
-    float _swingAmounts[7] = {0, 2, 4, 6, 8, 10, 12};
-    String _swingAmountDescriptions[7] = {"0", "2/96", "4/96", "6/96", "8/96", "10/96", "12/96"};
+    static int const _swingAmount = 7;
+    float _swingAmounts[_swingAmount] = {0, 2, 4, 6, 8, 10, 12};
+    String _swingAmountDescriptions[_swingAmount] = {"0", "2/96", "4/96", "6/96", "8/96", "10/96", "12/96"};
 
     // Variables
     int _ID;
@@ -141,12 +144,14 @@ class Output {
     float _waveValue = 0.0f;
     float _triangleWaveStep = 0.0f;
     float _sineWaveAngle = 0.0f;
-    float _inactiveTickCounter = 0.0f;
-    int _logTicks = 0; // Logarithmic envelope ticks
+    unsigned long _inactiveTickCounter = 0;
+    unsigned long _randomTickCounter = 0;
+    unsigned long _envTickCounter = 0; // Logarithmic envelope ticks
 
     // Swing variables
-    unsigned int _swingAmountIndex = 0; // Swing amount index
+    int _swingEveryAmount = 16;         // Max swing every value
     int _swingEvery = 2;                // Swing every x notes
+    unsigned int _swingAmountIndex = 0; // Swing amount index
 
     // Euclidean rhythm variables
     int _euclideanStepIndex = 0;             // Current step in the pattern
@@ -295,7 +300,7 @@ void Output::StartWaveform() {
     case WaveformType::ExpEnvelope:
     case WaveformType::LogEnvelope:
         _waveValue = 100.0f; // Start at maximum value for envelopes
-        _logTicks = 0;
+        _envTickCounter = 0;
         break;
     case WaveformType::Random:
     case WaveformType::SmoothRandom:
@@ -462,6 +467,7 @@ void Output::GenerateRandomWave(int PPQN) {
         // Generate white noise waveform
         _waveValue = random(101); // Random value between 0 and 100
         _isPulseOn = true;
+        _randomTickCounter++;
     }
 }
 
@@ -499,18 +505,18 @@ void Output::GenerateExpEnvelope(int PPQN) {
         float periodTicks = PPQN / _clockDividers[_dividerIndex];
         float decayTicks = periodTicks * (_dutyCycle / 100.0f);
 
-        if (_logTicks >= decayTicks) {
+        if (_envTickCounter >= decayTicks) {
             _waveValue = 0.0f;
             _waveActive = false;
-            _logTicks = 0; // Reset for the next pulse
+            _envTickCounter = 0; // Reset for the next pulse
             return;
         }
 
         // Calculate decay factor for the exponential decay
         float k = 6.90776f / decayTicks; // ln(100) ≈ 4.60517, total decay over decayTicks
-        _waveValue = 100.0f * exp(-k * _logTicks);
+        _waveValue = 100.0f * exp(-k * _envTickCounter);
 
-        _logTicks++;
+        _envTickCounter++;
         _isPulseOn = true;
     }
 }
@@ -521,20 +527,20 @@ void Output::GenerateLogEnvelope(int PPQN) {
         float periodTicks = PPQN / _clockDividers[_dividerIndex];
         float decayTicks = periodTicks * (_dutyCycle / 100.0f);
 
-        if (_logTicks >= decayTicks) {
+        if (_envTickCounter >= decayTicks) {
             _waveValue = 0.0f;
             _waveActive = false;
-            _logTicks = 0; // Reset for the next pulse
+            _envTickCounter = 0; // Reset for the next pulse
             return;
         }
 
         // Calculate decay factor to span the entire pulse duration
-        float decayFactor = log10(decayTicks - _logTicks + 1) / log10(decayTicks + 1);
+        float decayFactor = log10(decayTicks - _envTickCounter + 1) / log10(decayTicks + 1);
 
         // Update waveform value
         _waveValue = decayFactor * 100.0f; // Scale to 0-100%
 
-        _logTicks++;
+        _envTickCounter++;
         _isPulseOn = true;
     }
 }
@@ -546,15 +552,21 @@ bool Output::HasPulseChanged() {
     return pulseChanged;
 }
 
+void Output::SetMasterState(bool state) {
+    if (_masterState != state) {
+        _masterState = state;
+        if (!_masterState) {
+            _oldState = _state;
+            _state = false;
+        } else {
+            _state = _oldState;
+        }
+    }
+}
+
 // Master stop, stops all outputs but on resume, the outputs will resume to previous state
 void Output::ToggleMasterState() {
-    _masterState = !_masterState;
-    if (!_masterState) {
-        _oldState = _state;
-        _state = false;
-    } else {
-        _state = _oldState;
-    }
+    SetMasterState(!_masterState);
 }
 
 // Output Level based on the output type and pulse state

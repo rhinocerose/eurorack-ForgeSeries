@@ -22,6 +22,7 @@ ClockForge provides clock signals and waves for synchronizing and modulating oth
 - **Sync to External Clock Sources**: Automatically adjust BPM based on an external clock signal.
 - **Phase Shift**: Adjust the phase of the output in relation to the master clock.
 - **Waveform Duty Cycle**: Adjust the pulse width of the clock signal.
+- **External modulation**: Many parameters can be modulated by the CV inputs.
 - **Tap Tempo Functionality**: Manually set the BPM by tapping a button.
 - **Save/Load Configuration**: Save and load up to 5 configurations.
 
@@ -172,6 +173,18 @@ In addition to setting the BPM manually, the module can be set to the desired BP
 
 1. Select the tap tempo parameter.
 2. Press the encoder button at least 3 times to set the BPM based on the interval between taps. If more than 3 taps are entered, the average time between the last 3 is used. BPM is updated in real-time.
+
+### CV Input Modulation
+
+Many parameters can be modulated by the CV inputs. The CV inputs are 0-5V and can be used to modulate the BPM, output division/multiplication, pulse probability, swing amount, swing every, phase shift, duty cycle, waveform, level and offset.
+
+Each input can be assigned to one of the parameters above. The CV input can be attenuated or offset by using configuration parameters.
+
+1. Navigate to the selected CV Input parameter.
+2. Click the encoder to enter edit mode.
+3. Use the encoder to select the desired parameter to be modulated.
+4. Click the encoder to exit edit mode.
+5. Optionally, navigate to the attenuation and offset parameters for each CV input and set the desired values in a similar way.
 
 ### Save/Load Configuration
 

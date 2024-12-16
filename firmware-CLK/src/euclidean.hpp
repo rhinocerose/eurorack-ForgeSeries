@@ -26,7 +26,7 @@ void distributePattern(int level, int counts[], int remainders[], int pattern[],
 
 // Euclidean pattern generation based on Bjorklund's algorithm
 void GeneratePattern(EuclideanParams &params, int *rhythm) {
-    // Temporary arrays for computation
+    // Temporary arrays for computation, we have 128 steps but currently limited to 64
     int counts[128] = {0};
     int remainders[128] = {0};
     int pattern[128] = {0}; // Temporary pattern storage
