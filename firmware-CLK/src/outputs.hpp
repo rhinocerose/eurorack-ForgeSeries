@@ -109,6 +109,7 @@ class Output {
   private:
     // Constants
     const int MaxDACValue = 4095;
+    const float MaxWaveValue = 255.0;
     static int const _dividerAmount = 18;
     float _clockDividers[_dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.3333333333, 0.5, 0.6666666667, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0, 24.0, 32.0};
     String _dividerDescription[_dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/3", "/2", "/1.5", "x1", "x1.5", "x2", "x3", "x4", "x8", "x16", "x24", "x32"};
@@ -299,7 +300,7 @@ void Output::StartWaveform() {
         break;
     case WaveformType::ExpEnvelope:
     case WaveformType::LogEnvelope:
-        _waveValue = 100.0f; // Start at maximum value for envelopes
+        _waveValue = MaxWaveValue; // Start at maximum value for envelopes
         _envTickCounter = 0;
         break;
     case WaveformType::Random:
@@ -355,14 +356,14 @@ void Output::GenerateTriangleWave(int PPQN) {
         float fallingTicks = periodTicks - risingTicks;
 
         // Calculate step sizes
-        float risingStep = 100.0f / risingTicks;
-        float fallingStep = 100.0f / fallingTicks;
+        float risingStep = MaxWaveValue / risingTicks;
+        float fallingStep = MaxWaveValue / fallingTicks;
 
         // Update waveform value
         if (_waveDirection) {
             _waveValue += risingStep;
-            if (_waveValue >= 100.0f) {
-                _waveValue = 100.0f;
+            if (_waveValue >= MaxWaveValue) {
+                _waveValue = MaxWaveValue;
                 _waveDirection = false;
             }
         } else {
@@ -396,7 +397,7 @@ void Output::GenerateSineWave(int PPQN) {
         // Apply phase shift to align the lowest point with pulse start
         float shiftedAngle = _sineWaveAngle + (3.0f * PI / 2.0f);
 
-        // Calculate the sine value scaled to the amplitude range [0, 100]
+        // Calculate the sine value scaled to the amplitude range
         // Adjust the sine value based on the duty cycle
         float sineValue = sin(shiftedAngle);
         if (sineValue > 0) {
@@ -404,7 +405,7 @@ void Output::GenerateSineWave(int PPQN) {
         } else {
             sineValue = -pow(-sineValue, _dutyCycle / 50.0f);
         }
-        _waveValue = (sineValue * 50.0f) + 50.0f;
+        _waveValue = (sineValue * MaxWaveValue / 2) + MaxWaveValue / 2;
 
         _isPulseOn = true;
     }
@@ -427,7 +428,7 @@ void Output::GenerateParabolicWave(int PPQN) {
         }
 
         // Calculate sine value
-        _waveValue = sin(_sineWaveAngle) * 100.0f;
+        _waveValue = sin(_sineWaveAngle) * MaxWaveValue;
         _isPulseOn = true;
     }
 }
@@ -440,11 +441,11 @@ void Output::GenerateSawtoothWave(int PPQN) {
         float inactiveTicks = periodTicks - activeTicks;
 
         // Calculate step size
-        float step = 100.0f / activeTicks;
+        float step = MaxWaveValue / activeTicks;
 
         // Update waveform value
         _waveValue += step;
-        if (_waveValue >= 100.0f) {
+        if (_waveValue >= MaxWaveValue) {
             _waveValue = 0.0f;
             // Adjust for inactive period
             _waveActive = false;
@@ -465,7 +466,7 @@ void Output::GenerateSawtoothWave(int PPQN) {
 void Output::GenerateRandomWave(int PPQN) {
     if (_waveActive) {
         // Generate white noise waveform
-        _waveValue = random(101); // Random value between 0 and 100
+        _waveValue = random(MaxWaveValue + 1); // Random value
         _isPulseOn = true;
         _randomTickCounter++;
     }
@@ -476,10 +477,10 @@ void Output::GenerateSmoothRandomWave(int PPQN) {
     if (_waveActive) {
         // Generate smooth random waveform with smooth peaks and valleys
         static float phase = 0.0f;
-        static float frequency = 0.3f;    // Adjust frequency for smoothness
-        static float amplitude = 50.0f;   // Amplitude for wave value range (0 to 100)
-        static float lastValue = 50.0f;   // Last generated value
-        static float smoothValue = 50.0f; // Smoothed value
+        static float frequency = 0.3f;             // Adjust frequency for smoothness
+        static float amplitude = MaxWaveValue / 2; // Amplitude for wave value range
+        static float lastValue = MaxWaveValue / 2; // Last generated value
+        static float smoothValue = 50.0f;          // Smoothed value
 
         // Increment phase
         phase += frequency;
@@ -487,7 +488,7 @@ void Output::GenerateSmoothRandomWave(int PPQN) {
         // Generate smooth random value using a random walk
         float randomStep = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 2.0f; // Random step between -1 and 1
         lastValue += randomStep * amplitude * frequency;                          // Adjust step size by amplitude and frequency
-        lastValue = fmin(fmax(lastValue, 0.0f), 100.0f);                          // Clamp value between 0 and 100
+        lastValue = fmin(fmax(lastValue, 0.0f), MaxWaveValue);                    // Clamp value
 
         // Apply a low-pass filter to smooth out the waveform
         float alpha = 0.01f; // Smoothing factor (0 < alpha < 1)
@@ -514,7 +515,7 @@ void Output::GenerateExpEnvelope(int PPQN) {
 
         // Calculate decay factor for the exponential decay
         float k = 6.90776f / decayTicks; // ln(100) ≈ 4.60517, total decay over decayTicks
-        _waveValue = 100.0f * exp(-k * _envTickCounter);
+        _waveValue = MaxWaveValue * exp(-k * _envTickCounter);
 
         _envTickCounter++;
         _isPulseOn = true;
@@ -538,7 +539,7 @@ void Output::GenerateLogEnvelope(int PPQN) {
         float decayFactor = log10(decayTicks - _envTickCounter + 1) / log10(decayTicks + 1);
 
         // Update waveform value
-        _waveValue = decayFactor * 100.0f; // Scale to 0-100%
+        _waveValue = decayFactor * MaxWaveValue; // Scale to 0-100%
 
         _envTickCounter++;
         _isPulseOn = true;
@@ -576,10 +577,10 @@ int Output::GetOutputLevel() {
     } else {
         int adjustedLevel;
         switch (_waveformType) {
-        case WaveformType::Square:
-            adjustedLevel = _isPulseOn ? (_level + _offset) : _offset;
-            adjustedLevel = constrain(adjustedLevel, 0, 100);
-            return adjustedLevel * MaxDACValue / 100;
+        case WaveformType::Square:;
+            adjustedLevel = _isPulseOn ? (MaxWaveValue * (_level / 100) + _offset) : _offset;
+            adjustedLevel = constrain(adjustedLevel, 0, MaxWaveValue);
+            return adjustedLevel * MaxDACValue / MaxWaveValue;
         case WaveformType::Triangle:
         case WaveformType::Sine:
         case WaveformType::Parabolic:
@@ -589,8 +590,8 @@ int Output::GetOutputLevel() {
         case WaveformType::ExpEnvelope:
         case WaveformType::LogEnvelope:
             // Take into account the wave value and the _level and _offset values
-            adjustedLevel = _isPulseOn ? constrain((_waveValue * _level) / 100 + _offset, 0, 100) : _offset;
-            return adjustedLevel * MaxDACValue / 100;
+            adjustedLevel = _isPulseOn ? constrain((_waveValue * (MaxWaveValue * (_level / 100) + _offset)) / MaxWaveValue + _offset, 0, MaxWaveValue) : _offset;
+            return adjustedLevel * MaxDACValue / MaxWaveValue;
         default:
             return 0;
         }
