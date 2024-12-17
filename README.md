@@ -12,6 +12,7 @@ This project currently provides the following modules:
 
 - [ClockForge](./firmware-CLK/) - A Clock Generator with multiple features like tap tempo, clock division, Euclidean rhythm and more.
 - [NoteSmith](./firmware-DQ/) - A Dual Quantizer with selectable scales and root notes for each channel, octave shift and envelopes.
+- [ForgeView](./firmware-SCP/) - A scope visualizer with dual-trace, trigger and more.
 
 Modules can also be found on ModularGrid:
 
@@ -42,6 +43,7 @@ Power supply can be select from an on-board jumper where closing the the SEL wit
 | Hardware             |    ✅    |
 | Clock Generator      |    ✅    |
 | Dual Quantizer       |    ✅    |
+| Scope                |    ✅    |
 | Sequencer            |    ❎    |
 | Generative Sequencer |    ❎    |
 
@@ -87,10 +89,10 @@ Pinout Diagram:
 - 1 - Trigger / Clock Input
 - 2 - CV In 1
 - 3 - CV In 2
-- 4 - Trigger Out 1
-- 5 - Trigger Out 2
-- 6 - CV Out 1 (Internal DAC)
-- 7 - CV Out 2 (External DAC)
+- 4 - Digital Out 1
+- 5 - Digital Out 2
+- 6 - Analog Out 1 (Internal DAC)
+- 7 - Analog Out 2 (External DAC)
 
 ## Assembly
 
