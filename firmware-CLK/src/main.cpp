@@ -21,7 +21,6 @@
 // Configuration
 #define PPQN 192
 #define MAXDAC 4095
-#define NUM_INPUTS 2
 
 #define OLED_ADDRESS 0x3C
 #define SCREEN_WIDTH 128
@@ -361,7 +360,7 @@ void HandleEncoderClick() {
                     p.phaseShift[i] = outputs[i].GetPhase();
                     p.waveformType[i] = int(outputs[i].GetWaveformType());
                 }
-                for (int i = 0; i < NUM_INPUTS; i++) {
+                for (int i = 0; i < NUM_CV_INS; i++) {
                     p.CVInputTarget[i] = CVInputTarget[i];
                     p.CVInputAttenuation[i] = CVInputAttenuation[i];
                     p.CVInputOffset[i] = CVInputOffset[i];
