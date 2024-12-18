@@ -803,10 +803,11 @@ void HandleDisplay() {
         int menuIdx = 1;
         int itemAmount = 2;
         if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
-            display.setCursor(10, 0);
+            String s = String(BPM) + "BPM";
             display.setTextSize(3);
-            display.print(BPM);
-            display.print("BPM");
+            // Centralize the BPM display
+            display.setCursor((SCREEN_WIDTH - (s.length() * 18)) / 2, 0);
+            display.print(s);
             if (usingExternalClock) {
                 display.setTextSize(1);
                 display.setCursor(120, 24);
@@ -838,19 +839,20 @@ void HandleDisplay() {
             display.setTextSize(1);
             for (int i = 0; i < NUM_OUTPUTS; i++) {
                 if (outputs[i].GetOutputState()) {
-                    display.fillRect((i * 30) + 14, 46, 8, 8, WHITE);
-                    display.setCursor((i * 30) + 16, 46);
+                    display.fillRect((i * 30) + 14, 46, 9, 9, WHITE);
+                    display.setCursor((i * 30) + 16, 47);
                     display.setTextColor(BLACK);
                     display.print(i + 1);
                 } else {
-                    display.drawRect((i * 30) + 14, 46, 8, 8, WHITE);
-                    display.setCursor((i * 30) + 16, 46);
+                    display.drawRect((i * 30) + 14, 46, 9, 9, WHITE);
+                    display.setCursor((i * 30) + 16, 47);
                     display.setTextColor(WHITE);
                     display.print(i + 1);
                 }
                 display.setTextColor(WHITE);
-                display.setCursor((i * 30) + 14, 56);
-                display.print(outputs[i].GetDividerDescription());
+                String s = outputs[i].GetDividerDescription();
+                display.setCursor((i * 30) + 13 + (6 - (s.length() * 3)), 56);
+                display.print(s);
             }
             RedrawDisplay();
             return;
@@ -993,7 +995,7 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("RT:");
+            display.print("RO:");
             display.print(String(outputs[euclideanOutput].GetEuclideanRotation()));
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
@@ -1002,7 +1004,7 @@ void HandleDisplay() {
             }
 
             display.setCursor(50, yPosition);
-            display.print("PD:");
+            display.print("PAD:");
             display.print(String(outputs[euclideanOutput].GetEuclideanPadding()));
             if (menuItem == menuIdx + 5 && menuMode == 0) {
                 display.drawTriangle(42, yPosition - 1, 42, yPosition + 7, 46, yPosition + 3, 1);

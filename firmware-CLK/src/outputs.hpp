@@ -613,6 +613,9 @@ void Output::SetEuclideanSteps(int steps) {
     if (_euclideanParams.triggers > _euclideanParams.steps) {
         _euclideanParams.triggers = _euclideanParams.steps;
     }
+    if (_euclideanParams.pad > MaxEuclideanSteps - _euclideanParams.steps) {
+        _euclideanParams.pad = MaxEuclideanSteps - _euclideanParams.steps;
+    }
     if (_euclideanParams.enabled) {
         GeneratePattern(_euclideanParams, _euclideanRhythm);
     }
