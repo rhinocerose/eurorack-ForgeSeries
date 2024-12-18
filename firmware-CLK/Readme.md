@@ -32,7 +32,7 @@ The right side of the screen shows a navigation line to indicate the current pos
 
 Whenever a parameter is changed, a small circle will be shown in the top-left corner of the screen. This indicates that the current settings were modified and not saved.
 
-Expect some glitches in waveform generation when changing parameters. The module will stabilize right after the parameter is set.
+Due to encoder reads and screen update, expect some glitches in timing and waveform generation when changing parameters. The module will stabilize right after the parameter is set.
 
 ### Global Parameters
 
@@ -159,7 +159,7 @@ Outputs 3 and 4 can output CV values so they support setting the output level an
 
 Outputs 3 and 4 can output waveforms different from square.
 
-The module supports outputting square, triangle, sawtooth, sine and parabolic waveforms. In addition these outputs can generate an exponential envelope, logarithm envelope, random signals and smooth random waveforms.
+The module supports outputting square, triangle, sawtooth, sine and parabolic waveforms. In addition these outputs can generate an exponential envelope, logarithm envelope, random signals, smooth random waveforms and Sample & Hold signals where a new value is generated at each pulse.
 
 The duty cycle parameter, level and offset can also be used to adjust the waveform shape as explained above.
 

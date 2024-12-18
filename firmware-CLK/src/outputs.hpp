@@ -20,8 +20,9 @@ enum WaveformType {
     LogEnvelope,
     Random,
     SmoothRandom,
+    SampleHold
 };
-String WaveformTypeDescriptions[] = {"Square", "Triangle", "Sine", "Parabolic", "Sawtooth", "ExpEnvelope", "LogEnvelope", "Random", "SmoothRdn"};
+String WaveformTypeDescriptions[] = {"Square", "Triangle", "Sine", "Parabolic", "Sawtooth", "ExpEnvelope", "LogEnvelope", "Random", "SmoothRdn", "S&H"};
 int WaveformTypeLength = sizeof(WaveformTypeDescriptions) / sizeof(WaveformTypeDescriptions[0]);
 
 class Output {
@@ -172,6 +173,7 @@ class Output {
     void GenerateSmoothRandomWave(int);
     void GenerateExpEnvelope(int);
     void GenerateLogEnvelope(int);
+    void GenerateSampleHold(int);
 };
 
 // Constructor
@@ -272,6 +274,9 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         case WaveformType::LogEnvelope:
             GenerateLogEnvelope(PPQN);
             break;
+        case WaveformType::SampleHold:
+            GenerateSampleHold(PPQN);
+            break;
         default:
             // For square wave or other types
             break;
@@ -305,6 +310,8 @@ void Output::StartWaveform() {
         break;
     case WaveformType::Random:
     case WaveformType::SmoothRandom:
+    case WaveformType::SampleHold:
+        _randomTickCounter = 0;
     default:
         SetPulse(true);
         break;
@@ -342,6 +349,7 @@ void Output::StopWaveform() {
     case WaveformType::Sawtooth:
     case WaveformType::Sine:
     case WaveformType::Parabolic:
+    case WaveformType::SampleHold:
     default:
         SetPulse(false);
         break;
@@ -546,6 +554,18 @@ void Output::GenerateLogEnvelope(int PPQN) {
     }
 }
 
+// Generate a Sample and Hold waveform where on each pulse, a random value is generated
+void Output::GenerateSampleHold(int PPQN) {
+    if (_waveActive) {
+        // Generate a random value at the start of each pulse
+        if (_randomTickCounter == 0) {
+            _waveValue = random(MaxWaveValue + 1);
+        }
+        _isPulseOn = true;
+        _randomTickCounter++;
+    }
+}
+
 // Check if the pulse state has changed
 bool Output::HasPulseChanged() {
     bool pulseChanged = (_isPulseOn != _lastPulseState);
@@ -572,29 +592,20 @@ void Output::ToggleMasterState() {
 
 // Output Level based on the output type and pulse state
 int Output::GetOutputLevel() {
+    float adjustedLevel;
     if (_outputType == OutputType::DigitalOut) {
         return _isPulseOn ? HIGH : LOW;
     } else {
-        int adjustedLevel;
-        switch (_waveformType) {
-        case WaveformType::Square:;
-            adjustedLevel = _isPulseOn ? (MaxWaveValue * (_level / 100) + _offset) : _offset;
+        if (_waveformType == WaveformType::Square) {
+            adjustedLevel = _isPulseOn ? (MaxWaveValue * (_level / 100.0)) + ((_offset / 100.0) * MaxWaveValue) : _offset;
             adjustedLevel = constrain(adjustedLevel, 0, MaxWaveValue);
-            return adjustedLevel * MaxDACValue / MaxWaveValue;
-        case WaveformType::Triangle:
-        case WaveformType::Sine:
-        case WaveformType::Parabolic:
-        case WaveformType::Sawtooth:
-        case WaveformType::Random:
-        case WaveformType::SmoothRandom:
-        case WaveformType::ExpEnvelope:
-        case WaveformType::LogEnvelope:
+        } else {
             // Take into account the wave value and the _level and _offset values
-            adjustedLevel = _isPulseOn ? constrain((_waveValue * (MaxWaveValue * (_level / 100) + _offset)) / MaxWaveValue + _offset, 0, MaxWaveValue) : _offset;
-            return adjustedLevel * MaxDACValue / MaxWaveValue;
-        default:
-            return 0;
+            adjustedLevel = _waveValue * (_level / 100.0) + (_offset / 100.0) * MaxWaveValue;
+            adjustedLevel = constrain(adjustedLevel, 0, MaxWaveValue);
+            adjustedLevel = _isPulseOn ? adjustedLevel : _offset;
         }
+        return adjustedLevel * MaxDACValue / MaxWaveValue;
     }
 }
 
