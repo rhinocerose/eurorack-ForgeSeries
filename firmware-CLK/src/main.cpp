@@ -147,11 +147,12 @@ int menuItems = 54;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 1;
-int menuMode = 0;            // Menu mode for parameter editing
-bool displayRefresh = 1;     // Display refresh flag
-bool unsavedChanges = false; // Unsaved changes flag
-int euclideanOutput = 0;     // Euclidean rhythm output index
-int saveSlot = 0;            // Save slot index
+int menuMode = 0;                    // Menu mode for parameter editing
+bool displayRefresh = 1;             // Display refresh flag
+bool unsavedChanges = false;         // Unsaved changes flag
+int euclideanOutput = 0;             // Euclidean rhythm output index
+int saveSlot = 0;                    // Save slot index
+unsigned long lastEncoderUpdate = 0; // Last encoder update time
 
 // Function prototypes
 void UpdateBPM(unsigned int);
@@ -178,6 +179,7 @@ void HandleEncoderClick() {
     oldSwitchState = switchState;
     switchState = digitalRead(ENCODER_SW);
     if (switchState == 1 && oldSwitchState == 0) {
+        lastEncoderUpdate = millis();
         displayRefresh = 1;
         if (menuMode == 0) {
             switch (menuItem) {
@@ -441,6 +443,7 @@ void HandleEncoderPosition() {
         UpdateSpeedFactor();
         oldPosition = newPosition;
         displayRefresh = 1;
+        lastEncoderUpdate = millis();
         switch (menuMode) {
         case 0:
             menuItem = (menuItem - 1 < 1) ? menuItems : menuItem - 1;
@@ -604,6 +607,7 @@ void HandleEncoderPosition() {
         UpdateSpeedFactor();
         oldPosition = newPosition;
         displayRefresh = 1;
+        lastEncoderUpdate = millis();
         switch (menuMode) {
         case 0:
             menuItem = (menuItem + 1 > menuItems) ? 1 : menuItem + 1;
@@ -1298,6 +1302,13 @@ void HandleDisplay() {
             RedrawDisplay();
             return;
         }
+    }
+
+    // If more than 5 seconds have passed, return to the main screen
+    if (millis() - lastEncoderUpdate > 5000 && menuItem != 1 && menuItem != 2 && menuMode == 0) {
+        menuItem = 2;
+        menuMode = 0;
+        displayRefresh = 1;
     }
 }
 
