@@ -9,7 +9,6 @@
 
 // Load local libraries
 #include "boardIO.cpp"
-#include "calibrate_ADC.cpp"
 #include "loadsave.cpp"
 #include "pinouts.hpp"
 #include "quantizer.cpp"
@@ -17,6 +16,12 @@
 #include "splash.hpp"
 #include "version.hpp"
 
+// ADC Calibration settings
+const int ADC_THRESHOLD = 5; // Threshold for ADC stability
+// float ADCCal[2] = {1.026, 1.026}; // ADC readings for the channels
+// int ADCOffset[2] = {25, 25};      // ADC offset for the channels
+float ADCCal[2] = {1.0180, 1.0180}; // ADC readings for the channels
+int ADCOffset[2] = {23, 23};        // ADC offset for the channels
 ////////////////////////////////////////////
 
 #define OLED_ADDRESS 0x3C
@@ -509,22 +514,20 @@ void HandleOLED() {
     }
 }
 
-const int NUM_SAMPLES = 4;        // Number of samples to average
-const int DEBOUNCE_THRESHOLD = 5; // Threshold for debounce
 void AdjustADCReadings(int CV_IN_PIN, int ch) {
-    long sum = 0;
-    for (int i = 0; i < NUM_SAMPLES; i++) {
-        sum += analogRead(CV_IN_PIN);
-    }
-    int averageReading = sum / NUM_SAMPLES;
-
     // Apply calibration
-    float calibratedReading = (averageReading - offsetScale[ch][0]) / (1 - offsetScale[ch][1]);
+    float calibratedReading = max((analogRead(CV_IN_PIN) - ADCOffset[ch]) * ADCCal[ch], 0.0f);
 
-    // Debounce the reading
-    if (abs(calibratedReading - channelADC[ch]) > DEBOUNCE_THRESHOLD) {
-        channelADC[ch] = calibratedReading;
+    // Wait for the ADC to stabilize for a few readings
+    for (int count = 0; count < 10; count++) {
+        float newReading = max((analogRead(CV_IN_PIN) - ADCOffset[ch]) * ADCCal[ch], 0.0f);
+        if (abs(calibratedReading - newReading) <= ADC_THRESHOLD) {
+            break;
+        }
+        calibratedReading = newReading;
     }
+
+    channelADC[ch] = calibratedReading;
 }
 
 void HandleInputs() {
@@ -630,31 +633,6 @@ void setup() {
     // OLED initialize
     display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS, false, true);
     display.clearDisplay();
-
-    // Check if encoder is pressed during startup to enter calibration mode
-    if (digitalRead(ENCODER_SW) == LOW) {
-        CalibrateADC(display, offsetScale);
-    }
-
-    LoadCalibration(offsetScale);
-    // Check if the calibration values are valid (not zero)
-    if (offsetScale[0][0] == 0 || offsetScale[1][0] == 0) {
-        offsetScale[0][0] = 20;
-        offsetScale[0][1] = 0.001252;
-        offsetScale[1][0] = 20;
-        offsetScale[1][1] = 0.001252;
-    }
-
-    // print the calibration values to the serial monitor
-    Serial.println("Loaded calibration values:");
-    Serial.print("Ch1 - Offset: ");
-    Serial.println(offsetScale[0][0]);
-    Serial.print("Ch1 - Scale: ");
-    Serial.println(offsetScale[0][1], 6);
-    Serial.print("Ch2 - Offset: ");
-    Serial.println(offsetScale[1][0]);
-    Serial.print("Ch2 - Scale: ");
-    Serial.println(offsetScale[1][1], 6);
 
     display.clearDisplay();
     display.drawBitmap(30, 0, VFM_Splash, 68, 64, 1);

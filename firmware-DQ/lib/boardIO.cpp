@@ -51,12 +51,14 @@ void MCP(int MCP_OUT) {
 }
 
 void DACWrite(int pin, int value) {
-    if (pin == 1) // Internal DAC
-    {
+    value = constrain(value, 0, 4095);
+    switch (pin) {
+    case 1:
         InternalDAC(value);
-    } else if (pin == 2) // MCP DAC
-    {
+        break;
+    case 2:
         MCP(value);
+        break;
     }
 }
 
@@ -81,17 +83,18 @@ void PWMWrite(int pin, int value) {
 
 // Set the output pins to HIGH or LOW
 void SetPin(int pin, int value) {
-    if (pin == 0) // Gate Output 1
-    {
+    switch (pin) {
+    case 0:
         value ? digitalWrite(OUT_PIN_1, LOW) : digitalWrite(OUT_PIN_1, HIGH);
-    } else if (pin == 1) // Gate Output 2
-    {
+        break;
+    case 1:
         value ? digitalWrite(OUT_PIN_2, LOW) : digitalWrite(OUT_PIN_2, HIGH);
-    } else if (pin == 2) // Internal DAC Output
-    {
+        break;
+    case 2:
         value ? InternalDAC(4095) : InternalDAC(0);
-    } else if (pin == 3) // MCP DAC Output
-    {
+        break;
+    case 3:
         value ? MCP(4095) : MCP(0);
+        break;
     }
 }
