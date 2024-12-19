@@ -10,13 +10,17 @@
 
 // Load local libraries
 #include "boardIO.cpp"
-#include "calibrate_ADC.cpp"
 #include "definitions.hpp"
 #include "loadsave.cpp"
 #include "outputs.hpp"
 #include "pinouts.hpp"
 #include "splash.hpp"
 #include "version.hpp"
+
+// ADC Calibration settings
+const int ADC_THRESHOLD = 5;        // Threshold for ADC stability
+float ADCCal[2] = {1.0180, 1.0180}; // ADC readings for the channels
+int ADCOffset[2] = {23, 23};        // ADC offset for the channels
 
 // Configuration
 #define PPQN 192
@@ -1305,7 +1309,7 @@ void HandleDisplay() {
     }
 
     // If more than 5 seconds have passed, return to the main screen
-    if (millis() - lastEncoderUpdate > 5000 && menuItem != 1 && menuItem != 2 && menuMode == 0) {
+    if (millis() - lastEncoderUpdate > 7000 && menuItem != 1 && menuItem != 2 && menuMode == 0) {
         menuItem = 2;
         menuMode = 0;
         displayRefresh = 1;
@@ -1351,12 +1355,18 @@ void SetMasterState(bool state) {
     }
 }
 
+// Adjust the ADC readings
+void AdjustADCReadings(int CV_IN_PIN, int ch) {
+    // Apply calibration
+    float calibratedReading = max((analogRead(CV_IN_PIN) - ADCOffset[ch]) * ADCCal[ch], 0.0f);
+    channelADC[ch] = calibratedReading;
+}
+
 void HandleCVInputs() {
     for (int i = 0; i < NUM_CV_INS; i++) {
         oldChannelADC[i] = channelADC[i];
-        long read = analogRead(CV_IN_PINS[i]);
-        float calibratedReading = (read - offsetScale[i][0]) / (1 - offsetScale[i][1]);
-        ONE_POLE(channelADC[i], calibratedReading, 0.5f);
+        AdjustADCReadings(CV_IN_PINS[i], i);
+        ONE_POLE(channelADC[i], oldChannelADC[i], 0.5f);
         if (abs(channelADC[i] - oldChannelADC[i]) > 10) {
             HandleCVTarget(i, channelADC[i], CVInputTarget[i]);
         }
@@ -1364,7 +1374,7 @@ void HandleCVInputs() {
 }
 
 unsigned long lastDisplayUpdateTime = 0;
-bool lastResetState = false;
+volatile bool lastResetState = false;
 // Handle the CV target based on the CV value
 void HandleCVTarget(int ch, float CVValue, CVTarget cvTarget) {
     // Attenuate and offset the CVValue
@@ -1475,11 +1485,11 @@ void HandleCVTarget(int ch, float CVValue, CVTarget cvTarget) {
         outputs[3].SetDutyCycle(map(CVValue, 0, MAXDAC, 0, 100));
         break;
     }
-    // // Update the display if the CV target is not None
-    if (cvTarget != CVTarget::None && menuMode == 0 && millis() - lastDisplayUpdateTime > 1000) {
-        displayRefresh = 1;
-        lastDisplayUpdateTime = millis();
-    }
+    // Update the display if the CV target is not None
+    // if (cvTarget != CVTarget::None && menuMode == 0 && millis() - lastDisplayUpdateTime > 1000) {
+    //     displayRefresh = 1;
+    //     lastDisplayUpdateTime = millis();
+    // }
 }
 
 // External clock interrupt service routine
@@ -1539,12 +1549,10 @@ void UpdateBPM(unsigned int newBPM) {
 }
 
 void HandleOutputs() {
-    noInterrupts();
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         // Set the output level based on the pulse state
         SetPin(i, outputs[i].GetOutputLevel());
     }
-    interrupts();
 }
 
 void ClockPulse() { // Inside the interrupt
@@ -1604,29 +1612,6 @@ void setup() {
     Wire.setClock(1000000);
     display.clearDisplay();
     display.setTextWrap(false);
-
-    // Check if encoder is pressed during startup to enter calibration mode
-    if (digitalRead(ENCODER_SW) == LOW) {
-        CalibrateADC(display, offsetScale);
-    }
-
-    LoadCalibration(offsetScale);
-    // Check if the calibration values are valid (not zero)
-    if (offsetScale[0][0] == 0 && offsetScale[1][0] == 0 && offsetScale[0][1] == 0 && offsetScale[1][1] == 0) {
-        offsetScale[0][0] = 20;
-        offsetScale[0][1] = 0.001252;
-        offsetScale[1][0] = 20;
-        offsetScale[1][1] = 0.001252;
-    }
-    Serial.println("Calibration values: ");
-    Serial.print("CV1 Offset: ");
-    Serial.print(offsetScale[0][0], 6);
-    Serial.print(" Scale: ");
-    Serial.println(offsetScale[0][1], 6);
-    Serial.print("CV2 Offset: ");
-    Serial.print(offsetScale[1][0], 6);
-    Serial.print(" Scale: ");
-    Serial.println(offsetScale[1][1], 6);
 
     display.clearDisplay();
     display.drawBitmap(30, 0, VFM_Splash, 68, 64, 1);
