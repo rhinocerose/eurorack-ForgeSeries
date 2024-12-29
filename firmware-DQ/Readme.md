@@ -1,6 +1,6 @@
 # NoteSmith - A Dual Quantizer Eurorack Module
 
-![Logo](./Logo.png)
+![Logo](./Logo-DQ.png)
 
 ## Introduction
 
