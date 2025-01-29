@@ -1,6 +1,6 @@
 ## Getting Started
 
-If you want to build the module, check the [main repository](https://github.com/carlosedp/Eurorack-Modules) where the schematics and PCBs are available.
+If you want to build the module, check the [main repository](https://github.com/VoltageFoundryMod/ForgeSeries) where the schematics and PCBs are available.
 
 ### Prerequisites
 
@@ -11,13 +11,13 @@ Assembly of the DIY module with PCBs, BOM and Schematic from the main repository
 1. Clone the repository:
 
     ```sh
-    git clone https://github.com/carlosedp/Eurorack-Modules
+    git clone https://github.com/VoltageFoundryMod/ForgeSeries
     ```
 
 2. Navigate to the project directory:
 
     ```sh
-    cd firmware-DQ
+    cd firmware-???
     ```
 
 3. Open the project using VSCode and PlatformIO extension

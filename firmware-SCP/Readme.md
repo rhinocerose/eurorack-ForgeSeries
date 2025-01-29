@@ -6,9 +6,11 @@
 
 ForgeView provides a simple oscilloscope for Eurorack systems. It can be used to visualize waveforms and signals in your modular system. The module has a 0.96" OLED display and can be used to visualize waveforms from LFOs, envelopes, oscillators, filters, and other signals in your system.
 
+Part of the **Forge** series of modules which share a single hardware platform.
+
 <!-- <img src="./images/Front.jpg" alt="Logo" style="width:20%"/> -->
 
-<!-- [ModularGrid]([https://](https://modulargrid.net/e/other-unknown-clockforge-by-voltage-foundry-modular)) -->
+[ModularGrid](https://modulargrid.net/e/modules/view/52717)
 
 ## Features
 
@@ -42,7 +44,7 @@ The signals from IN1 will be copied in a S&H to OUT1 and the signals from IN2 wi
 
 ## Firmware Update
 
-1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules/releases). The firmware file is named `CURRENT.UF2`.
+1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/VoltageFoundryMod/ForgeSeries/releases). The firmware file is named `CURRENT.UF2`.
 2. Connect the module to your computer using a USB-C cable. The CPU can be removed from the module as it's socketed to the main board. Firmware loading can be done with the CPU removed.
 3. Use tweezers or a jumper wire to quickly short TWICE the two pads labeled `RESET` on the back of the module CPU. The orange LED will flicker and light up.
 4. Copy and overwrite the `CURRENT.UF2` file to the module USB drive named "Seeed XIAO" that will appear. After copy is finished, the module will reboot and the new firmware will be loaded.
@@ -69,7 +71,7 @@ The module can be powered by either 12V or 5V if your power supply supports it. 
 
 ## Contact
 
-For support and inquiries, please open an issue on the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules).
+For support and inquiries, please open an issue on the [GitHub repository](https://github.com/VoltageFoundryMod/ForgeSeries).
 
 ## Development
 

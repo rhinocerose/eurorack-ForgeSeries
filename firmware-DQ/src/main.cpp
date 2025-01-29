@@ -643,7 +643,7 @@ void setup() {
     display.setTextSize(2);
     display.setTextColor(WHITE);
     display.setCursor(10, 20);
-    display.print("NoteSmith");
+    display.print("NoteForge");
     display.setTextSize(1);
     display.setCursor(80, 54);
     display.print("V" VERSION);

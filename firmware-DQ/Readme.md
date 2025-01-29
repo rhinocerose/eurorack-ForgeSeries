@@ -1,10 +1,12 @@
-# NoteSmith - A Dual Quantizer Eurorack Module
+# NoteForge - A Dual Quantizer Eurorack Module
 
 ![Logo](./Logo-DQ.png)
 
 ## Introduction
 
-NoteSmith is a versatile tool designed to quantize analog control voltages (CV) into musical notes. It features two independent quantizers, each capable of processing input CV signals and outputting quantized CV signals corresponding to musical notes. The module supports various scales and allows for customization of attack and decay envelopes, sync modes, octave shifts, and sensitivity settings.
+NoteForge is a versatile tool designed to quantize analog control voltages (CV) into musical notes. It features two independent quantizers, each capable of processing input CV signals and outputting quantized CV signals corresponding to musical notes. The module supports various scales and allows for customization of attack and decay envelopes, sync modes, octave shifts, and sensitivity settings.
+
+Part of the **Forge** series of modules which share a single hardware platform.
 
 ## Features
 
@@ -119,7 +121,7 @@ It's required to re-calibrate the module everytime the firmware is updated.
 
 ## Firmware Update
 
-1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules/releases). The firmware file is named `CURRENT.UF2`.
+1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/VoltageFoundryMod/ForgeSeries/releases). The firmware file is named `CURRENT.UF2`.
 2. Connect the module to your computer using a USB-C cable. The CPU can be removed from the module as it's socketed to the main board. Firmware loading can be done with the CPU removed.
 3. Use tweezers or a jumper wire to quickly short TWICE the two pads labeled `RESET` on the back of the module CPU. The orange LED will flicker and light up.
 4. Copy and overwrite the `CURRENT.UF2` file to the module USB drive named "Seeed XIAO" that will appear. After copy is finished, the module will reboot and the new firmware will be loaded.
@@ -152,7 +154,7 @@ The module can be powered by either 12V or 5V if your power supply supports it. 
 
 ## Contact
 
-For support and inquiries, please open an issue on the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules).
+For support and inquiries, please open an issue on the [GitHub repository](https://github.com/VoltageFoundryMod/ForgeSeries).
 
 ## Development
 

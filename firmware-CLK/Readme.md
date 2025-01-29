@@ -6,6 +6,8 @@
 
 ClockForge provides clock signals and waves for synchronizing and modulating other modules in your Eurorack system. It features a global BPM control, multiple clock outputs, adjustable clock multiplication and division per output, tap tempo functionality, sync to external clock sources, Euclidean rhythm generation, and custom swing patterns per output.
 
+Part of the **Forge** series of modules which share a single hardware platform.
+
 <img src="./images/Front.jpg" alt="Logo" style="width:20%"/>
 
 [ModularGrid]([https://](https://modulargrid.net/e/other-unknown-clockforge-by-voltage-foundry-modular))
@@ -210,7 +212,7 @@ The module works with external clocks from 30 to 300 BPM. Due to timer resolutio
 
 ## Firmware Update
 
-1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules/releases). The firmware file is named `CURRENT.UF2`.
+1. Download the latest firmware from the Releases section of the [GitHub repository](https://github.com/VoltageFoundryMod/ForgeSeries/releases). The firmware file is named `CURRENT.UF2`.
 2. Connect the module to your computer using a USB-C cable. The CPU can be removed from the module as it's socketed to the main board. Firmware loading can be done with the CPU removed.
 3. Use tweezers or a jumper wire to quickly short TWICE the two pads labeled `RESET` on the back of the module CPU. The orange LED will flicker and light up.
 4. Copy and overwrite the `CURRENT.UF2` file to the module USB drive named "Seeed XIAO" that will appear. After copy is finished, the module will reboot and the new firmware will be loaded.
@@ -238,7 +240,7 @@ The module can be powered by either 12V or 5V if your power supply supports it. 
 
 ## Contact
 
-For support and inquiries, please open an issue on the [GitHub repository](https://github.com/carlosedp/Eurorack-Modules).
+For support and inquiries, please open an issue on the [GitHub repository](https://github.com/VoltageFoundryMod/ForgeSeries).
 
 ## Development
 
@@ -246,7 +248,7 @@ If you want to build and developt for the module, check [this file](Building-Dev
 
 ## Acknowledgements
 
-Parts of the code are inspired by Hagiwo's and Quinienl's [LittleBen](https://github.com/Quinienl/LittleBen-Firmware) code.
+Parts of the code are inspired by Hagiwo code, Quinienl's [LittleBen](https://github.com/Quinienl/LittleBen-Firmware) and Pamela's Workout.
 Thanks for the inspiration!
 
 ## License
