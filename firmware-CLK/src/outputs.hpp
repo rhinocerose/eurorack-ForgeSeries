@@ -18,11 +18,23 @@ enum WaveformType {
     Sawtooth,
     ExpEnvelope,
     LogEnvelope,
-    Random,
-    SmoothRandom,
-    SampleHold
+    Noise,
+    SmoothNoise,
+    SampleHold,
 };
-String WaveformTypeDescriptions[] = {"Square", "Triangle", "Sine", "Parabolic", "Sawtooth", "ExpEnvelope", "LogEnvelope", "Random", "SmoothRdn", "S&H"};
+
+String WaveformTypeDescriptions[] = {
+    "Square",
+    "Triangle",
+    "Sine",
+    "Parabolic",
+    "Sawtooth",
+    "ExpEnvelope",
+    "LogEnvelope",
+    "Noise",
+    "SmoothNoise",
+    "S&H",
+};
 int WaveformTypeLength = sizeof(WaveformTypeDescriptions) / sizeof(WaveformTypeDescriptions[0]);
 
 class Output {
@@ -169,8 +181,8 @@ class Output {
     void GenerateSineWave(int);
     void GenerateParabolicWave(int);
     void GenerateSawtoothWave(int);
-    void GenerateRandomWave(int);
-    void GenerateSmoothRandomWave(int);
+    void GenerateNoiseWave(int);
+    void GenerateSmoothNoiseWave(int);
     void GenerateExpEnvelope(int);
     void GenerateLogEnvelope(int);
     void GenerateSampleHold(int);
@@ -262,11 +274,11 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         case WaveformType::Sawtooth:
             GenerateSawtoothWave(PPQN);
             break;
-        case WaveformType::Random:
-            GenerateRandomWave(PPQN);
+        case WaveformType::Noise:
+            GenerateNoiseWave(PPQN);
             break;
-        case WaveformType::SmoothRandom:
-            GenerateSmoothRandomWave(PPQN);
+        case WaveformType::SmoothNoise:
+            GenerateSmoothNoiseWave(PPQN);
             break;
         case WaveformType::ExpEnvelope:
             GenerateExpEnvelope(PPQN);
@@ -308,8 +320,8 @@ void Output::StartWaveform() {
         _waveValue = MaxWaveValue; // Start at maximum value for envelopes
         _envTickCounter = 0;
         break;
-    case WaveformType::Random:
-    case WaveformType::SmoothRandom:
+    case WaveformType::Noise:
+    case WaveformType::SmoothNoise:
     case WaveformType::SampleHold:
         _randomTickCounter = 0;
     default:
@@ -343,8 +355,8 @@ void Output::StopWaveform() {
     case WaveformType::ExpEnvelope:
     case WaveformType::LogEnvelope:
         break;
-    case WaveformType::SmoothRandom:
-    case WaveformType::Random:
+    case WaveformType::SmoothNoise:
+    case WaveformType::Noise:
     case WaveformType::Triangle:
     case WaveformType::Sawtooth:
     case WaveformType::Sine:
@@ -471,7 +483,7 @@ void Output::GenerateSawtoothWave(int PPQN) {
 }
 
 // Generate random values
-void Output::GenerateRandomWave(int PPQN) {
+void Output::GenerateNoiseWave(int PPQN) {
     if (_waveActive) {
         // Generate white noise waveform
         _waveValue = random(MaxWaveValue + 1); // Random value
@@ -481,7 +493,7 @@ void Output::GenerateRandomWave(int PPQN) {
 }
 
 // Generate smooth random waveform
-void Output::GenerateSmoothRandomWave(int PPQN) {
+void Output::GenerateSmoothNoiseWave(int PPQN) {
     if (_waveActive) {
         // Generate smooth random waveform with smooth peaks and valleys
         static float phase = 0.0f;
