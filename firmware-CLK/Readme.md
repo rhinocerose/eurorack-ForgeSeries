@@ -177,7 +177,7 @@ They support the following:
 - AR Envelope: An Attack-Release envelope (sustain is held at max level while gate is on) with adjustable level and offset. Triggered by a CV input.
 - ADSR Envelope: An Attack-Decay-Sustain-Release envelope with adjustable level and offset. Triggered by a CV input.
 
-1. Navigate to the selected output. Click the encoder to enter edit mode.
+1. Navigate to the selected output option "Output 3/4 WAV". Click the encoder to enter edit mode.
 2. Use the encoder to select the desired waveform. The waveform will be updated in real-time.
 3. Click the encoder to exit edit mode.
 
@@ -189,9 +189,8 @@ The AD, AR and ADSR envelopes can only be triggered by CV inputs. They can have 
 
 To set an envelope generation, follow these steps:
 
-1. Navigate to the selected output on clock dividers. Click the encoder to enter edit mode. Select the last option which is "Trigger".
-2. Go to the CV Input target configuration, select which CV input will receive the gate/trigger and assign it to the Output 3/4 Env.
-3. Lastly, go to the waveform selection and choose between "AD Env", "AR Env" or "ADSR Env".
+1. Go to the waveform selection like in previous section and choose between "AD Env", "AR Env" or "ADSR Env".
+2. Then, go to CV Input target configuration, select which CV input will receive the gate/trigger and assign it to the Output 3/4 Env.
 
 Tip: You can have up to 2 envelopes running at the same time, one for each output receiving a trigger from each of the CV inputs. Each output can have a different envelope type.
 
@@ -213,6 +212,8 @@ Each input can be assigned to one of the parameters above. The CV input can be a
 3. Use the encoder to select the desired parameter to be modulated.
 4. Click the encoder to exit edit mode.
 5. Optionally, navigate to the attenuation and offset parameters for each CV input and set the desired values in a similar way.
+
+The CV target only apply to the selected parameter when the user exit the edit mode. This way a connected CV to an input does not change the scrolled parameters while the user is selecting the target.
 
 ### Save/Load Configuration
 
