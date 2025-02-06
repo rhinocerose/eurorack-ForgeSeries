@@ -118,6 +118,7 @@ String CVTargetDescription[] = {
     "Output 4 Env",
 };
 int CVTargetLength = sizeof(CVTargetDescription) / sizeof(CVTargetDescription[0]);
+CVTarget pendingCVInputTarget[NUM_CV_INS] = {CVTarget::None, CVTarget::None};
 
 // ADC input offset and scale from calibration
 float offsetScale[NUM_CV_INS][2]; // [channel][0: offset, 1: scale]
@@ -328,9 +329,15 @@ void HandleEncoderClick() {
                 menuMode = 43;
                 break;
             case 44: // CV Input 1 target
+                if (menuMode == 44) {
+                    pendingCVInputTarget[0] = CVInputTarget[0];
+                }
                 menuMode = 44;
                 break;
             case 45: // CV Input 2 target
+                if (menuMode == 45) {
+                    pendingCVInputTarget[1] = CVInputTarget[1];
+                }
                 menuMode = 45;
                 break;
             case 46: // CV Input 1 attenuation
@@ -422,6 +429,13 @@ void HandleEncoderClick() {
             }
             }
         } else {
+            // Commit changes after exiting edit mode
+            if (menuMode == 44) {
+                CVInputTarget[0] = pendingCVInputTarget[0];
+            } else if (menuMode == 45) {
+                CVInputTarget[1] = pendingCVInputTarget[1];
+            }
+            // Exit edit mode
             menuMode = 0;
         }
     }
@@ -580,23 +594,24 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 44: { // CV Input 1 target
-            CVTarget tmp = static_cast<CVTarget>((CVInputTarget[0] - 1 + CVTargetLength) % CVTargetLength);
-            if (tmp != CVInputTarget[1] || tmp == CVTarget::None) {
-                CVInputTarget[0] = tmp;
+            CVTarget tmp = static_cast<CVTarget>((pendingCVInputTarget[0] - 1 + CVTargetLength) % CVTargetLength);
+            if (tmp != pendingCVInputTarget[1] || tmp == CVTarget::None) {
+                pendingCVInputTarget[0] = tmp;
             } else {
-                CVInputTarget[0] = static_cast<CVTarget>((CVInputTarget[0] - 2 + CVTargetLength) % CVTargetLength);
+                pendingCVInputTarget[0] = static_cast<CVTarget>((pendingCVInputTarget[0] - 2 + CVTargetLength) % CVTargetLength);
             }
             break;
         }
         case 45: { // CV Input 2 target
-            CVTarget tmp = static_cast<CVTarget>((CVInputTarget[1] - 1 + CVTargetLength) % CVTargetLength);
-            if (tmp != CVInputTarget[0] || tmp == CVTarget::None) {
-                CVInputTarget[1] = tmp;
+            CVTarget tmp = static_cast<CVTarget>((pendingCVInputTarget[1] - 1 + CVTargetLength) % CVTargetLength);
+            if (tmp != pendingCVInputTarget[0] || tmp == CVTarget::None) {
+                pendingCVInputTarget[1] = tmp;
             } else {
-                CVInputTarget[1] = static_cast<CVTarget>((CVInputTarget[1] - 2 + CVTargetLength) % CVTargetLength);
+                pendingCVInputTarget[1] = static_cast<CVTarget>((pendingCVInputTarget[1] - 2 + CVTargetLength) % CVTargetLength);
             }
             break;
         }
+
         case 46: // CV Input 1 attenuation
             CVInputAttenuation[0] = constrain(CVInputAttenuation[0] - speedFactor, 0, 100);
             break;
@@ -743,21 +758,21 @@ void HandleEncoderPosition() {
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % WaveformTypeLength));
             unsavedChanges = true;
             break;
-        case 44: {
-            CVTarget tmp = static_cast<CVTarget>((CVInputTarget[0] + 1) % CVTargetLength);
-            if (tmp != CVInputTarget[1] || tmp == CVTarget::None) {
-                CVInputTarget[0] = tmp;
+        case 44: { // CV Input 1 target
+            CVTarget tmp = static_cast<CVTarget>((pendingCVInputTarget[0] + 1) % CVTargetLength);
+            if (tmp != pendingCVInputTarget[1] || tmp == CVTarget::None) {
+                pendingCVInputTarget[0] = tmp;
             } else {
-                CVInputTarget[0] = static_cast<CVTarget>((CVInputTarget[0] + 2) % CVTargetLength);
+                pendingCVInputTarget[0] = static_cast<CVTarget>((pendingCVInputTarget[0] + 2) % CVTargetLength);
             }
             break;
         }
-        case 45: {
-            CVTarget tmp = static_cast<CVTarget>((CVInputTarget[1] + 1) % CVTargetLength);
-            if (tmp != CVInputTarget[0] || tmp == CVTarget::None) {
-                CVInputTarget[1] = tmp;
+        case 45: { // CV Input 2 target
+            CVTarget tmp = static_cast<CVTarget>((pendingCVInputTarget[1] + 1) % CVTargetLength);
+            if (tmp != pendingCVInputTarget[0] || tmp == CVTarget::None) {
+                pendingCVInputTarget[1] = tmp;
             } else {
-                CVInputTarget[1] = static_cast<CVTarget>((CVInputTarget[1] + 2) % CVTargetLength);
+                pendingCVInputTarget[1] = static_cast<CVTarget>((pendingCVInputTarget[1] + 2) % CVTargetLength);
             }
             break;
         }
@@ -1216,7 +1231,8 @@ void HandleDisplay() {
             int yPosition = 20;
             display.setCursor(10, yPosition);
             display.print("CV 1: ");
-            display.print(CVTargetDescription[CVInputTarget[0]]);
+            display.print(CVTargetDescription[menuMode == 44 ? pendingCVInputTarget[0] : CVInputTarget[0]]);
+
             if (menuItem == menuIdx && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx) {
@@ -1226,7 +1242,7 @@ void HandleDisplay() {
             yPosition += 9;
             display.setCursor(10, yPosition);
             display.print("CV 2: ");
-            display.print(CVTargetDescription[CVInputTarget[1]]);
+            display.print(CVTargetDescription[menuMode == 45 ? pendingCVInputTarget[1] : CVInputTarget[1]]);
             if (menuItem == menuIdx + 1 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 1) {
