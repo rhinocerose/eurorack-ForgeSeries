@@ -225,20 +225,287 @@ class Output {
 
     unsigned long _envStartTime = 0;
 
-    // Functions
-    void StartWaveform();
-    void StopWaveform();
-    void ResetWaveform();
-    void StopWave();
-    void GenerateTriangleWave(int);
-    void GenerateSineWave(int);
-    void GenerateParabolicWave(int);
-    void GenerateSawtoothWave(int);
-    void GenerateNoiseWave(int);
-    void GenerateSmoothNoiseWave(int);
-    void GenerateExpEnvelope(int);
-    void GenerateLogEnvelope(int);
-    void GenerateSampleHold(int);
+    // -------------- Private Functions --------------
+
+    // Start the waveform generation
+    void StartWaveform() {
+        _waveActive = true;
+        switch (_waveformType) {
+        case WaveformType::Square:
+            SetPulse(true);
+            break;
+        case WaveformType::Triangle:
+        case WaveformType::Sawtooth:
+        case WaveformType::Sine:
+        case WaveformType::Parabolic:
+            if (!_externalClock) {
+                _waveValue = 0.0f;
+                _triangleWaveStep = 0.0f;
+                _sineWaveAngle = 0.0f;
+            }
+            break;
+        case WaveformType::ExpEnvelope:
+        case WaveformType::LogEnvelope:
+            _waveValue = MaxWaveValue; // Start at maximum value for envelopes
+            _envTickCounter = 0;
+            break;
+        case WaveformType::Noise:
+        case WaveformType::SmoothNoise:
+        case WaveformType::SampleHold:
+            _randomTickCounter = 0;
+        default:
+            SetPulse(true);
+            break;
+        }
+    }
+
+    // Reset the waveform values
+    void ResetWaveform() {
+        switch (_waveformType) {
+        case WaveformType::ExpEnvelope:
+        case WaveformType::LogEnvelope:
+            break;
+        default:
+            _waveActive = false;
+            _waveDirection = true;
+            _waveValue = 0.0f;
+            _triangleWaveStep = 0.0f;
+            _sineWaveAngle = 0.0f;
+        }
+    }
+
+    // Function to stop waveform generation
+    void StopWaveform() {
+        switch (_waveformType) {
+        case WaveformType::Square:
+            SetPulse(false);
+            _waveActive = false;
+            break;
+        case WaveformType::ExpEnvelope:
+        case WaveformType::LogEnvelope:
+            break;
+        case WaveformType::SmoothNoise:
+        case WaveformType::Noise:
+        case WaveformType::Triangle:
+        case WaveformType::Sawtooth:
+        case WaveformType::Sine:
+        case WaveformType::Parabolic:
+        case WaveformType::SampleHold:
+        default:
+            SetPulse(false);
+            break;
+        }
+    }
+
+    // Generate a triangle wave
+    void GenerateTriangleWave(int PPQN) {
+        if (_waveActive) {
+            float periodTicks = PPQN / _clockDividers[_dividerIndex];
+            float risingTicks = periodTicks * (_dutyCycle / 100.0f);
+            float fallingTicks = periodTicks - risingTicks;
+
+            // Calculate step sizes
+            float risingStep = MaxWaveValue / risingTicks;
+            float fallingStep = MaxWaveValue / fallingTicks;
+
+            // Update waveform value
+            if (_waveDirection) {
+                _waveValue += risingStep;
+                if (_waveValue >= MaxWaveValue) {
+                    _waveValue = MaxWaveValue;
+                    _waveDirection = false;
+                }
+            } else {
+                _waveValue -= fallingStep;
+                if (_waveValue <= 0.0f) {
+                    _waveValue = 0.0f;
+                    _waveDirection = true;
+                }
+            }
+            _isPulseOn = true;
+        }
+    }
+
+    // Generate a sine wave
+    void GenerateSineWave(int PPQN) {
+        if (_waveActive) {
+            // Calculate the period of the waveform in ticks
+            float periodInTicks = PPQN / _clockDividers[_dividerIndex];
+
+            // Calculate the angle increment per tick
+            float angleIncrement = (2.0f * PI) / periodInTicks;
+
+            // Update the angle for the sine function
+            _sineWaveAngle += angleIncrement;
+
+            // Keep the angle within 0 to 2*PI
+            if (_sineWaveAngle >= 2.0f * PI) {
+                _sineWaveAngle -= 2.0f * PI;
+            }
+
+            // Apply phase shift to align the lowest point with pulse start
+            float shiftedAngle = _sineWaveAngle + (3.0f * PI / 2.0f);
+
+            // Calculate the sine value scaled to the amplitude range
+            // Adjust the sine value based on the duty cycle
+            float sineValue = sin(shiftedAngle);
+            if (sineValue > 0) {
+                sineValue = pow(sineValue, _dutyCycle / 50.0f);
+            } else {
+                sineValue = -pow(-sineValue, _dutyCycle / 50.0f);
+            }
+            _waveValue = (sineValue * MaxWaveValue / 2) + MaxWaveValue / 2;
+
+            _isPulseOn = true;
+        }
+    }
+
+    // Generate a parabolic wave
+    void GenerateParabolicWave(int PPQN) {
+        if (_waveActive) {
+            float periodInTicks = PPQN / _clockDividers[_dividerIndex];
+            float activeTicks = periodInTicks * (_dutyCycle / 100.0f);
+            float angleIncrement = (PI) / activeTicks; // Half sine wave for duty cycle
+
+            _sineWaveAngle += angleIncrement;
+            if (_sineWaveAngle >= PI) {
+                _sineWaveAngle = 0.0f;
+                // Inactive period
+                _waveActive = false;
+                _isPulseOn = false;
+                _inactiveTickCounter = periodInTicks - activeTicks;
+            }
+
+            // Calculate sine value
+            _waveValue = sin(_sineWaveAngle) * MaxWaveValue;
+            _isPulseOn = true;
+        }
+    }
+
+    // Generate a sawtooth wave
+    void GenerateSawtoothWave(int PPQN) {
+        if (_waveActive) {
+            float periodTicks = PPQN / _clockDividers[_dividerIndex];
+            float activeTicks = periodTicks * (_dutyCycle / 100.0f);
+            float inactiveTicks = periodTicks - activeTicks;
+
+            // Calculate step size
+            float step = MaxWaveValue / activeTicks;
+
+            // Update waveform value
+            _waveValue += step;
+            if (_waveValue >= MaxWaveValue) {
+                _waveValue = 0.0f;
+                // Adjust for inactive period
+                _waveActive = false;
+                _inactiveTickCounter = inactiveTicks;
+            }
+            _isPulseOn = true;
+        } else {
+            // Handle inactive period
+            _inactiveTickCounter--;
+            if (_inactiveTickCounter <= 0) {
+                _waveActive = true;
+            }
+            _isPulseOn = false;
+        }
+    }
+
+    // Generate random values
+    void GenerateNoiseWave(int PPQN) {
+        if (_waveActive) {
+            // Generate white noise waveform
+            _waveValue = random(MaxWaveValue + 1); // Random value
+            _isPulseOn = true;
+            _randomTickCounter++;
+        }
+    }
+
+    // Generate smooth random waveform
+    void GenerateSmoothNoiseWave(int PPQN) {
+        if (_waveActive) {
+            // Generate smooth random waveform with smooth peaks and valleys
+            static float phase = 0.0f;
+            static float frequency = 0.3f;             // Adjust frequency for smoothness
+            static float amplitude = MaxWaveValue / 2; // Amplitude for wave value range
+            static float lastValue = MaxWaveValue / 2; // Last generated value
+            static float smoothValue = 50.0f;          // Smoothed value
+
+            // Increment phase
+            phase += frequency;
+
+            // Generate smooth random value using a random walk
+            float randomStep = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 2.0f; // Random step between -1 and 1
+            lastValue += randomStep * amplitude * frequency;                          // Adjust step size by amplitude and frequency
+            lastValue = fmin(fmax(lastValue, 0.0f), MaxWaveValue);                    // Clamp value
+
+            // Apply a low-pass filter to smooth out the waveform
+            float alpha = 0.01f; // Smoothing factor (0 < alpha < 1)
+            smoothValue = alpha * lastValue + (1.0f - alpha) * smoothValue;
+
+            _waveValue = smoothValue;
+
+            _isPulseOn = true;
+        }
+    }
+
+    // Generate an exponential envelope waveform
+    void GenerateExpEnvelope(int PPQN) {
+        if (_waveActive) {
+            float periodTicks = PPQN / _clockDividers[_dividerIndex];
+            float decayTicks = periodTicks * (_dutyCycle / 100.0f);
+
+            if (_envTickCounter >= decayTicks) {
+                _waveValue = 0.0f;
+                _waveActive = false;
+                _envTickCounter = 0; // Reset for the next pulse
+                return;
+            }
+
+            // Calculate decay factor for the exponential decay
+            float k = 6.90776f / decayTicks; // ln(100) ≈ 4.60517, total decay over decayTicks
+            _waveValue = MaxWaveValue * exp(-k * _envTickCounter);
+
+            _envTickCounter++;
+            _isPulseOn = true;
+        }
+    }
+
+    // Generate a logarithm envelope waveform
+    void GenerateLogEnvelope(int PPQN) {
+        if (_waveActive) {
+            float periodTicks = PPQN / _clockDividers[_dividerIndex];
+            float decayTicks = periodTicks * (_dutyCycle / 100.0f);
+
+            if (_envTickCounter >= decayTicks) {
+                _waveValue = 0.0f;
+                _waveActive = false;
+                _envTickCounter = 0; // Reset for the next pulse
+                return;
+            }
+
+            // Calculate decay factor to span the entire pulse duration
+            float decayFactor = log10(decayTicks - _envTickCounter + 1) / log10(decayTicks + 1);
+
+            // Update waveform value
+            _waveValue = decayFactor * MaxWaveValue; // Scale to 0-100%
+
+            _envTickCounter++;
+            _isPulseOn = true;
+        }
+    }
+
+    // Generate a Sample and Hold waveform where on each pulse, a random value is generated
+    void GenerateSampleHold(int PPQN) {
+        if (_waveActive) {
+            // Generate a random value at the start of each pulse
+            if (_randomTickCounter == 0) {
+                _waveValue = random(MaxWaveValue + 1);
+            }
+            _isPulseOn = true;
+            _randomTickCounter++;
+        }
+    }
 
     void HandleTrigger() {
         if (_triggerMode && (_waveformType >= WaveformType::ADEnvelope)) {
@@ -259,14 +526,7 @@ class Output {
         }
     }
 
-    // Add new helper functions for smooth envelope calculation
-    float InterpolateEnvelope(float startValue, float endValue, float currentTime, float totalTime) {
-        float t = currentTime / totalTime;
-        // Smooth interpolation using cubic easing
-        t = t * t * (3 - 2 * t);
-        return startValue + (endValue - startValue) * t;
-    }
-
+    // Generate an Attack-Decay envelope waveform
     void GenerateADEnvelope() {
         if (!_waveActive)
             return;
@@ -297,6 +557,7 @@ class Output {
         _waveValue = constrain(_waveValue, 0, MaxWaveValue);
     }
 
+    // Generate an Attack-Release envelope waveform
     void GenerateAREnvelope() {
         if (!_waveActive)
             return;
@@ -330,6 +591,7 @@ class Output {
         _waveValue = constrain(_waveValue, 0, MaxWaveValue);
     }
 
+    // Generate an ADSR envelope waveform
     void GenerateADSREnvelope() {
         if (!_waveActive)
             return;
@@ -507,286 +769,6 @@ void Output::SetDivider(int index) {
         _triggerMode = true;
     } else {
         _triggerMode = false;
-    }
-}
-
-// Start the waveform generation
-void Output::StartWaveform() {
-    _waveActive = true;
-    switch (_waveformType) {
-    case WaveformType::Square:
-        SetPulse(true);
-        break;
-    case WaveformType::Triangle:
-    case WaveformType::Sawtooth:
-    case WaveformType::Sine:
-    case WaveformType::Parabolic:
-        if (!_externalClock) {
-            _waveValue = 0.0f;
-            _triangleWaveStep = 0.0f;
-            _sineWaveAngle = 0.0f;
-        }
-        break;
-    case WaveformType::ExpEnvelope:
-    case WaveformType::LogEnvelope:
-        _waveValue = MaxWaveValue; // Start at maximum value for envelopes
-        _envTickCounter = 0;
-        break;
-    case WaveformType::Noise:
-    case WaveformType::SmoothNoise:
-    case WaveformType::SampleHold:
-        _randomTickCounter = 0;
-    default:
-        SetPulse(true);
-        break;
-    }
-}
-
-// Reset the waveform values
-void Output::ResetWaveform() {
-    switch (_waveformType) {
-    case WaveformType::ExpEnvelope:
-    case WaveformType::LogEnvelope:
-        break;
-    default:
-        _waveActive = false;
-        _waveDirection = true;
-        _waveValue = 0.0f;
-        _triangleWaveStep = 0.0f;
-        _sineWaveAngle = 0.0f;
-    }
-}
-
-// Function to stop waveform generation
-void Output::StopWaveform() {
-    switch (_waveformType) {
-    case WaveformType::Square:
-        SetPulse(false);
-        _waveActive = false;
-        break;
-    case WaveformType::ExpEnvelope:
-    case WaveformType::LogEnvelope:
-        break;
-    case WaveformType::SmoothNoise:
-    case WaveformType::Noise:
-    case WaveformType::Triangle:
-    case WaveformType::Sawtooth:
-    case WaveformType::Sine:
-    case WaveformType::Parabolic:
-    case WaveformType::SampleHold:
-    default:
-        SetPulse(false);
-        break;
-    }
-}
-
-// Generate a triangle wave
-void Output::GenerateTriangleWave(int PPQN) {
-    if (_waveActive) {
-        float periodTicks = PPQN / _clockDividers[_dividerIndex];
-        float risingTicks = periodTicks * (_dutyCycle / 100.0f);
-        float fallingTicks = periodTicks - risingTicks;
-
-        // Calculate step sizes
-        float risingStep = MaxWaveValue / risingTicks;
-        float fallingStep = MaxWaveValue / fallingTicks;
-
-        // Update waveform value
-        if (_waveDirection) {
-            _waveValue += risingStep;
-            if (_waveValue >= MaxWaveValue) {
-                _waveValue = MaxWaveValue;
-                _waveDirection = false;
-            }
-        } else {
-            _waveValue -= fallingStep;
-            if (_waveValue <= 0.0f) {
-                _waveValue = 0.0f;
-                _waveDirection = true;
-            }
-        }
-        _isPulseOn = true;
-    }
-}
-
-// Generate a sine wave
-void Output::GenerateSineWave(int PPQN) {
-    if (_waveActive) {
-        // Calculate the period of the waveform in ticks
-        float periodInTicks = PPQN / _clockDividers[_dividerIndex];
-
-        // Calculate the angle increment per tick
-        float angleIncrement = (2.0f * PI) / periodInTicks;
-
-        // Update the angle for the sine function
-        _sineWaveAngle += angleIncrement;
-
-        // Keep the angle within 0 to 2*PI
-        if (_sineWaveAngle >= 2.0f * PI) {
-            _sineWaveAngle -= 2.0f * PI;
-        }
-
-        // Apply phase shift to align the lowest point with pulse start
-        float shiftedAngle = _sineWaveAngle + (3.0f * PI / 2.0f);
-
-        // Calculate the sine value scaled to the amplitude range
-        // Adjust the sine value based on the duty cycle
-        float sineValue = sin(shiftedAngle);
-        if (sineValue > 0) {
-            sineValue = pow(sineValue, _dutyCycle / 50.0f);
-        } else {
-            sineValue = -pow(-sineValue, _dutyCycle / 50.0f);
-        }
-        _waveValue = (sineValue * MaxWaveValue / 2) + MaxWaveValue / 2;
-
-        _isPulseOn = true;
-    }
-}
-
-// Generate a parabolic wave
-void Output::GenerateParabolicWave(int PPQN) {
-    if (_waveActive) {
-        float periodInTicks = PPQN / _clockDividers[_dividerIndex];
-        float activeTicks = periodInTicks * (_dutyCycle / 100.0f);
-        float angleIncrement = (PI) / activeTicks; // Half sine wave for duty cycle
-
-        _sineWaveAngle += angleIncrement;
-        if (_sineWaveAngle >= PI) {
-            _sineWaveAngle = 0.0f;
-            // Inactive period
-            _waveActive = false;
-            _isPulseOn = false;
-            _inactiveTickCounter = periodInTicks - activeTicks;
-        }
-
-        // Calculate sine value
-        _waveValue = sin(_sineWaveAngle) * MaxWaveValue;
-        _isPulseOn = true;
-    }
-}
-
-// Generate a sawtooth wave
-void Output::GenerateSawtoothWave(int PPQN) {
-    if (_waveActive) {
-        float periodTicks = PPQN / _clockDividers[_dividerIndex];
-        float activeTicks = periodTicks * (_dutyCycle / 100.0f);
-        float inactiveTicks = periodTicks - activeTicks;
-
-        // Calculate step size
-        float step = MaxWaveValue / activeTicks;
-
-        // Update waveform value
-        _waveValue += step;
-        if (_waveValue >= MaxWaveValue) {
-            _waveValue = 0.0f;
-            // Adjust for inactive period
-            _waveActive = false;
-            _inactiveTickCounter = inactiveTicks;
-        }
-        _isPulseOn = true;
-    } else {
-        // Handle inactive period
-        _inactiveTickCounter--;
-        if (_inactiveTickCounter <= 0) {
-            _waveActive = true;
-        }
-        _isPulseOn = false;
-    }
-}
-
-// Generate random values
-void Output::GenerateNoiseWave(int PPQN) {
-    if (_waveActive) {
-        // Generate white noise waveform
-        _waveValue = random(MaxWaveValue + 1); // Random value
-        _isPulseOn = true;
-        _randomTickCounter++;
-    }
-}
-
-// Generate smooth random waveform
-void Output::GenerateSmoothNoiseWave(int PPQN) {
-    if (_waveActive) {
-        // Generate smooth random waveform with smooth peaks and valleys
-        static float phase = 0.0f;
-        static float frequency = 0.3f;             // Adjust frequency for smoothness
-        static float amplitude = MaxWaveValue / 2; // Amplitude for wave value range
-        static float lastValue = MaxWaveValue / 2; // Last generated value
-        static float smoothValue = 50.0f;          // Smoothed value
-
-        // Increment phase
-        phase += frequency;
-
-        // Generate smooth random value using a random walk
-        float randomStep = (static_cast<float>(rand()) / RAND_MAX - 0.5f) * 2.0f; // Random step between -1 and 1
-        lastValue += randomStep * amplitude * frequency;                          // Adjust step size by amplitude and frequency
-        lastValue = fmin(fmax(lastValue, 0.0f), MaxWaveValue);                    // Clamp value
-
-        // Apply a low-pass filter to smooth out the waveform
-        float alpha = 0.01f; // Smoothing factor (0 < alpha < 1)
-        smoothValue = alpha * lastValue + (1.0f - alpha) * smoothValue;
-
-        _waveValue = smoothValue;
-
-        _isPulseOn = true;
-    }
-}
-
-// Generate an exponential envelope waveform
-void Output::GenerateExpEnvelope(int PPQN) {
-    if (_waveActive) {
-        float periodTicks = PPQN / _clockDividers[_dividerIndex];
-        float decayTicks = periodTicks * (_dutyCycle / 100.0f);
-
-        if (_envTickCounter >= decayTicks) {
-            _waveValue = 0.0f;
-            _waveActive = false;
-            _envTickCounter = 0; // Reset for the next pulse
-            return;
-        }
-
-        // Calculate decay factor for the exponential decay
-        float k = 6.90776f / decayTicks; // ln(100) ≈ 4.60517, total decay over decayTicks
-        _waveValue = MaxWaveValue * exp(-k * _envTickCounter);
-
-        _envTickCounter++;
-        _isPulseOn = true;
-    }
-}
-
-// Generate a logarithm envelope waveform
-void Output::GenerateLogEnvelope(int PPQN) {
-    if (_waveActive) {
-        float periodTicks = PPQN / _clockDividers[_dividerIndex];
-        float decayTicks = periodTicks * (_dutyCycle / 100.0f);
-
-        if (_envTickCounter >= decayTicks) {
-            _waveValue = 0.0f;
-            _waveActive = false;
-            _envTickCounter = 0; // Reset for the next pulse
-            return;
-        }
-
-        // Calculate decay factor to span the entire pulse duration
-        float decayFactor = log10(decayTicks - _envTickCounter + 1) / log10(decayTicks + 1);
-
-        // Update waveform value
-        _waveValue = decayFactor * MaxWaveValue; // Scale to 0-100%
-
-        _envTickCounter++;
-        _isPulseOn = true;
-    }
-}
-
-// Generate a Sample and Hold waveform where on each pulse, a random value is generated
-void Output::GenerateSampleHold(int PPQN) {
-    if (_waveActive) {
-        // Generate a random value at the start of each pulse
-        if (_randomTickCounter == 0) {
-            _waveValue = random(MaxWaveValue + 1);
-        }
-        _isPulseOn = true;
-        _randomTickCounter++;
     }
 }
 
