@@ -79,9 +79,11 @@ enum CVTarget {
     Output2Duty,
     Output3Duty,
     Output4Duty,
+    Envelope1,
+    Envelope2,
 };
-static int const CVTargetLength = 30;
-String CVTargetDescription[CVTargetLength] = {
+
+String CVTargetDescription[] = {
     "None",
     "Start/Stop",
     "Reset",
@@ -111,7 +113,11 @@ String CVTargetDescription[CVTargetLength] = {
     "Output 1 Duty",
     "Output 2 Duty",
     "Output 3 Duty",
-    "Output 4 Duty"};
+    "Output 4 Duty",
+    "Output 3 Env",
+    "Output 4 Env",
+};
+int CVTargetLength = sizeof(CVTargetDescription) / sizeof(CVTargetDescription[0]);
 
 // ADC input offset and scale from calibration
 float offsetScale[NUM_CV_INS][2]; // [channel][0: offset, 1: scale]
@@ -1484,6 +1490,12 @@ void HandleCVTarget(int ch, float CVValue, CVTarget cvTarget) {
     case CVTarget::Output4Duty:
         outputs[3].SetDutyCycle(map(CVValue, 0, MAXDAC, 0, 100));
         break;
+    case CVTarget::Envelope1:
+        outputs[2].SetExternalTrigger(CVValue > MAXDAC / 2);
+        break;
+    case CVTarget::Envelope2:
+        outputs[3].SetExternalTrigger(CVValue > MAXDAC / 2);
+        break;
     }
     // Update the display if the CV target is not None
     // if (cvTarget != CVTarget::None && menuMode == 0 && millis() - lastDisplayUpdateTime > 1000) {
@@ -1552,6 +1564,11 @@ void HandleOutputs() {
     for (int i = 0; i < NUM_OUTPUTS; i++) {
         // Set the output level based on the pulse state
         SetPin(i, outputs[i].GetOutputLevel());
+
+        if (i == 2 || i == 3) {
+            // Set the output level based on the pulse state
+            outputs[i].GenEnvelope();
+        }
     }
 }
 

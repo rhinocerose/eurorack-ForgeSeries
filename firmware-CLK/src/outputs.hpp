@@ -21,8 +21,10 @@ enum WaveformType {
     Noise,
     SmoothNoise,
     SampleHold,
+    ADEnvelope,
+    AREnvelope,
+    ADSREnvelope,
 };
-
 String WaveformTypeDescriptions[] = {
     "Square",
     "Triangle",
@@ -34,6 +36,9 @@ String WaveformTypeDescriptions[] = {
     "Noise",
     "SmoothNoise",
     "S&H",
+    "AD Env",
+    "AR Env",
+    "ADSR Env",
 };
 int WaveformTypeLength = sizeof(WaveformTypeDescriptions) / sizeof(WaveformTypeDescriptions[0]);
 
@@ -44,6 +49,7 @@ class Output {
 
     // Pulse State
     void Pulse(int PPQN, unsigned long tickCounter);
+    void GenEnvelope();
     bool GetPulseState() { return _isPulseOn; }
     void SetPulse(bool state) { _isPulseOn = state; }
     void TogglePulse() { _isPulseOn = !_isPulseOn; }
@@ -60,7 +66,7 @@ class Output {
 
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
-    void SetDivider(int index) { _dividerIndex = constrain(index, 0, _dividerAmount - 1); }
+    void SetDivider(int index);
     String GetDividerDescription() { return _dividerDescription[_dividerIndex]; }
     int GetDividerAmounts() { return _dividerAmount; }
 
@@ -119,13 +125,36 @@ class Output {
     WaveformType GetWaveformType() { return _waveformType; }
     String GetWaveformTypeDescription() { return WaveformTypeDescriptions[_waveformType]; }
 
+    // Trigger mode control
+    void SetTriggerMode(bool enabled) { _triggerMode = enabled; }
+    bool GetTriggerMode() { return _triggerMode; }
+    void SetExternalTrigger(bool state) {
+        if (state != _externaltrigger) {
+            _externaltrigger = state;
+            if (state)
+                HandleTrigger();
+            else
+                HandleGateRelease();
+        }
+    }
+
+    // Envelope parameter setters
+    void SetAttack(float ms) { _envParams.attack = constrain(ms, 0.1f, 10000.0f); }
+    void SetDecay(float ms) { _envParams.decay = constrain(ms, 0.1f, 10000.0f); }
+    void SetSustain(float level) { _envParams.sustain = constrain(level, 0.0f, 100.0f); }
+    void SetRelease(float ms) { _envParams.release = constrain(ms, 0.1f, 10000.0f); }
+    String GetAttackDescription() { return String(_envParams.attack) + "ms"; }
+    String GetDecayDescription() { return String(_envParams.decay) + "ms"; }
+    String GetSustainDescription() { return String(_envParams.sustain) + "%"; }
+    String GetReleaseDescription() { return String(_envParams.release) + "ms"; }
+
   private:
     // Constants
     const int MaxDACValue = 4095;
     const float MaxWaveValue = 255.0;
-    static int const _dividerAmount = 18;
-    float _clockDividers[_dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.3333333333, 0.5, 0.6666666667, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0, 24.0, 32.0};
-    String _dividerDescription[_dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/3", "/2", "/1.5", "x1", "x1.5", "x2", "x3", "x4", "x8", "x16", "x24", "x32"};
+    static int const _dividerAmount = 19;
+    float _clockDividers[_dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.3333333333, 0.5, 0.6666666667, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0, 24.0, 32.0, 900};
+    String _dividerDescription[_dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/3", "/2", "/1.5", "x1", "x1.5", "x2", "x3", "x4", "x8", "x16", "x24", "x32", "Trig"};
     static int const MaxEuclideanSteps = 64;
 
     // The shuffle of the TR-909 delays each even-numbered 1/16th by 2/96 of a beat for shuffle setting 1,
@@ -172,6 +201,30 @@ class Output {
     EuclideanParams _euclideanParams;        // Euclidean rhythm parameters
     int _euclideanRhythm[MaxEuclideanSteps]; // Euclidean rhythm pattern
 
+    // Envelope
+    bool _triggerMode = false;
+    bool _externaltrigger = false;
+
+    // ADSR envelope parameters
+    struct EnvelopeParams {
+        float attack = 200.0f;  // Attack time in ms
+        float decay = 200.0f;   // Decay time in ms
+        float sustain = 70.0f;  // Sustain level (0-100%)
+        float release = 250.0f; // Release time in ms
+    } _envParams;
+
+    // Envelope state tracking
+    enum EnvelopeState {
+        Idle,
+        Attack,
+        AttackHold, // New state for AR envelope
+        Decay,
+        Sustain,
+        Release
+    } _envState = Idle;
+
+    unsigned long _envStartTime = 0;
+
     // Functions
     void StartWaveform();
     void StopWaveform();
@@ -186,6 +239,136 @@ class Output {
     void GenerateExpEnvelope(int);
     void GenerateLogEnvelope(int);
     void GenerateSampleHold(int);
+
+    void HandleTrigger() {
+        if (_triggerMode && (_waveformType >= WaveformType::ADEnvelope)) {
+            _envState = EnvelopeState::Attack;
+            _envStartTime = micros();
+            _waveActive = true;
+            _isPulseOn = true;
+        }
+    }
+
+    void HandleGateRelease() {
+        if (_triggerMode && (_waveformType >= WaveformType::ADEnvelope)) {
+            if (_waveformType == WaveformType::AREnvelope ||
+                _waveformType == WaveformType::ADSREnvelope) {
+                _envState = EnvelopeState::Release;
+                _envStartTime = micros();
+            }
+        }
+    }
+
+    // Add new helper functions for smooth envelope calculation
+    float InterpolateEnvelope(float startValue, float endValue, float currentTime, float totalTime) {
+        float t = currentTime / totalTime;
+        // Smooth interpolation using cubic easing
+        t = t * t * (3 - 2 * t);
+        return startValue + (endValue - startValue) * t;
+    }
+
+    void GenerateADEnvelope() {
+        if (!_waveActive)
+            return;
+
+        // Calculate current time in milliseconds from start
+        float currentTime = (micros() - _envStartTime) / 1000.0f;
+
+        switch (_envState) {
+        case EnvelopeState::Attack:
+            _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            if (currentTime >= _envParams.attack) {
+                _envState = EnvelopeState::Decay;
+                _envStartTime = micros();
+            }
+            break;
+
+        case EnvelopeState::Decay:
+            _waveValue = MaxWaveValue * (1 - (currentTime / _envParams.decay));
+            if (currentTime >= _envParams.decay) {
+                _waveActive = false;
+                _envState = EnvelopeState::Idle;
+            }
+            break;
+
+        default:
+            break;
+        }
+        _waveValue = constrain(_waveValue, 0, MaxWaveValue);
+    }
+
+    void GenerateAREnvelope() {
+        if (!_waveActive)
+            return;
+
+        float currentTime = (micros() - _envStartTime) / 1000.0f;
+
+        switch (_envState) {
+        case EnvelopeState::Attack:
+            _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            if (currentTime >= _envParams.attack) {
+                _envState = EnvelopeState::AttackHold;
+                _waveValue = MaxWaveValue;
+            }
+            break;
+
+        case EnvelopeState::AttackHold:
+            _waveValue = MaxWaveValue; // Hold at max while gate is high
+            break;
+
+        case EnvelopeState::Release:
+            _waveValue = MaxWaveValue * (1 - (currentTime / _envParams.release));
+            if (currentTime >= _envParams.release) {
+                _waveActive = false;
+                _envState = EnvelopeState::Idle;
+            }
+            break;
+
+        default:
+            break;
+        }
+        _waveValue = constrain(_waveValue, 0, MaxWaveValue);
+    }
+
+    void GenerateADSREnvelope() {
+        if (!_waveActive)
+            return;
+
+        float currentTime = (micros() - _envStartTime) / 1000.0f;
+
+        switch (_envState) {
+        case EnvelopeState::Attack:
+            _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            if (currentTime >= _envParams.attack) {
+                _envState = EnvelopeState::Decay;
+                _envStartTime = micros();
+            }
+            break;
+
+        case EnvelopeState::Decay:
+            _waveValue = MaxWaveValue - ((currentTime / _envParams.decay) * (MaxWaveValue - (MaxWaveValue * _envParams.sustain / 100.0f)));
+            if (currentTime >= _envParams.decay) {
+                _envState = EnvelopeState::Sustain;
+            }
+            break;
+
+        case EnvelopeState::Sustain:
+            _waveValue = MaxWaveValue * (_envParams.sustain / 100.0f);
+            break;
+
+        case EnvelopeState::Release:
+            _waveValue = (MaxWaveValue * _envParams.sustain / 100.0f) * (1 - (currentTime / _envParams.release));
+            if (currentTime >= _envParams.release) {
+                _waveActive = false;
+                _envState = EnvelopeState::Idle;
+            }
+            break;
+
+        default:
+            break;
+        }
+        _waveValue = constrain(_waveValue, 0, MaxWaveValue);
+    }
 };
 
 // Constructor
@@ -195,106 +378,135 @@ Output::Output(int ID, OutputType type) {
     GeneratePattern(_euclideanParams, _euclideanRhythm);
 }
 
-void Output::Pulse(int PPQN, unsigned long globalTick) {
-    // If not stopped, generate the pulse
-    if (_state) {
-        // Calculate the period duration in ticks
-        float periodTicks = PPQN / _clockDividers[_dividerIndex];
-
-        // Calculate the phase offset in ticks
-        unsigned long phaseOffsetTicks = periodTicks * (_phase / 100.0);
-
-        // Apply swing to the tick counter
-        unsigned long tickCounterSwing = globalTick;
-
-        // Calculate the tick counter with swing applied
-        if (int(globalTick / periodTicks) % _swingEvery == 0) {
-            tickCounterSwing = globalTick - (_swingAmounts[_swingAmountIndex] * PPQN / 96); // Since our swing is in 96th notes
-        }
-
-        // Calculate the clock divider for external clock
-        int clockDividerExternal = 1 / _clockDividers[_dividerIndex];
-
-        // Calculate the pulse duration (in ticks) based on the duty cycle
-        unsigned int _pulseDuration = int(periodTicks * (_dutyCycle / 100.0));
-        unsigned int _externalPulseDuration = int(clockDividerExternal * (_dutyCycle / 100.0));
-
-        // Lambda function to handle timing
-        auto generatePulse = [this]() {
-            if (!_euclideanParams.enabled) {
-                // If not using Euclidean rhythm, generate waveform based on the pulse probability
-                if (random(100) < _pulseProbability) {
-                    StartWaveform();
-                } else {
-                    // We stop the waveform directly if the pulse probability is not met since StopWaveform() is used for the square wave
-                    ResetWaveform();
-                }
-            } else {
-                // If using Euclidean rhythm, check if the current step is active
-                if (_euclideanRhythm[_euclideanStepIndex] == 1) {
-                    StartWaveform();
-                } else {
-                    ResetWaveform();
-                }
-                _euclideanStepIndex++;
-                // Restart the Euclidean rhythm if it reaches the end
-                if (_euclideanStepIndex >= _euclideanParams.steps + _euclideanParams.pad) {
-                    _euclideanStepIndex = 0;
-                }
-            }
-        };
-
-        // If using an external clock, generate a pulse based on the internal pulse counter
-        // dirty workaround to make this work with clock dividers
-        if (_externalClock && _clockDividers[_dividerIndex] < 1) {
-            if (_internalPulseCounter % clockDividerExternal == 0 || _internalPulseCounter == 0) {
-                generatePulse();
-            } else if (_internalPulseCounter % clockDividerExternal == _externalPulseDuration) {
-                StopWaveform();
-            }
-        } else {
-            // Handle internal clock timing
-            if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == 0 || (globalTick == 0)) {
-                generatePulse();
-            } else if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == _pulseDuration) {
-                StopWaveform();
-            }
-        }
-        // Handle the waveform generation
+void Output::GenEnvelope() {
+    // Handle envelope generation based on trigger state
+    if (_triggerMode) {
         switch (_waveformType) {
-        case WaveformType::Triangle:
-            GenerateTriangleWave(PPQN);
+        case WaveformType::ADEnvelope:
+            GenerateADEnvelope();
             break;
-        case WaveformType::Sine:
-            GenerateSineWave(PPQN);
+        case WaveformType::AREnvelope:
+            GenerateAREnvelope();
             break;
-        case WaveformType::Parabolic:
-            GenerateParabolicWave(PPQN);
-            break;
-        case WaveformType::Sawtooth:
-            GenerateSawtoothWave(PPQN);
-            break;
-        case WaveformType::Noise:
-            GenerateNoiseWave(PPQN);
-            break;
-        case WaveformType::SmoothNoise:
-            GenerateSmoothNoiseWave(PPQN);
-            break;
-        case WaveformType::ExpEnvelope:
-            GenerateExpEnvelope(PPQN);
-            break;
-        case WaveformType::LogEnvelope:
-            GenerateLogEnvelope(PPQN);
-            break;
-        case WaveformType::SampleHold:
-            GenerateSampleHold(PPQN);
+        case WaveformType::ADSREnvelope:
+            GenerateADSREnvelope();
             break;
         default:
-            // For square wave or other types
+            // Handle other waveforms as before
             break;
         }
-    } else {
+    }
+}
+
+void Output::Pulse(int PPQN, unsigned long globalTick) {
+    // If not stopped, generate the pulse
+    if (!_state) {
         StopWaveform();
+        return;
+    }
+    // Calculate the period duration in ticks
+    float periodTicks = PPQN / _clockDividers[_dividerIndex];
+
+    // Calculate the phase offset in ticks
+    unsigned long phaseOffsetTicks = periodTicks * (_phase / 100.0);
+
+    // Apply swing to the tick counter
+    unsigned long tickCounterSwing = globalTick;
+
+    // Calculate the tick counter with swing applied
+    if (int(globalTick / periodTicks) % _swingEvery == 0) {
+        tickCounterSwing = globalTick - (_swingAmounts[_swingAmountIndex] * PPQN / 96); // Since our swing is in 96th notes
+    }
+
+    // Calculate the clock divider for external clock
+    int clockDividerExternal = 1 / _clockDividers[_dividerIndex];
+
+    // Calculate the pulse duration (in ticks) based on the duty cycle
+    unsigned int _pulseDuration = int(periodTicks * (_dutyCycle / 100.0));
+    unsigned int _externalPulseDuration = int(clockDividerExternal * (_dutyCycle / 100.0));
+
+    // Lambda function to handle timing
+    auto generatePulse = [this]() {
+        if (!_euclideanParams.enabled) {
+            // If not using Euclidean rhythm, generate waveform based on the pulse probability
+            if (random(100) < _pulseProbability) {
+                StartWaveform();
+            } else {
+                // We stop the waveform directly if the pulse probability is not met since StopWaveform() is used for the square wave
+                ResetWaveform();
+            }
+        } else {
+            // If using Euclidean rhythm, check if the current step is active
+            if (_euclideanRhythm[_euclideanStepIndex] == 1) {
+                StartWaveform();
+            } else {
+                ResetWaveform();
+            }
+            _euclideanStepIndex++;
+            // Restart the Euclidean rhythm if it reaches the end
+            if (_euclideanStepIndex >= _euclideanParams.steps + _euclideanParams.pad) {
+                _euclideanStepIndex = 0;
+            }
+        }
+    };
+
+    // If using an external clock, generate a pulse based on the internal pulse counter
+    // dirty workaround to make this work with clock dividers
+    if (_externalClock && _clockDividers[_dividerIndex] < 1) {
+        if (_internalPulseCounter % clockDividerExternal == 0 || _internalPulseCounter == 0) {
+            generatePulse();
+        } else if (_internalPulseCounter % clockDividerExternal == _externalPulseDuration) {
+            StopWaveform();
+        }
+    } else {
+        // Handle internal clock timing
+        if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == 0 || (globalTick == 0)) {
+            generatePulse();
+        } else if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == _pulseDuration) {
+            StopWaveform();
+        }
+    }
+    // Handle the waveform generation
+    switch (_waveformType) {
+    case WaveformType::Triangle:
+        GenerateTriangleWave(PPQN);
+        break;
+    case WaveformType::Sine:
+        GenerateSineWave(PPQN);
+        break;
+    case WaveformType::Parabolic:
+        GenerateParabolicWave(PPQN);
+        break;
+    case WaveformType::Sawtooth:
+        GenerateSawtoothWave(PPQN);
+        break;
+    case WaveformType::Noise:
+        GenerateNoiseWave(PPQN);
+        break;
+    case WaveformType::SmoothNoise:
+        GenerateSmoothNoiseWave(PPQN);
+        break;
+    case WaveformType::ExpEnvelope:
+        GenerateExpEnvelope(PPQN);
+        break;
+    case WaveformType::LogEnvelope:
+        GenerateLogEnvelope(PPQN);
+        break;
+    case WaveformType::SampleHold:
+        GenerateSampleHold(PPQN);
+        break;
+    default:
+        // For square wave or other types
+        break;
+    }
+}
+
+void Output::SetDivider(int index) {
+    _dividerIndex = constrain(index, 0, _dividerAmount - 1);
+    if (_clockDividers[_dividerIndex] == 900 && _outputType == OutputType::DACOut) {
+        _triggerMode = true;
+    } else {
+        _triggerMode = false;
     }
 }
 
