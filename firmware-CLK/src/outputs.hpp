@@ -147,6 +147,9 @@ class Output {
     String GetDecayDescription() { return String(_envParams.decay) + "ms"; }
     String GetSustainDescription() { return String(_envParams.sustain) + "%"; }
     String GetReleaseDescription() { return String(_envParams.release) + "ms"; }
+    void SetRetrigger(bool state) { _retrigger = state; }
+    bool GetRetrigger() { return _retrigger; }
+    String GetRetriggerDescription() { return _retrigger ? "Yes" : "No"; }
 
   private:
     // Constants
@@ -204,6 +207,9 @@ class Output {
     // Envelope
     bool _triggerMode = false;
     bool _externaltrigger = false;
+    unsigned long _envStartTime = 0;
+    bool _retrigger = false;    // If true, allows envelope retriggering
+    float _lastEnvValue = 0.0f; // Stores last envelope value for retriggering
 
     // ADSR envelope parameters
     struct EnvelopeParams {
@@ -222,8 +228,6 @@ class Output {
         Sustain,
         Release
     } _envState = Idle;
-
-    unsigned long _envStartTime = 0;
 
     // -------------- Private Functions --------------
 
@@ -253,6 +257,16 @@ class Output {
         case WaveformType::SmoothNoise:
         case WaveformType::SampleHold:
             _randomTickCounter = 0;
+        case WaveformType::ADEnvelope:
+        case WaveformType::AREnvelope:
+        case WaveformType::ADSREnvelope:
+            if (!_waveActive || _retrigger) {
+                _lastEnvValue = _waveValue;
+                _envState = EnvelopeState::Attack;
+                _envStartTime = micros();
+                _waveActive = true;
+            }
+            break;
         default:
             SetPulse(true);
             break;
@@ -509,10 +523,14 @@ class Output {
 
     void HandleTrigger() {
         if (_triggerMode && (_waveformType >= WaveformType::ADEnvelope)) {
-            _envState = EnvelopeState::Attack;
-            _envStartTime = micros();
-            _waveActive = true;
-            _isPulseOn = true;
+            if (!_waveActive || _retrigger) {
+                // Store current value for retrigger
+                _lastEnvValue = _waveValue;
+                _envState = EnvelopeState::Attack;
+                _envStartTime = micros();
+                _waveActive = true;
+                _isPulseOn = true;
+            }
         }
     }
 
@@ -520,6 +538,7 @@ class Output {
         if (_triggerMode && (_waveformType >= WaveformType::ADEnvelope)) {
             if (_waveformType == WaveformType::AREnvelope ||
                 _waveformType == WaveformType::ADSREnvelope) {
+                _lastEnvValue = _waveValue; // Store current value before release
                 _envState = EnvelopeState::Release;
                 _envStartTime = micros();
             }
@@ -531,15 +550,20 @@ class Output {
         if (!_waveActive)
             return;
 
-        // Calculate current time in milliseconds from start
         float currentTime = (micros() - _envStartTime) / 1000.0f;
 
         switch (_envState) {
         case EnvelopeState::Attack:
-            _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            if (_retrigger) {
+                // Start from last value when retriggering
+                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * (currentTime / _envParams.attack));
+            } else {
+                _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            }
             if (currentTime >= _envParams.attack) {
                 _envState = EnvelopeState::Decay;
                 _envStartTime = micros();
+                _lastEnvValue = _waveValue;
             }
             break;
 
@@ -548,6 +572,7 @@ class Output {
             if (currentTime >= _envParams.decay) {
                 _waveActive = false;
                 _envState = EnvelopeState::Idle;
+                _lastEnvValue = 0;
             }
             break;
 
@@ -566,22 +591,28 @@ class Output {
 
         switch (_envState) {
         case EnvelopeState::Attack:
-            _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            if (_retrigger) {
+                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * (currentTime / _envParams.attack));
+            } else {
+                _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            }
             if (currentTime >= _envParams.attack) {
                 _envState = EnvelopeState::AttackHold;
                 _waveValue = MaxWaveValue;
+                _lastEnvValue = _waveValue;
             }
             break;
 
         case EnvelopeState::AttackHold:
-            _waveValue = MaxWaveValue; // Hold at max while gate is high
+            _waveValue = MaxWaveValue;
             break;
 
         case EnvelopeState::Release:
-            _waveValue = MaxWaveValue * (1 - (currentTime / _envParams.release));
+            _waveValue = _lastEnvValue * (1 - (currentTime / _envParams.release));
             if (currentTime >= _envParams.release) {
                 _waveActive = false;
                 _envState = EnvelopeState::Idle;
+                _lastEnvValue = 0;
             }
             break;
 
@@ -600,17 +631,24 @@ class Output {
 
         switch (_envState) {
         case EnvelopeState::Attack:
-            _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            if (_retrigger) {
+                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * (currentTime / _envParams.attack));
+            } else {
+                _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+            }
             if (currentTime >= _envParams.attack) {
                 _envState = EnvelopeState::Decay;
                 _envStartTime = micros();
+                _lastEnvValue = _waveValue;
             }
             break;
 
         case EnvelopeState::Decay:
-            _waveValue = MaxWaveValue - ((currentTime / _envParams.decay) * (MaxWaveValue - (MaxWaveValue * _envParams.sustain / 100.0f)));
+            _waveValue = MaxWaveValue - ((currentTime / _envParams.decay) *
+                                         (MaxWaveValue - (MaxWaveValue * _envParams.sustain / 100.0f)));
             if (currentTime >= _envParams.decay) {
                 _envState = EnvelopeState::Sustain;
+                _lastEnvValue = _waveValue;
             }
             break;
 
@@ -619,10 +657,11 @@ class Output {
             break;
 
         case EnvelopeState::Release:
-            _waveValue = (MaxWaveValue * _envParams.sustain / 100.0f) * (1 - (currentTime / _envParams.release));
+            _waveValue = _lastEnvValue * (1 - (currentTime / _envParams.release));
             if (currentTime >= _envParams.release) {
                 _waveActive = false;
                 _envState = EnvelopeState::Idle;
+                _lastEnvValue = 0;
             }
             break;
 
