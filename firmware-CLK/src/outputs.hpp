@@ -150,6 +150,19 @@ class Output {
     void SetRetrigger(bool state) { _retrigger = state; }
     bool GetRetrigger() { return _retrigger; }
     String GetRetriggerDescription() { return _retrigger ? "Yes" : "No"; }
+    void SetAttackCurve(float curve) { _envParams.attackCurve = constrain(curve, 0.0f, 1.0f); }
+    void SetDecayCurve(float curve) { _envParams.decayCurve = constrain(curve, 0.0f, 1.0f); }
+    void SetReleaseCurve(float curve) { _envParams.releaseCurve = constrain(curve, 0.0f, 1.0f); }
+    float GetAttackCurve() { return _envParams.attackCurve; }
+    float GetDecayCurve() { return _envParams.decayCurve; }
+    float GetReleaseCurve() { return _envParams.releaseCurve; }
+    void SetCurve(float curve) {
+        SetAttackCurve(curve);
+        SetDecayCurve(curve);
+        SetReleaseCurve(curve);
+    }
+    float GetCurve() { return (_envParams.attackCurve + _envParams.decayCurve + _envParams.releaseCurve) / 3.0f; }
+    String GetCurveDescription() { return String(GetCurve() * 100, 0) + "%"; }
 
   private:
     // Constants
@@ -213,10 +226,13 @@ class Output {
 
     // ADSR envelope parameters
     struct EnvelopeParams {
-        float attack = 200.0f;  // Attack time in ms
-        float decay = 200.0f;   // Decay time in ms
-        float sustain = 70.0f;  // Sustain level (0-100%)
-        float release = 250.0f; // Release time in ms
+        float attack = 200.0f;     // Attack time in ms
+        float decay = 200.0f;      // Decay time in ms
+        float sustain = 70.0f;     // Sustain level (0-100%)
+        float release = 250.0f;    // Release time in ms
+        float attackCurve = 0.5f;  // 0=log, 0.5=linear, 1=exp
+        float decayCurve = 0.5f;   // 0=log, 0.5=linear, 1=exp
+        float releaseCurve = 0.5f; // 0=log, 0.5=linear, 1=exp
     } _envParams;
 
     // Envelope state tracking
@@ -545,6 +561,16 @@ class Output {
         }
     }
 
+    float ApplyCurve(float input, float curve) {
+        // input and output are 0-1 range
+        if (curve == 0.5f)
+            return input; // Linear
+
+        // Convert curve 0-1 to power range 0.1 to 10
+        float power = pow(10.0f, (curve - 0.5f) * 2.0f);
+        return pow(input, power);
+    }
+
     // Generate an Attack-Decay envelope waveform
     void GenerateADEnvelope() {
         if (!_waveActive)
@@ -553,32 +579,39 @@ class Output {
         float currentTime = (micros() - _envStartTime) / 1000.0f;
 
         switch (_envState) {
-        case EnvelopeState::Attack:
+        case EnvelopeState::Attack: {
+            float normalizedTime = currentTime / _envParams.attack;
+            float curvedTime = ApplyCurve(normalizedTime, _envParams.attackCurve);
+
             if (_retrigger) {
-                // Start from last value when retriggering
-                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * (currentTime / _envParams.attack));
+                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * curvedTime);
             } else {
-                _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+                _waveValue = curvedTime * MaxWaveValue;
             }
+
             if (currentTime >= _envParams.attack) {
                 _envState = EnvelopeState::Decay;
                 _envStartTime = micros();
                 _lastEnvValue = _waveValue;
             }
-            break;
+        } break;
 
-        case EnvelopeState::Decay:
-            _waveValue = MaxWaveValue * (1 - (currentTime / _envParams.decay));
+        case EnvelopeState::Decay: {
+            float normalizedTime = currentTime / _envParams.decay;
+            float curvedTime = ApplyCurve(normalizedTime, _envParams.decayCurve);
+            _waveValue = MaxWaveValue * (1.0f - curvedTime);
+
             if (currentTime >= _envParams.decay) {
                 _waveActive = false;
                 _envState = EnvelopeState::Idle;
                 _lastEnvValue = 0;
             }
-            break;
+        } break;
 
         default:
             break;
         }
+
         _waveValue = constrain(_waveValue, 0, MaxWaveValue);
     }
 
@@ -590,31 +623,38 @@ class Output {
         float currentTime = (micros() - _envStartTime) / 1000.0f;
 
         switch (_envState) {
-        case EnvelopeState::Attack:
+        case EnvelopeState::Attack: {
+            float normalizedTime = currentTime / _envParams.attack;
+            float curvedTime = ApplyCurve(normalizedTime, _envParams.attackCurve);
+
             if (_retrigger) {
-                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * (currentTime / _envParams.attack));
+                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * curvedTime);
             } else {
-                _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+                _waveValue = curvedTime * MaxWaveValue;
             }
+
             if (currentTime >= _envParams.attack) {
                 _envState = EnvelopeState::AttackHold;
                 _waveValue = MaxWaveValue;
                 _lastEnvValue = _waveValue;
             }
-            break;
+        } break;
 
         case EnvelopeState::AttackHold:
             _waveValue = MaxWaveValue;
             break;
 
-        case EnvelopeState::Release:
-            _waveValue = _lastEnvValue * (1 - (currentTime / _envParams.release));
+        case EnvelopeState::Release: {
+            float normalizedTime = currentTime / _envParams.release;
+            float curvedTime = ApplyCurve(normalizedTime, _envParams.releaseCurve);
+            _waveValue = _lastEnvValue * (1.0f - curvedTime);
+
             if (currentTime >= _envParams.release) {
                 _waveActive = false;
                 _envState = EnvelopeState::Idle;
                 _lastEnvValue = 0;
             }
-            break;
+        } break;
 
         default:
             break;
@@ -630,40 +670,50 @@ class Output {
         float currentTime = (micros() - _envStartTime) / 1000.0f;
 
         switch (_envState) {
-        case EnvelopeState::Attack:
+        case EnvelopeState::Attack: {
+            float normalizedTime = currentTime / _envParams.attack;
+            float curvedTime = ApplyCurve(normalizedTime, _envParams.attackCurve);
+
             if (_retrigger) {
-                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * (currentTime / _envParams.attack));
+                _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * curvedTime);
             } else {
-                _waveValue = (currentTime / _envParams.attack) * MaxWaveValue;
+                _waveValue = curvedTime * MaxWaveValue;
             }
+
             if (currentTime >= _envParams.attack) {
                 _envState = EnvelopeState::Decay;
                 _envStartTime = micros();
                 _lastEnvValue = _waveValue;
             }
-            break;
+        } break;
 
-        case EnvelopeState::Decay:
-            _waveValue = MaxWaveValue - ((currentTime / _envParams.decay) *
-                                         (MaxWaveValue - (MaxWaveValue * _envParams.sustain / 100.0f)));
+        case EnvelopeState::Decay: {
+            float normalizedTime = currentTime / _envParams.decay;
+            float curvedTime = ApplyCurve(normalizedTime, _envParams.decayCurve);
+            float sustainLevel = MaxWaveValue * (_envParams.sustain / 100.0f);
+            _waveValue = MaxWaveValue - ((MaxWaveValue - sustainLevel) * curvedTime);
+
             if (currentTime >= _envParams.decay) {
                 _envState = EnvelopeState::Sustain;
                 _lastEnvValue = _waveValue;
             }
-            break;
+        } break;
 
         case EnvelopeState::Sustain:
             _waveValue = MaxWaveValue * (_envParams.sustain / 100.0f);
             break;
 
-        case EnvelopeState::Release:
-            _waveValue = _lastEnvValue * (1 - (currentTime / _envParams.release));
+        case EnvelopeState::Release: {
+            float normalizedTime = currentTime / _envParams.release;
+            float curvedTime = ApplyCurve(normalizedTime, _envParams.releaseCurve);
+            _waveValue = _lastEnvValue * (1.0f - curvedTime);
+
             if (currentTime >= _envParams.release) {
                 _waveActive = false;
                 _envState = EnvelopeState::Idle;
                 _lastEnvValue = 0;
             }
-            break;
+        } break;
 
         default:
             break;
