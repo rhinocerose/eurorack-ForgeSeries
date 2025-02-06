@@ -159,15 +159,41 @@ Outputs 3 and 4 can output CV values so they support setting the output level an
 
 ### Output Waveform
 
-Outputs 3 and 4 can output waveforms different from square.
+Outputs 1 and 2 only support square waveforms. Outputs 3 and 4 can be configured to alternative waveforms and envelopes.
 
-The module supports outputting square, triangle, sawtooth, sine and parabolic waveforms. In addition these outputs can generate an exponential envelope, logarithm envelope, random signals, smooth random waveforms and Sample & Hold signals where a new value is generated at each pulse.
+They support the following:
 
-The duty cycle parameter, level and offset can also be used to adjust the waveform shape as explained above.
+- Square: A square wave with adjustable duty cycle, level and offset.
+- Triangle: A triangle wave with adjustable duty cycle, level and offset.
+- Sawtooth: A sawtooth wave with adjustable duty cycle, level and offset.
+- Sine: A sine wave with adjustable duty cycle, level and offset.
+- Parabolic: A parabolic wave with adjustable duty cycle, level and offset.
+- Exponential Envelope: An exponential envelope with adjustable level and offset. Triggered by each pulse.
+- Logarithm Envelope: A logarithm envelope with adjustable level and offset. Triggered by each pulse.
+- Noise: A random signal with adjustable level and offset. Continuous.
+- Smooth Noise: A smooth random signal with adjustable level and offset. Continuous.
+- Sample & Hold: A sample and hold signal based on noise with adjustable level and offset. Triggered by each pulse.
+- AD Envelope: An Attack-Decay envelope (no sustain while gate is held) with adjustable level and offset. Triggered by a CV input.
+- AR Envelope: An Attack-Release envelope (sustain is held at max level while gate is on) with adjustable level and offset. Triggered by a CV input.
+- ADSR Envelope: An Attack-Decay-Sustain-Release envelope with adjustable level and offset. Triggered by a CV input.
 
 1. Navigate to the selected output. Click the encoder to enter edit mode.
 2. Use the encoder to select the desired waveform. The waveform will be updated in real-time.
 3. Click the encoder to exit edit mode.
+
+### Envelopes
+
+The module supports envelope generators for outputs 3 and 4. Refer to the Output Waveform section for more information on the envelope types.
+
+The AD, AR and ADSR envelopes can only be triggered by CV inputs. They can have configurable curves between linear, exponential and logarithmic and also allow retriggering while the envelope is still active. The other waveforms (square, sine, etc) cannot be triggered by CV inputs.
+
+To set an envelope generation, follow these steps:
+
+1. Navigate to the selected output on clock dividers. Click the encoder to enter edit mode. Select the last option which is "Trigger".
+2. Go to the CV Input target configuration, select which CV input will receive the gate/trigger and assign it to the Output 3/4 Env.
+3. Lastly, go to the waveform selection and choose between "AD Env", "AR Env" or "ADSR Env".
+
+Tip: You can have up to 2 envelopes running at the same time, one for each output receiving a trigger from each of the CV inputs. Each output can have a different envelope type.
 
 ### Tap Tempo
 
