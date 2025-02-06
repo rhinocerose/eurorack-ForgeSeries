@@ -66,7 +66,7 @@ class Output {
 
     // Divider
     int GetDividerIndex() { return _dividerIndex; }
-    void SetDivider(int index);
+    void SetDivider(int index) { _dividerIndex = constrain(index, 0, _dividerAmount - 1); }
     String GetDividerDescription() { return _dividerDescription[_dividerIndex]; }
     int GetDividerAmounts() { return _dividerAmount; }
 
@@ -121,7 +121,7 @@ class Output {
 
     // Waveform Type
     int GetWaveformTypeIndex() { return int(_waveformType); }
-    void SetWaveformType(WaveformType type) { _waveformType = type; }
+    void SetWaveformType(WaveformType type);
     WaveformType GetWaveformType() { return _waveformType; }
     String GetWaveformTypeDescription() { return WaveformTypeDescriptions[_waveformType]; }
 
@@ -143,12 +143,19 @@ class Output {
     void SetDecay(float ms) { _envParams.decay = constrain(ms, 0.1f, 10000.0f); }
     void SetSustain(float level) { _envParams.sustain = constrain(level, 0.0f, 100.0f); }
     void SetRelease(float ms) { _envParams.release = constrain(ms, 0.1f, 10000.0f); }
-    String GetAttackDescription() { return String(_envParams.attack) + "ms"; }
-    String GetDecayDescription() { return String(_envParams.decay) + "ms"; }
+    float GetAttack() { return _envParams.attack; }
+    float GetDecay() { return _envParams.decay; }
+    float GetSustain() { return _envParams.sustain; }
+    float GetRelease() { return _envParams.release; }
+    String GetAttackDescription() {
+        return _envParams.attack > 999 ? String(_envParams.attack / 1000.0f, 1) + "s" : String(_envParams.attack) + "ms";
+    }
+    String GetDecayDescription() { return _envParams.decay > 999 ? String(_envParams.decay / 1000.0f, 1) + "s" : String(_envParams.decay) + "ms"; }
     String GetSustainDescription() { return String(_envParams.sustain) + "%"; }
-    String GetReleaseDescription() { return String(_envParams.release) + "ms"; }
+    String GetReleaseDescription() { return _envParams.release > 999 ? String(_envParams.release / 1000.0f, 1) + "s" : String(_envParams.release) + "ms"; }
     void SetRetrigger(bool state) { _retrigger = state; }
     bool GetRetrigger() { return _retrigger; }
+    void ToggleRetrigger() { _retrigger = !_retrigger; }
     String GetRetriggerDescription() { return _retrigger ? "Yes" : "No"; }
     void SetAttackCurve(float curve) { _envParams.attackCurve = constrain(curve, 0.0f, 1.0f); }
     void SetDecayCurve(float curve) { _envParams.decayCurve = constrain(curve, 0.0f, 1.0f); }
@@ -852,11 +859,13 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
     }
 }
 
-void Output::SetDivider(int index) {
-    _dividerIndex = constrain(index, 0, _dividerAmount - 1);
-    if (_clockDividers[_dividerIndex] == 900 && _outputType == OutputType::DACOut) {
+void Output::SetWaveformType(WaveformType type) {
+    _waveformType = type;
+    if ((_waveformType == WaveformType::ADEnvelope || _waveformType == WaveformType::AREnvelope || _waveformType == WaveformType::ADSREnvelope) && _outputType == OutputType::DACOut) {
+        SetDivider(18);
         _triggerMode = true;
     } else {
+        SetDivider(9);
         _triggerMode = false;
     }
 }
