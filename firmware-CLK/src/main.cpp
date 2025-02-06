@@ -154,14 +154,15 @@ int externalDividerIndex = 0;
 volatile unsigned long externalTickCounter = 0;
 
 // Menu variables
-int menuItems = 54;
+int menuItems = 61;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 1;
 int menuMode = 0;                    // Menu mode for parameter editing
 bool displayRefresh = 1;             // Display refresh flag
 bool unsavedChanges = false;         // Unsaved changes flag
-int euclideanOutput = 0;             // Euclidean rhythm output index
+int euclideanOutputSelect = 0;       // Euclidean rhythm output index
+int envelopeOutputSelect = 2;        // Envelope output index
 int saveSlot = 0;                    // Save slot index
 unsigned long lastEncoderUpdate = 0; // Last encoder update time
 
@@ -247,7 +248,7 @@ void HandleEncoderClick() {
                 menuMode = 16;
                 break;
             case 17: // Toggle Euclidean rhythm for output
-                outputs[euclideanOutput].ToggleEuclidean();
+                outputs[euclideanOutputSelect].ToggleEuclidean();
                 unsavedChanges = true;
                 break;
             case 18: // Set Euclidean rhythm step length
@@ -328,37 +329,59 @@ void HandleEncoderClick() {
             case 43: // Set Waveform type for output 4
                 menuMode = 43;
                 break;
-            case 44: // CV Input 1 target
-                if (menuMode == 44) {
-                    pendingCVInputTarget[0] = CVInputTarget[0];
-                }
+            case 44: // Envelope output selection
                 menuMode = 44;
                 break;
-            case 45: // CV Input 2 target
-                if (menuMode == 45) {
-                    pendingCVInputTarget[1] = CVInputTarget[1];
-                }
+            case 45: // Envelope attack time
                 menuMode = 45;
                 break;
-            case 46: // CV Input 1 attenuation
+            case 46: // Envelope decay time
                 menuMode = 46;
                 break;
-            case 47: // CV Input 1 offset
+            case 47: // Envelope sustain level
                 menuMode = 47;
                 break;
-            case 48: // CV Input 2 attenuation
+            case 48: // Envelope release time
                 menuMode = 48;
                 break;
-            case 49: // CV Input 2 offset
+            case 49: // Envelope curve
                 menuMode = 49;
                 break;
-            case 50: // Tap tempo
+            case 50: // Envelope retrigger toggle
+                outputs[envelopeOutputSelect].ToggleRetrigger();
+                unsavedChanges = true;
+                break;
+            case 51: // CV Input 1 target
+                if (menuMode == 51) {
+                    pendingCVInputTarget[0] = CVInputTarget[0];
+                }
+                menuMode = 51;
+                break;
+            case 52: // CV Input 2 target
+                if (menuMode == 52) {
+                    pendingCVInputTarget[1] = CVInputTarget[1];
+                }
+                menuMode = 52;
+                break;
+            case 53: // CV Input 1 attenuation
+                menuMode = 53;
+                break;
+            case 54: // CV Input 1 offset
+                menuMode = 54;
+                break;
+            case 55: // CV Input 2 attenuation
+                menuMode = 55;
+                break;
+            case 56: // CV Input 2 offset
+                menuMode = 56;
+                break;
+            case 57: // Tap tempo
                 SetTapTempo();
                 break;
-            case 51: // Select save slot
-                menuMode = 47;
+            case 58: // Select save slot
+                menuMode = 58;
                 break;
-            case 52: { // Save settings
+            case 59: { // Save settings
                 LoadSaveParams p;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
@@ -397,7 +420,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 53: { // Load from slot
+            case 60: { // Load from slot
                 LoadSaveParams p = Load(saveSlot);
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -412,7 +435,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 54: { // Load default settings
+            case 61: { // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -430,9 +453,9 @@ void HandleEncoderClick() {
             }
         } else {
             // Commit changes after exiting edit mode
-            if (menuMode == 44) {
+            if (menuMode == 51) {
                 CVInputTarget[0] = pendingCVInputTarget[0];
-            } else if (menuMode == 45) {
+            } else if (menuMode == 52) {
                 CVInputTarget[1] = pendingCVInputTarget[1];
             }
             // Exit edit mode
@@ -495,23 +518,23 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 16: // Set euclidean output to edit
-            euclideanOutput = (euclideanOutput - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutput - 1;
+            euclideanOutputSelect = (euclideanOutputSelect - 1 < 0) ? NUM_OUTPUTS - 1 : euclideanOutputSelect - 1;
             unsavedChanges = true;
             break;
         case 18: // Set Euclidean rhythm step length
-            outputs[euclideanOutput].SetEuclideanSteps(outputs[euclideanOutput].GetEuclideanSteps() - speedFactor);
+            outputs[euclideanOutputSelect].SetEuclideanSteps(outputs[euclideanOutputSelect].GetEuclideanSteps() - speedFactor);
             unsavedChanges = true;
             break;
         case 19: // Set Euclidean rhythm number of triggers
-            outputs[euclideanOutput].SetEuclideanTriggers(outputs[euclideanOutput].GetEuclideanTriggers() - speedFactor);
+            outputs[euclideanOutputSelect].SetEuclideanTriggers(outputs[euclideanOutputSelect].GetEuclideanTriggers() - speedFactor);
             unsavedChanges = true;
             break;
         case 20: // Set Euclidean rhythm rotation
-            outputs[euclideanOutput].SetEuclideanRotation(outputs[euclideanOutput].GetEuclideanRotation() - speedFactor);
+            outputs[euclideanOutputSelect].SetEuclideanRotation(outputs[euclideanOutputSelect].GetEuclideanRotation() - speedFactor);
             unsavedChanges = true;
             break;
         case 21: // Set Euclidean padding
-            outputs[euclideanOutput].SetEuclideanPadding(outputs[euclideanOutput].GetEuclideanPadding() - speedFactor);
+            outputs[euclideanOutputSelect].SetEuclideanPadding(outputs[euclideanOutputSelect].GetEuclideanPadding() - speedFactor);
             unsavedChanges = true;
             break;
         case 22:
@@ -593,7 +616,31 @@ void HandleEncoderPosition() {
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() - 1 + WaveformTypeLength) % WaveformTypeLength));
             unsavedChanges = true;
             break;
-        case 44: { // CV Input 1 target
+        case 44: // Envelope output selection
+            envelopeOutputSelect = (envelopeOutputSelect - 1 < 2) ? 3 : envelopeOutputSelect - 1;
+            unsavedChanges = true;
+            break;
+        case 45: // Envelope attack time
+            outputs[envelopeOutputSelect].SetAttack(outputs[envelopeOutputSelect].GetAttack() - speedFactor * 2);
+            unsavedChanges = true;
+            break;
+        case 46: // Envelope decay time
+            outputs[envelopeOutputSelect].SetDecay(outputs[envelopeOutputSelect].GetDecay() - speedFactor * 2);
+            unsavedChanges = true;
+            break;
+        case 47: // Envelope sustain level
+            outputs[envelopeOutputSelect].SetSustain(outputs[envelopeOutputSelect].GetSustain() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 48: // Envelope release time
+            outputs[envelopeOutputSelect].SetRelease(outputs[envelopeOutputSelect].GetRelease() - speedFactor * 2);
+            unsavedChanges = true;
+            break;
+        case 49: // Envelope curve
+            outputs[envelopeOutputSelect].SetCurve(outputs[envelopeOutputSelect].GetCurve() - speedFactor * 0.01);
+            unsavedChanges = true;
+            break;
+        case 51: { // CV Input 1 target
             CVTarget tmp = static_cast<CVTarget>((pendingCVInputTarget[0] - 1 + CVTargetLength) % CVTargetLength);
             if (tmp != pendingCVInputTarget[1] || tmp == CVTarget::None) {
                 pendingCVInputTarget[0] = tmp;
@@ -602,7 +649,7 @@ void HandleEncoderPosition() {
             }
             break;
         }
-        case 45: { // CV Input 2 target
+        case 52: { // CV Input 2 target
             CVTarget tmp = static_cast<CVTarget>((pendingCVInputTarget[1] - 1 + CVTargetLength) % CVTargetLength);
             if (tmp != pendingCVInputTarget[0] || tmp == CVTarget::None) {
                 pendingCVInputTarget[1] = tmp;
@@ -611,20 +658,19 @@ void HandleEncoderPosition() {
             }
             break;
         }
-
-        case 46: // CV Input 1 attenuation
+        case 53: // CV Input 1 attenuation
             CVInputAttenuation[0] = constrain(CVInputAttenuation[0] - speedFactor, 0, 100);
             break;
-        case 47: // CV Input 1 offset
+        case 54: // CV Input 1 offset
             CVInputOffset[0] = constrain(CVInputOffset[0] - speedFactor, 0, 100);
             break;
-        case 48: // CV Input 2 attenuation
+        case 55: // CV Input 2 attenuation
             CVInputAttenuation[1] = constrain(CVInputAttenuation[1] - speedFactor, 0, 100);
             break;
-        case 49: // CV Input 2 offset
+        case 56: // CV Input 2 offset
             CVInputOffset[1] = constrain(CVInputOffset[1] - speedFactor, 0, 100);
             break;
-        case 51: // Select save slot
+        case 58: // Select save slot
             saveSlot = (saveSlot - 1 < 0) ? NUM_SLOTS : saveSlot - 1;
             break;
         }
@@ -660,23 +706,23 @@ void HandleEncoderPosition() {
             unsavedChanges = true;
             break;
         case 16: // Set euclidean output to edit
-            euclideanOutput = (euclideanOutput + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutput + 1;
+            euclideanOutputSelect = (euclideanOutputSelect + 1 > NUM_OUTPUTS - 1) ? 0 : euclideanOutputSelect + 1;
             unsavedChanges = true;
             break;
         case 18: // Set Euclidean rhythm step length
-            outputs[euclideanOutput].SetEuclideanSteps(outputs[euclideanOutput].GetEuclideanSteps() + speedFactor);
+            outputs[euclideanOutputSelect].SetEuclideanSteps(outputs[euclideanOutputSelect].GetEuclideanSteps() + speedFactor);
             unsavedChanges = true;
             break;
         case 19: // Set Euclidean rhythm number of triggers
-            outputs[euclideanOutput].SetEuclideanTriggers(outputs[euclideanOutput].GetEuclideanTriggers() + speedFactor);
+            outputs[euclideanOutputSelect].SetEuclideanTriggers(outputs[euclideanOutputSelect].GetEuclideanTriggers() + speedFactor);
             unsavedChanges = true;
             break;
         case 20: // Set Euclidean rhythm rotation
-            outputs[euclideanOutput].SetEuclideanRotation(outputs[euclideanOutput].GetEuclideanRotation() + speedFactor);
+            outputs[euclideanOutputSelect].SetEuclideanRotation(outputs[euclideanOutputSelect].GetEuclideanRotation() + speedFactor);
             unsavedChanges = true;
             break;
         case 21: // Set Euclidean padding
-            outputs[euclideanOutput].SetEuclideanPadding(outputs[euclideanOutput].GetEuclideanPadding() + speedFactor);
+            outputs[euclideanOutputSelect].SetEuclideanPadding(outputs[euclideanOutputSelect].GetEuclideanPadding() + speedFactor);
             unsavedChanges = true;
             break;
         case 22:
@@ -758,7 +804,31 @@ void HandleEncoderPosition() {
             outputs[3].SetWaveformType(static_cast<WaveformType>((outputs[3].GetWaveformType() + 1) % WaveformTypeLength));
             unsavedChanges = true;
             break;
-        case 44: { // CV Input 1 target
+        case 44: // Envelope output selection
+            envelopeOutputSelect = (envelopeOutputSelect + 1 > 3) ? 2 : envelopeOutputSelect + 1;
+            unsavedChanges = true;
+            break;
+        case 45: // Envelope attack time
+            outputs[envelopeOutputSelect].SetAttack(outputs[envelopeOutputSelect].GetAttack() + speedFactor * 2);
+            unsavedChanges = true;
+            break;
+        case 46: // Envelope decay time
+            outputs[envelopeOutputSelect].SetDecay(outputs[envelopeOutputSelect].GetDecay() + speedFactor * 2);
+            unsavedChanges = true;
+            break;
+        case 47: // Envelope sustain level
+            outputs[envelopeOutputSelect].SetSustain(outputs[envelopeOutputSelect].GetSustain() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 48: // Envelope release time
+            outputs[envelopeOutputSelect].SetRelease(outputs[envelopeOutputSelect].GetRelease() + speedFactor * 2);
+            unsavedChanges = true;
+            break;
+        case 49: // Envelope curve
+            outputs[envelopeOutputSelect].SetCurve(outputs[envelopeOutputSelect].GetCurve() + speedFactor * 0.01);
+            unsavedChanges = true;
+            break;
+        case 51: { // CV Input 1 target
             CVTarget tmp = static_cast<CVTarget>((pendingCVInputTarget[0] + 1) % CVTargetLength);
             if (tmp != pendingCVInputTarget[1] || tmp == CVTarget::None) {
                 pendingCVInputTarget[0] = tmp;
@@ -767,7 +837,7 @@ void HandleEncoderPosition() {
             }
             break;
         }
-        case 45: { // CV Input 2 target
+        case 52: { // CV Input 2 target
             CVTarget tmp = static_cast<CVTarget>((pendingCVInputTarget[1] + 1) % CVTargetLength);
             if (tmp != pendingCVInputTarget[0] || tmp == CVTarget::None) {
                 pendingCVInputTarget[1] = tmp;
@@ -776,19 +846,19 @@ void HandleEncoderPosition() {
             }
             break;
         }
-        case 46: // CV Input 1 attenuation
+        case 53: // CV Input 1 attenuation
             CVInputAttenuation[0] = constrain(CVInputAttenuation[0] + speedFactor, 0, 100);
             break;
-        case 47: // CV Input 1 offset
+        case 54: // CV Input 1 offset
             CVInputOffset[0] = constrain(CVInputOffset[0] + speedFactor, 0, 100);
             break;
-        case 48: // CV Input 2 attenuation
+        case 55: // CV Input 2 attenuation
             CVInputAttenuation[1] = constrain(CVInputAttenuation[1] + speedFactor, 0, 100);
             break;
-        case 49: // CV Input 2 offset
+        case 56: // CV Input 2 offset
             CVInputOffset[1] = constrain(CVInputOffset[1] + speedFactor, 0, 100);
             break;
-        case 51: // Select save slot
+        case 68: // Select save slot
             saveSlot = (saveSlot + 1 > NUM_SLOTS) ? 0 : saveSlot + 1;
             break;
         }
@@ -986,7 +1056,7 @@ void HandleDisplay() {
             display.setCursor(10, yPosition);
             display.print("OUTPUT: ");
             display.setCursor(xPosition, yPosition);
-            display.print(String(euclideanOutput + 1));
+            display.print(String(euclideanOutputSelect + 1));
             if (menuItem == menuIdx && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx) {
@@ -996,7 +1066,7 @@ void HandleDisplay() {
             display.setCursor(10, yPosition);
             display.print("ENABLED: ");
             display.setCursor(xPosition, yPosition);
-            display.print(String(outputs[euclideanOutput].GetEuclidean() ? "YES" : "NO"));
+            display.print(String(outputs[euclideanOutputSelect].GetEuclidean() ? "YES" : "NO"));
             if (menuItem == menuIdx + 1 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 1) {
@@ -1006,7 +1076,7 @@ void HandleDisplay() {
             display.setCursor(10, yPosition);
             display.print("STEPS: ");
             display.setCursor(xPosition, yPosition);
-            display.print(String(outputs[euclideanOutput].GetEuclideanSteps()));
+            display.print(String(outputs[euclideanOutputSelect].GetEuclideanSteps()));
             if (menuItem == menuIdx + 2 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 2) {
@@ -1016,7 +1086,7 @@ void HandleDisplay() {
             display.setCursor(10, yPosition);
             display.print("HITS: ");
             display.setCursor(xPosition, yPosition);
-            display.print(String(outputs[euclideanOutput].GetEuclideanTriggers()));
+            display.print(String(outputs[euclideanOutputSelect].GetEuclideanTriggers()));
             if (menuItem == menuIdx + 3 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 3) {
@@ -1025,7 +1095,7 @@ void HandleDisplay() {
             yPosition += 9;
             display.setCursor(10, yPosition);
             display.print("RO:");
-            display.print(String(outputs[euclideanOutput].GetEuclideanRotation()));
+            display.print(String(outputs[euclideanOutputSelect].GetEuclideanRotation()));
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 4) {
@@ -1034,7 +1104,7 @@ void HandleDisplay() {
 
             display.setCursor(50, yPosition);
             display.print("PAD:");
-            display.print(String(outputs[euclideanOutput].GetEuclideanPadding()));
+            display.print(String(outputs[euclideanOutputSelect].GetEuclideanPadding()));
             if (menuItem == menuIdx + 5 && menuMode == 0) {
                 display.drawTriangle(42, yPosition - 1, 42, yPosition + 7, 46, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 5) {
@@ -1042,16 +1112,16 @@ void HandleDisplay() {
             }
 
             // Draw the Euclidean rhythm pattern for the selected output
-            if (outputs[euclideanOutput].GetEuclidean()) {
+            if (outputs[euclideanOutputSelect].GetEuclidean()) {
                 display.fillTriangle(90, 10, 94, 10, 92, 14, WHITE);
                 yPosition = 15;
-                int euclideanSteps = outputs[euclideanOutput].GetEuclideanSteps();
-                int euclideanPadding = outputs[euclideanOutput].GetEuclideanPadding();
+                int euclideanSteps = outputs[euclideanOutputSelect].GetEuclideanSteps();
+                int euclideanPadding = outputs[euclideanOutputSelect].GetEuclideanPadding();
                 for (int i = 0; i < euclideanSteps + euclideanPadding && i < 47; i++) {
                     int column = i / 8;
                     int row = i % 8;
                     display.setCursor(90 + (column * 6), yPosition + (row * 6));
-                    if (i < euclideanSteps && outputs[euclideanOutput].GetRhythmStep(i)) {
+                    if (i < euclideanSteps && outputs[euclideanOutputSelect].GetRhythmStep(i)) {
                         display.fillRect(90 + (column * 6), yPosition + (row * 6), 5, 5, WHITE);
                     } else {
                         if (i < euclideanSteps) {
@@ -1222,6 +1292,86 @@ void HandleDisplay() {
             return;
         }
 
+        // Envelope settings
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 7;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
+            display.setTextSize(1);
+            MenuHeader("ENVELOPE SETTINGS");
+            int yPosition = 10;
+            int xPosition = 64;
+            display.setCursor(10, yPosition);
+            display.print("OUTPUT: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(envelopeOutputSelect + 1));
+            if (menuItem == menuIdx && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("Attack: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(outputs[envelopeOutputSelect].GetAttackDescription()));
+            if (menuItem == menuIdx + 1 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 1) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("Decay: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(outputs[envelopeOutputSelect].GetDecayDescription()));
+            if (menuItem == menuIdx + 2 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 2) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("Sustain: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(outputs[envelopeOutputSelect].GetSustainDescription()));
+            if (menuItem == menuIdx + 3 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 3) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("Release: ");
+            display.setCursor(xPosition, yPosition);
+            display.print(String(outputs[envelopeOutputSelect].GetReleaseDescription()));
+            if (menuItem == menuIdx + 4 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 4) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("Cur:");
+            display.print(String(outputs[envelopeOutputSelect].GetCurveDescription()));
+            if (menuItem == menuIdx + 5 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 5) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+
+            display.setCursor(64, yPosition);
+            display.print("Retr:");
+            display.print(String(outputs[envelopeOutputSelect].GetRetriggerDescription()));
+            if (menuItem == menuIdx + 6 && menuMode == 0) {
+                display.drawTriangle(56, yPosition - 1, 56, yPosition + 7, 60, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 6) {
+                display.fillTriangle(56, yPosition - 1, 56, yPosition + 7, 60, yPosition + 3, 1);
+            }
+
+            RedrawDisplay();
+            return;
+        }
+
         // CV input target menu
         menuIdx = menuIdx + itemAmount;
         itemAmount = 6;
@@ -1231,7 +1381,7 @@ void HandleDisplay() {
             int yPosition = 20;
             display.setCursor(10, yPosition);
             display.print("CV 1: ");
-            display.print(CVTargetDescription[menuMode == 44 ? pendingCVInputTarget[0] : CVInputTarget[0]]);
+            display.print(CVTargetDescription[menuMode == 51 ? pendingCVInputTarget[0] : CVInputTarget[0]]);
 
             if (menuItem == menuIdx && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
@@ -1242,7 +1392,7 @@ void HandleDisplay() {
             yPosition += 9;
             display.setCursor(10, yPosition);
             display.print("CV 2: ");
-            display.print(CVTargetDescription[menuMode == 45 ? pendingCVInputTarget[1] : CVInputTarget[1]]);
+            display.print(CVTargetDescription[menuMode == 52 ? pendingCVInputTarget[1] : CVInputTarget[1]]);
             if (menuItem == menuIdx + 1 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 1) {
@@ -1523,8 +1673,18 @@ void HandleCVTarget(int ch, float CVValue, CVTarget cvTarget) {
 // External clock interrupt service routine
 void ClockReceived() {
     unsigned long currentTime = millis();
+    // Debounce: ignore interrupts that occur too close together (less than 1ms)
+    if (currentTime - lastClockInterruptTime < 1) {
+        return;
+    }
+
     unsigned long interval = currentTime - lastClockInterruptTime;
     lastClockInterruptTime = currentTime;
+
+    // Ignore obviously wrong intervals (too short or too long)
+    if (interval < 10 || interval > 2000) {
+        return;
+    }
 
     static unsigned long intervals[3] = {0, 0, 0};
     static int intervalIndex = 0;
@@ -1532,25 +1692,44 @@ void ClockReceived() {
     intervals[intervalIndex] = interval;
     intervalIndex = (intervalIndex + 1) % 3;
 
-    unsigned long averageInterval = (intervals[0] + intervals[1] + intervals[2]) / 3;
+    // Calculate average interval, excluding outliers
+    unsigned long averageInterval = 0;
+    int validIntervals = 0;
+    for (int i = 0; i < 3; i++) {
+        if (intervals[i] > 0 && abs((long)intervals[i] - (long)interval) < interval / 2) {
+            averageInterval += intervals[i];
+            validIntervals++;
+        }
+    }
+
+    if (validIntervals > 0) {
+        averageInterval /= validIntervals;
+    } else {
+        return;
+    }
 
     // Divide the external clock signal by the selected divider
     if (externalTickCounter % externalClockDividers[externalDividerIndex] == 0) {
         if (averageInterval > 0) {
             clockInterval = averageInterval;
             unsigned int newBPM = 60000 / (averageInterval * externalClockDividers[externalDividerIndex]);
-            if (abs(newBPM - BPM) > 3) { // Adjust BPM if the difference is significant
+            // Add hysteresis to BPM changes
+            if (abs(newBPM - BPM) > 3) {
                 UpdateBPM(newBPM);
                 displayRefresh = 1;
                 DEBUG_PRINT("External clock connected");
             }
         }
+
+        // Update outputs
+        noInterrupts(); // Critical section
         for (int i = 0; i < NUM_OUTPUTS; i++) {
             outputs[i].SetExternalClock(true);
             outputs[i].IncrementInternalCounter();
         }
         usingExternalClock = true;
         tickCounter = 0;
+        interrupts();
     }
     externalTickCounter++;
 }
