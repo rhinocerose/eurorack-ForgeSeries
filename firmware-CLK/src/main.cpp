@@ -9,9 +9,9 @@
 #include <Wire.h>
 
 // Load local libraries
-#include "boardIO.cpp"
+#include "boardIO.hpp"
 #include "definitions.hpp"
-#include "loadsave.cpp"
+#include "loadsave.hpp"
 #include "outputs.hpp"
 #include "pinouts.hpp"
 #include "splash.hpp"
@@ -383,6 +383,7 @@ void HandleEncoderClick() {
                 break;
             case 59: { // Save settings
                 LoadSaveParams p;
+                p.valid = true;
                 p.BPM = BPM;
                 p.externalClockDivIdx = externalDividerIndex;
                 for (int i = 0; i < NUM_OUTPUTS; i++) {
@@ -394,13 +395,10 @@ void HandleEncoderClick() {
                     p.swingIdx[i] = outputs[i].GetSwingAmountIndex();
                     p.swingEvery[i] = outputs[i].GetSwingEvery();
                     p.pulseProbability[i] = outputs[i].GetPulseProbability();
-                    p.euclideanEnabled[i] = outputs[i].GetEuclidean();
-                    p.euclideanSteps[i] = outputs[i].GetEuclideanSteps();
-                    p.euclideanTriggers[i] = outputs[i].GetEuclideanTriggers();
-                    p.euclideanRotations[i] = outputs[i].GetEuclideanRotation();
-                    p.euclideanPadding[i] = outputs[i].GetEuclideanPadding();
+                    p.euclideanParams[i] = outputs[i].GetEuclideanParams();
                     p.phaseShift[i] = outputs[i].GetPhase();
                     p.waveformType[i] = int(outputs[i].GetWaveformType());
+                    p.envParams[i] = outputs[i].GetEnvelopeParams();
                 }
                 for (int i = 0; i < NUM_CV_INS; i++) {
                     p.CVInputTarget[i] = CVInputTarget[i];
@@ -858,7 +856,7 @@ void HandleEncoderPosition() {
         case 56: // CV Input 2 offset
             CVInputOffset[1] = constrain(CVInputOffset[1] + speedFactor, 0, 100);
             break;
-        case 68: // Select save slot
+        case 58: // Select save slot
             saveSlot = (saveSlot + 1 > NUM_SLOTS) ? 0 : saveSlot + 1;
             break;
         }
@@ -1094,7 +1092,7 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("RO:");
+            display.print("ROT:");
             display.print(String(outputs[euclideanOutputSelect].GetEuclideanRotation()));
             if (menuItem == menuIdx + 4 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
@@ -1102,7 +1100,7 @@ void HandleDisplay() {
                 display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
-            display.setCursor(50, yPosition);
+            display.setCursor(xPosition, yPosition);
             display.print("PAD:");
             display.print(String(outputs[euclideanOutputSelect].GetEuclideanPadding()));
             if (menuItem == menuIdx + 5 && menuMode == 0) {
@@ -1786,13 +1784,10 @@ void UpdateParameters(LoadSaveParams p) {
         outputs[i].SetSwingAmount(p.swingIdx[i]);
         outputs[i].SetSwingEvery(p.swingEvery[i]);
         outputs[i].SetPulseProbability(p.pulseProbability[i]);
-        outputs[i].SetEuclidean(p.euclideanEnabled[i]);
-        outputs[i].SetEuclideanSteps(p.euclideanSteps[i]);
-        outputs[i].SetEuclideanTriggers(p.euclideanTriggers[i]);
-        outputs[i].SetEuclideanRotation(p.euclideanRotations[i]);
-        outputs[i].SetEuclideanPadding(p.euclideanPadding[i]);
+        outputs[i].SetEuclideanParams(p.euclideanParams[i]);
         outputs[i].SetPhase(p.phaseShift[i]);
         outputs[i].SetWaveformType(static_cast<WaveformType>(p.waveformType[i]));
+        outputs[i].SetEnvelopeParams(p.envParams[i]);
     }
     for (int i = 0; i < NUM_CV_INS; i++) {
         CVInputTarget[i] = static_cast<CVTarget>(p.CVInputTarget[i]);

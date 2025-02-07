@@ -1,12 +1,13 @@
+#pragma once
 #include <Arduino.h>
 
-struct EuclideanParams {
-    bool enabled = false;
-    int steps = 10;   // Number of steps in the pattern
-    int triggers = 6; // Number of triggers in the pattern
-    int rotation = 1; // Rotation of the pattern
-    int pad = 0;      // No trigger steps added to the end of the pattern
-};
+typedef struct {
+    bool enabled;
+    int steps;    // Number of steps in the pattern
+    int triggers; // Number of triggers in the pattern
+    int rotation; // Rotation of the pattern
+    int pad;      // No trigger steps added to the end of the pattern
+} EuclideanParams;
 
 // Helper function to distribute the pattern based on counts and remainders
 void distributePattern(int level, int counts[], int remainders[], int pattern[], int &index) {

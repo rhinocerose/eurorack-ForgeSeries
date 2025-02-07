@@ -1,3 +1,4 @@
+#pragma once
 #include <Arduino.h>
 
 #include "definitions.hpp"
@@ -41,6 +42,18 @@ String WaveformTypeDescriptions[] = {
     "ADSR Env",
 };
 int WaveformTypeLength = sizeof(WaveformTypeDescriptions) / sizeof(WaveformTypeDescriptions[0]);
+
+// ADSR envelope parameters
+typedef struct {
+    float attack;       // Attack time in ms
+    float decay;        // Decay time in ms
+    float sustain;      // Sustain level (0-100%)
+    float release;      // Release time in ms
+    float attackCurve;  // 0=log, 0.5=linear, 1=exp
+    float decayCurve;   // 0=log, 0.5=linear, 1=exp
+    float releaseCurve; // 0=log, 0.5=linear, 1=exp
+    bool retrigger;     // Retrigger on gate high
+} EnvelopeParams;
 
 class Output {
   public:
@@ -101,6 +114,8 @@ class Output {
     String GetPulseProbabilityDescription() { return String(_pulseProbability) + "%"; }
 
     // Euclidean Rhythm
+    EuclideanParams GetEuclideanParams() { return _euclideanParams; }
+    void SetEuclideanParams(EuclideanParams params) { _euclideanParams = params; }
     void SetEuclidean(bool euclidean);
     void ToggleEuclidean() { SetEuclidean(!_euclideanParams.enabled); }
     bool GetEuclidean() { return _euclideanParams.enabled; }
@@ -139,6 +154,8 @@ class Output {
     }
 
     // Envelope parameter setters
+    EnvelopeParams GetEnvelopeParams() { return _envParams; }
+    void SetEnvelopeParams(EnvelopeParams params) { _envParams = params; }
     void SetAttack(float ms) { _envParams.attack = constrain(ms, 0.1f, 10000.0f); }
     void SetDecay(float ms) { _envParams.decay = constrain(ms, 0.1f, 10000.0f); }
     void SetSustain(float level) { _envParams.sustain = constrain(level, 0.0f, 100.0f); }
@@ -153,10 +170,10 @@ class Output {
     String GetDecayDescription() { return _envParams.decay > 999 ? String(_envParams.decay / 1000.0f, 1) + "s" : String(_envParams.decay) + "ms"; }
     String GetSustainDescription() { return String(_envParams.sustain) + "%"; }
     String GetReleaseDescription() { return _envParams.release > 999 ? String(_envParams.release / 1000.0f, 1) + "s" : String(_envParams.release) + "ms"; }
-    void SetRetrigger(bool state) { _retrigger = state; }
-    bool GetRetrigger() { return _retrigger; }
-    void ToggleRetrigger() { _retrigger = !_retrigger; }
-    String GetRetriggerDescription() { return _retrigger ? "Yes" : "No"; }
+    void SetRetrigger(bool state) { _envParams.retrigger = state; }
+    bool GetRetrigger() { return _envParams.retrigger; }
+    void ToggleRetrigger() { _envParams.retrigger = !_envParams.retrigger; }
+    String GetRetriggerDescription() { return _envParams.retrigger ? "Yes" : "No"; }
     void SetAttackCurve(float curve) { _envParams.attackCurve = constrain(curve, 0.0f, 1.0f); }
     void SetDecayCurve(float curve) { _envParams.decayCurve = constrain(curve, 0.0f, 1.0f); }
     void SetReleaseCurve(float curve) { _envParams.releaseCurve = constrain(curve, 0.0f, 1.0f); }
@@ -176,8 +193,8 @@ class Output {
     const int MaxDACValue = 4095;
     const float MaxWaveValue = 255.0;
     static int const _dividerAmount = 19;
-    float _clockDividers[_dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.3333333333, 0.5, 0.6666666667, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0, 24.0, 32.0, 900};
-    String _dividerDescription[_dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/3", "/2", "/1.5", "x1", "x1.5", "x2", "x3", "x4", "x8", "x16", "x24", "x32", "Trig"};
+    float _clockDividers[_dividerAmount] = {0.0078125, 0.015625, 0.03125, 0.0625, 0.125, 0.25, 0.3333333333, 0.5, 0.6666666667, 1.0, 1.5, 2.0, 3.0, 4.0, 8.0, 16.0, 24.0, 32.0, 10000};
+    String _dividerDescription[_dividerAmount] = {"/128", "/64", "/32", "/16", "/8", "/4", "/3", "/2", "/1.5", "x1", "x1.5", "x2", "x3", "x4", "x8", "x16", "x24", "x32", "Env"};
     static int const MaxEuclideanSteps = 64;
 
     // The shuffle of the TR-909 delays each even-numbered 1/16th by 2/96 of a beat for shuffle setting 1,
@@ -220,27 +237,33 @@ class Output {
     unsigned int _swingAmountIndex = 0; // Swing amount index
 
     // Euclidean rhythm variables
-    int _euclideanStepIndex = 0;             // Current step in the pattern
-    EuclideanParams _euclideanParams;        // Euclidean rhythm parameters
+    int _euclideanStepIndex = 0; // Current step in the pattern
+    EuclideanParams _euclideanParams = {
+        .enabled = false,
+        .steps = 10,   // Number of steps in the pattern
+        .triggers = 6, // Number of triggers in the pattern
+        .rotation = 1, // Rotation of the pattern
+        .pad = 0,      // No trigger steps added to the end of the pattern
+    };
     int _euclideanRhythm[MaxEuclideanSteps]; // Euclidean rhythm pattern
 
     // Envelope
     bool _triggerMode = false;
     bool _externaltrigger = false;
     unsigned long _envStartTime = 0;
-    bool _retrigger = false;    // If true, allows envelope retriggering
     float _lastEnvValue = 0.0f; // Stores last envelope value for retriggering
 
     // ADSR envelope parameters
-    struct EnvelopeParams {
-        float attack = 200.0f;     // Attack time in ms
-        float decay = 200.0f;      // Decay time in ms
-        float sustain = 70.0f;     // Sustain level (0-100%)
-        float release = 250.0f;    // Release time in ms
-        float attackCurve = 0.5f;  // 0=log, 0.5=linear, 1=exp
-        float decayCurve = 0.5f;   // 0=log, 0.5=linear, 1=exp
-        float releaseCurve = 0.5f; // 0=log, 0.5=linear, 1=exp
-    } _envParams;
+    EnvelopeParams _envParams = {
+        .attack = 200.0f,
+        .decay = 200.0f,
+        .sustain = 70.0f,
+        .release = 250.0f,
+        .attackCurve = 0.5f,
+        .decayCurve = 0.5f,
+        .releaseCurve = 0.5f,
+        .retrigger = false,
+    };
 
     // Envelope state tracking
     enum EnvelopeState {
@@ -283,7 +306,7 @@ class Output {
         case WaveformType::ADEnvelope:
         case WaveformType::AREnvelope:
         case WaveformType::ADSREnvelope:
-            if (!_waveActive || _retrigger) {
+            if (_envState == EnvelopeState::Idle || _envParams.retrigger) {
                 _lastEnvValue = _waveValue;
                 _envState = EnvelopeState::Attack;
                 _envStartTime = micros();
@@ -320,6 +343,15 @@ class Output {
             break;
         case WaveformType::ExpEnvelope:
         case WaveformType::LogEnvelope:
+            break;
+        case WaveformType::ADEnvelope:
+        case WaveformType::AREnvelope:
+        case WaveformType::ADSREnvelope:
+            // For AR/ADSR, only trigger release phase
+            if (_waveActive && (_waveformType == WaveformType::AREnvelope ||
+                                _waveformType == WaveformType::ADSREnvelope)) {
+                HandleGateRelease();
+            }
             break;
         case WaveformType::SmoothNoise:
         case WaveformType::Noise:
@@ -545,10 +577,9 @@ class Output {
     }
 
     void HandleTrigger() {
-        if (_triggerMode && (_waveformType >= WaveformType::ADEnvelope)) {
-            if (!_waveActive || _retrigger) {
-                // Store current value for retrigger
-                _lastEnvValue = _waveValue;
+        if (_triggerMode && (_waveformType == WaveformType::ADEnvelope || _waveformType == WaveformType::AREnvelope || _waveformType == WaveformType::ADSREnvelope)) {
+            if (!_waveActive || _envParams.retrigger) {
+                _lastEnvValue = _envParams.retrigger ? _waveValue : 0.0f;
                 _envState = EnvelopeState::Attack;
                 _envStartTime = micros();
                 _waveActive = true;
@@ -558,12 +589,14 @@ class Output {
     }
 
     void HandleGateRelease() {
-        if (_triggerMode && (_waveformType >= WaveformType::ADEnvelope)) {
+        if (_triggerMode && (_waveformType == WaveformType::ADEnvelope || _waveformType == WaveformType::AREnvelope || _waveformType == WaveformType::ADSREnvelope)) {
             if (_waveformType == WaveformType::AREnvelope ||
                 _waveformType == WaveformType::ADSREnvelope) {
-                _lastEnvValue = _waveValue; // Store current value before release
-                _envState = EnvelopeState::Release;
-                _envStartTime = micros();
+                if (_waveActive && _envState != EnvelopeState::Release) {
+                    _lastEnvValue = _waveValue;
+                    _envState = EnvelopeState::Release;
+                    _envStartTime = micros();
+                }
             }
         }
     }
@@ -590,7 +623,7 @@ class Output {
             float normalizedTime = currentTime / _envParams.attack;
             float curvedTime = ApplyCurve(normalizedTime, _envParams.attackCurve);
 
-            if (_retrigger) {
+            if (_envParams.retrigger) {
                 _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * curvedTime);
             } else {
                 _waveValue = curvedTime * MaxWaveValue;
@@ -634,7 +667,7 @@ class Output {
             float normalizedTime = currentTime / _envParams.attack;
             float curvedTime = ApplyCurve(normalizedTime, _envParams.attackCurve);
 
-            if (_retrigger) {
+            if (_envParams.retrigger) {
                 _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * curvedTime);
             } else {
                 _waveValue = curvedTime * MaxWaveValue;
@@ -681,7 +714,7 @@ class Output {
             float normalizedTime = currentTime / _envParams.attack;
             float curvedTime = ApplyCurve(normalizedTime, _envParams.attackCurve);
 
-            if (_retrigger) {
+            if (_envParams.retrigger) {
                 _waveValue = _lastEnvValue + ((MaxWaveValue - _lastEnvValue) * curvedTime);
             } else {
                 _waveValue = curvedTime * MaxWaveValue;
@@ -861,12 +894,17 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
 
 void Output::SetWaveformType(WaveformType type) {
     _waveformType = type;
-    if ((_waveformType == WaveformType::ADEnvelope || _waveformType == WaveformType::AREnvelope || _waveformType == WaveformType::ADSREnvelope) && _outputType == OutputType::DACOut) {
-        SetDivider(18);
+    if (_waveformType == WaveformType::ADEnvelope || _waveformType == WaveformType::AREnvelope || _waveformType == WaveformType::ADSREnvelope) {
+        _waveActive = false;
+        _envState = EnvelopeState::Idle;
+        _waveValue = 0.0f;
+        _lastEnvValue = 0.0f;
+        _envStartTime = 0;
         _triggerMode = true;
+        SetDivider(18);
     } else {
-        SetDivider(9);
         _triggerMode = false;
+        SetDivider(9);
     }
 }
 
