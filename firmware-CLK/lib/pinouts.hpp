@@ -13,10 +13,11 @@
 #define ENCODER_SW 10 // pin for encoder switch
 
 #define NUM_CV_INS 2
-#define NUM_OUTS 2
+#define NUM_GATE_OUTS 2
 
 int CV_IN_PINS[] = {CV_1_IN_PIN, CV_2_IN_PIN};
 int OUT_PINS[] = {OUT_PIN_1, OUT_PIN_2};
 
 // Define the amount of clock outputs
 #define NUM_OUTPUTS 4
+#define NUM_DAC_OUTS 2

@@ -35,7 +35,7 @@ void InitIO() {
         pinMode(CV_IN_PINS[i], INPUT); // CV in
     }
     pinMode(ENCODER_SW, INPUT_PULLUP); // push sw
-    for (int i = 0; i < NUM_OUTS; i++) {
+    for (int i = 0; i < NUM_GATE_OUTS; i++) {
         pinMode(OUT_PINS[i], OUTPUT); // Gate out
     }
 
