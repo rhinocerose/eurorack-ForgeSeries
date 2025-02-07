@@ -1104,9 +1104,9 @@ void HandleDisplay() {
             display.print("PAD:");
             display.print(String(outputs[euclideanOutputSelect].GetEuclideanPadding()));
             if (menuItem == menuIdx + 5 && menuMode == 0) {
-                display.drawTriangle(42, yPosition - 1, 42, yPosition + 7, 46, yPosition + 3, 1);
+                display.drawTriangle(xPosition - 8, yPosition - 1, xPosition - 8, yPosition + 7, xPosition - 4, yPosition + 3, 1);
             } else if (menuMode == menuIdx + 5) {
-                display.fillTriangle(42, yPosition - 1, 42, yPosition + 7, 46, yPosition + 3, 1);
+                display.fillTriangle(xPosition - 8, yPosition - 1, xPosition - 8, yPosition + 7, xPosition - 4, yPosition + 3, 1);
             }
 
             // Draw the Euclidean rhythm pattern for the selected output
