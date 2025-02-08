@@ -17,6 +17,8 @@ enum WaveformType {
     Sine,
     Parabolic,
     Sawtooth,
+    ExpEnvelope,
+    LogEnvelope,
     InvExpEnvelope,
     InvLogEnvelope,
     Noise,
@@ -32,6 +34,8 @@ String WaveformTypeDescriptions[] = {
     "Sine",
     "Parabolic",
     "Sawtooth",
+    "Exp Env",
+    "Log Env",
     "Inv Exp Env",
     "Inv Log Env",
     "Noise",
@@ -294,9 +298,14 @@ class Output {
                 _sineWaveAngle = 0.0f;
             }
             break;
+        case WaveformType::ExpEnvelope:
+        case WaveformType::LogEnvelope:
+            _waveValue = 0; // Start at 0 value for envelopes
+            _envTickCounter = 0;
+            break;
         case WaveformType::InvExpEnvelope:
         case WaveformType::InvLogEnvelope:
-            _waveValue = MaxWaveValue; // Start at maximum value for envelopes
+            _waveValue = MaxWaveValue; // Start at maximum value for inverted envelopes
             _envTickCounter = 0;
             break;
         case WaveformType::Noise:
@@ -322,6 +331,8 @@ class Output {
     // Reset the waveform values
     void ResetWaveform() {
         switch (_waveformType) {
+        case WaveformType::ExpEnvelope:
+        case WaveformType::LogEnvelope:
         case WaveformType::InvExpEnvelope:
         case WaveformType::InvLogEnvelope:
             break;
@@ -341,6 +352,8 @@ class Output {
             SetPulse(false);
             _waveActive = false;
             break;
+        case WaveformType::ExpEnvelope:
+        case WaveformType::LogEnvelope:
         case WaveformType::InvExpEnvelope:
         case WaveformType::InvLogEnvelope:
             break;
@@ -518,7 +531,7 @@ class Output {
         }
     }
 
-    // Generate an exponential envelope waveform
+    // Generate an inverted exponential envelope waveform (starts from 100% and decays to 0%)
     void GenerateInvExpEnvelope(int PPQN) {
         if (_waveActive) {
             float periodTicks = PPQN / _clockDividers[_dividerIndex];
@@ -540,7 +553,7 @@ class Output {
         }
     }
 
-    // Generate a logarithm envelope waveform
+    // Generate an inverted logarithm envelope waveform (starts from 100% and decays to 0%)
     void GenerateInvLogEnvelope(int PPQN) {
         if (_waveActive) {
             float periodTicks = PPQN / _clockDividers[_dividerIndex];
@@ -558,6 +571,52 @@ class Output {
 
             // Update waveform value
             _waveValue = decayFactor * MaxWaveValue; // Scale to 0-100%
+
+            _envTickCounter++;
+            _isPulseOn = true;
+        }
+    }
+
+    // Generate an exponential envelope waveform (starts from 0% and rises to 100%)
+    void GenerateExpEnvelope(int PPQN) {
+        if (_waveActive) {
+            float periodTicks = PPQN / _clockDividers[_dividerIndex];
+            float attackTicks = periodTicks * (_dutyCycle / 100.0f);
+
+            if (_envTickCounter >= attackTicks) {
+                _waveValue = MaxWaveValue;
+                _waveActive = false;
+                _envTickCounter = 0; // Reset for the next pulse
+                return;
+            }
+
+            // Calculate attack factor for the exponential rise
+            float k = 6.90776f / attackTicks; // ln(100) ≈ 4.60517, total rise over attackTicks
+            _waveValue = MaxWaveValue * (1.0f - exp(-k * _envTickCounter));
+
+            _envTickCounter++;
+            _isPulseOn = true;
+        }
+    }
+
+    // Generate a logarithmic envelope waveform (starts from 0% and rises to 100%)
+    void GenerateLogEnvelope(int PPQN) {
+        if (_waveActive) {
+            float periodTicks = PPQN / _clockDividers[_dividerIndex];
+            float attackTicks = periodTicks * (_dutyCycle / 100.0f);
+
+            if (_envTickCounter >= attackTicks) {
+                _waveValue = MaxWaveValue;
+                _waveActive = false;
+                _envTickCounter = 0; // Reset for the next pulse
+                return;
+            }
+
+            // Calculate attack factor to span the entire pulse duration
+            float attackFactor = log10(_envTickCounter + 1) / log10(attackTicks + 1);
+
+            // Update waveform value
+            _waveValue = attackFactor * MaxWaveValue; // Scale to 0-100%
 
             _envTickCounter++;
             _isPulseOn = true;
