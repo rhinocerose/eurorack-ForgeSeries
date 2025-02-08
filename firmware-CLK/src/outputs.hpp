@@ -17,8 +17,8 @@ enum WaveformType {
     Sine,
     Parabolic,
     Sawtooth,
-    ExpEnvelope,
-    LogEnvelope,
+    InvExpEnvelope,
+    InvLogEnvelope,
     Noise,
     SmoothNoise,
     SampleHold,
@@ -32,8 +32,8 @@ String WaveformTypeDescriptions[] = {
     "Sine",
     "Parabolic",
     "Sawtooth",
-    "ExpEnvelope",
-    "LogEnvelope",
+    "Inv Exp Env",
+    "Inv Log Env",
     "Noise",
     "SmoothNoise",
     "S&H",
@@ -294,8 +294,8 @@ class Output {
                 _sineWaveAngle = 0.0f;
             }
             break;
-        case WaveformType::ExpEnvelope:
-        case WaveformType::LogEnvelope:
+        case WaveformType::InvExpEnvelope:
+        case WaveformType::InvLogEnvelope:
             _waveValue = MaxWaveValue; // Start at maximum value for envelopes
             _envTickCounter = 0;
             break;
@@ -322,8 +322,8 @@ class Output {
     // Reset the waveform values
     void ResetWaveform() {
         switch (_waveformType) {
-        case WaveformType::ExpEnvelope:
-        case WaveformType::LogEnvelope:
+        case WaveformType::InvExpEnvelope:
+        case WaveformType::InvLogEnvelope:
             break;
         default:
             _waveActive = false;
@@ -341,8 +341,8 @@ class Output {
             SetPulse(false);
             _waveActive = false;
             break;
-        case WaveformType::ExpEnvelope:
-        case WaveformType::LogEnvelope:
+        case WaveformType::InvExpEnvelope:
+        case WaveformType::InvLogEnvelope:
             break;
         case WaveformType::ADEnvelope:
         case WaveformType::AREnvelope:
@@ -519,7 +519,7 @@ class Output {
     }
 
     // Generate an exponential envelope waveform
-    void GenerateExpEnvelope(int PPQN) {
+    void GenerateInvExpEnvelope(int PPQN) {
         if (_waveActive) {
             float periodTicks = PPQN / _clockDividers[_dividerIndex];
             float decayTicks = periodTicks * (_dutyCycle / 100.0f);
@@ -541,7 +541,7 @@ class Output {
     }
 
     // Generate a logarithm envelope waveform
-    void GenerateLogEnvelope(int PPQN) {
+    void GenerateInvLogEnvelope(int PPQN) {
         if (_waveActive) {
             float periodTicks = PPQN / _clockDividers[_dividerIndex];
             float decayTicks = periodTicks * (_dutyCycle / 100.0f);
@@ -877,11 +877,11 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
     case WaveformType::SmoothNoise:
         GenerateSmoothNoiseWave(PPQN);
         break;
-    case WaveformType::ExpEnvelope:
-        GenerateExpEnvelope(PPQN);
+    case WaveformType::InvExpEnvelope:
+        GenerateInvExpEnvelope(PPQN);
         break;
-    case WaveformType::LogEnvelope:
-        GenerateLogEnvelope(PPQN);
+    case WaveformType::InvLogEnvelope:
+        GenerateInvLogEnvelope(PPQN);
         break;
     case WaveformType::SampleHold:
         GenerateSampleHold(PPQN);
