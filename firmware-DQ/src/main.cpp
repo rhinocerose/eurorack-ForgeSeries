@@ -47,8 +47,6 @@ int menuMode = 0;        // 0=select,1=atk[0],2=dcy[0],3=atk[1],4=dcy[1], 5=scal
 // ADC input variables
 float channelADC[2], oldChannelADC[2];
 int quantizedNoteIdx[2], oldQuantizedNoteIdx[2] = {0, 0};
-// ADC input offset and scale from calibration
-float offsetScale[2][2]; // [channel][0: offset, 1: scale]
 
 float CVOutput[2], oldCVOutput[2] = {0, 0}; // CV output
 long gateTimer[2] = {0, 0};                 // EG curve progress speed
