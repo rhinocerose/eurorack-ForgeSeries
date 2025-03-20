@@ -180,6 +180,8 @@ They support the following:
 - AD Envelope: An Attack-Decay envelope (no sustain while gate is held) with adjustable level and offset. Triggered by a CV input.
 - AR Envelope: An Attack-Release envelope (sustain is held at max level while gate is on) with adjustable level and offset. Triggered by a CV input.
 - ADSR Envelope: An Attack-Decay-Sustain-Release envelope with adjustable level and offset. Triggered by a CV input.
+- Play: The output will be true (high) when the master clock is running and false (low) when the master clock is stopped. This is useful for triggering other modules based on the master clock.
+- Reset: The output will trigger (high) when the master clock starts running. This is useful for resetting other modules based on the master clock.
 
 1. Navigate to the selected output option "Output 3/4 WAV". Click the encoder to enter edit mode.
 2. Use the encoder to select the desired waveform. The waveform will be updated in real-time.

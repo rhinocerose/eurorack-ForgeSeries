@@ -604,9 +604,13 @@ class Output {
                 return;
             }
 
-            // Calculate attack factor for the exponential rise
-            float k = 6.90776f / attackTicks; // ln(100) ≈ 4.60517, total rise over attackTicks
-            _waveValue = MaxWaveValue * (1.0f - exp(-k * _envTickCounter));
+            // Use normalized time from 0-1
+            float normalizedTime = _envTickCounter / attackTicks;
+
+            // Apply exponential curve: e^(k*t) - 1 / (e^k - 1)
+            // This gives a true exponential curve that starts at 0 and ends at 1
+            float k = 4.0f; // Determines curve steepness
+            _waveValue = MaxWaveValue * ((exp(k * normalizedTime) - 1.0f) / (exp(k) - 1.0f));
 
             _envTickCounter++;
             _isPulseOn = true;
@@ -893,6 +897,19 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         StopWaveform();
         return;
     }
+
+    // Special handling for ResetTrig - we don't want it to follow normal clock timing
+    if (_waveformType == WaveformType::ResetTrig) {
+        // The reset pulse is controlled entirely by SetMasterState
+        // Just check if we need to end the pulse after duration
+        if (_isPulseOn && (millis() - _resetPulseStart >= 10)) {
+            _waveValue = 0;
+            _isPulseOn = false;
+            _waveActive = false;
+        }
+        return;
+    }
+
     // Calculate the period duration in ticks
     float periodTicks = PPQN / _clockDividers[_dividerIndex];
 
@@ -950,6 +967,12 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
     case WaveformType::SmoothNoise:
         GenerateSmoothNoiseWave(PPQN);
         break;
+    case WaveformType::ExpEnvelope:
+        GenerateExpEnvelope(PPQN);
+        break;
+    case WaveformType::LogEnvelope:
+        GenerateLogEnvelope(PPQN);
+        break;
     case WaveformType::InvExpEnvelope:
         GenerateInvExpEnvelope(PPQN);
         break;
@@ -958,6 +981,15 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         break;
     case WaveformType::SampleHold:
         GenerateSampleHold(PPQN);
+        break;
+    case WaveformType::Play:
+        if (_waveActive) {
+            _waveValue = MaxWaveValue;
+            _isPulseOn = true;
+        } else {
+            _waveValue = 0;
+            _isPulseOn = false;
+        }
         break;
     default:
         // For square wave or other types
@@ -1004,6 +1036,7 @@ void Output::SetMasterState(bool state) {
             if (_waveformType == WaveformType::ResetTrig) {
                 _waveValue = 0;
                 _isPulseOn = false;
+                _waveActive = false;
             }
         } else {
             _state = _oldState;
@@ -1012,13 +1045,8 @@ void Output::SetMasterState(bool state) {
                 _waveValue = MaxWaveValue;
                 _resetPulseStart = millis();
                 _isPulseOn = true;
+                _waveActive = true;
             }
-        }
-    } else if (_waveformType == WaveformType::ResetTrig) {
-        // Handle ongoing reset pulse duration
-        if (_masterState && (millis() - _resetPulseStart >= 10)) {
-            _waveValue = 0;
-            _isPulseOn = false;
         }
     }
 }
