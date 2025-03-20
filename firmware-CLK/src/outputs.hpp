@@ -24,6 +24,8 @@ enum WaveformType {
     Noise,
     SmoothNoise,
     SampleHold,
+    ResetTrig,
+    Play,
     ADEnvelope,
     AREnvelope,
     ADSREnvelope,
@@ -41,6 +43,8 @@ String WaveformTypeDescriptions[] = {
     "Noise",
     "SmoothNoise",
     "S&H",
+    "Reset",
+    "Play",
     "AD Env",
     "AR Env",
     "ADSR Env",
@@ -66,6 +70,7 @@ class Output {
 
     // Pulse State
     void Pulse(int PPQN, unsigned long tickCounter);
+    void GeneratePulse(int PPQN, unsigned long tickCounter);
     void GenEnvelope();
     bool GetPulseState() { return _isPulseOn; }
     void SetPulse(bool state) { _isPulseOn = state; }
@@ -223,6 +228,7 @@ class Output {
     bool _masterState = true;                // Master output state
     int _pulseProbability = 100;             // % chance of pulse
     unsigned long _internalPulseCounter = 0; // Pulse counter (used for external clock division)
+    unsigned long _resetPulseStart = 0;      // Reset pulse start time
 
     // Waveform generation variables
     WaveformType _waveformType = WaveformType::Square; // Default to square wave
@@ -312,6 +318,14 @@ class Output {
         case WaveformType::SmoothNoise:
         case WaveformType::SampleHold:
             _randomTickCounter = 0;
+            break;
+        case WaveformType::ResetTrig:
+            _isPulseOn = (_waveValue > 0);
+            break;
+        case WaveformType::Play:
+            _waveValue = _masterState ? MaxWaveValue : 0;
+            _isPulseOn = _masterState;
+            break;
         case WaveformType::ADEnvelope:
         case WaveformType::AREnvelope:
         case WaveformType::ADSREnvelope:
@@ -590,9 +604,13 @@ class Output {
                 return;
             }
 
-            // Calculate attack factor for the exponential rise
-            float k = 6.90776f / attackTicks; // ln(100) ≈ 4.60517, total rise over attackTicks
-            _waveValue = MaxWaveValue * (1.0f - exp(-k * _envTickCounter));
+            // Use normalized time from 0-1
+            float normalizedTime = _envTickCounter / attackTicks;
+
+            // Apply exponential curve: e^(k*t) - 1 / (e^k - 1)
+            // This gives a true exponential curve that starts at 0 and ends at 1
+            float k = 4.0f; // Determines curve steepness
+            _waveValue = MaxWaveValue * ((exp(k * normalizedTime) - 1.0f) / (exp(k) - 1.0f));
 
             _envTickCounter++;
             _isPulseOn = true;
@@ -635,6 +653,7 @@ class Output {
         }
     }
 
+    // ----------- Envelope Generation Functions -----------
     void HandleTrigger() {
         if (_triggerMode && (_waveformType == WaveformType::ADEnvelope || _waveformType == WaveformType::AREnvelope || _waveformType == WaveformType::ADSREnvelope)) {
             if (!_waveActive || _envParams.retrigger) {
@@ -848,12 +867,49 @@ void Output::GenEnvelope() {
     }
 }
 
+void Output::GeneratePulse(int PPQN, unsigned long globalTick) {
+    if (!_euclideanParams.enabled) {
+        // If not using Euclidean rhythm, generate waveform based on the pulse probability
+        if (random(100) < _pulseProbability) {
+            StartWaveform();
+        } else {
+            // We stop the waveform directly if the pulse probability is not met since StopWaveform() is used for the square wave
+            ResetWaveform();
+        }
+    } else {
+        // If using Euclidean rhythm, check if the current step is active
+        if (_euclideanRhythm[_euclideanStepIndex] == 1) {
+            StartWaveform();
+        } else {
+            ResetWaveform();
+        }
+        _euclideanStepIndex++;
+        // Restart the Euclidean rhythm if it reaches the end
+        if (_euclideanStepIndex >= _euclideanParams.steps + _euclideanParams.pad) {
+            _euclideanStepIndex = 0;
+        }
+    }
+}
+
 void Output::Pulse(int PPQN, unsigned long globalTick) {
     // If not stopped, generate the pulse
     if (!_state) {
         StopWaveform();
         return;
     }
+
+    // Special handling for ResetTrig - we don't want it to follow normal clock timing
+    if (_waveformType == WaveformType::ResetTrig) {
+        // The reset pulse is controlled entirely by SetMasterState
+        // Just check if we need to end the pulse after duration
+        if (_isPulseOn && (millis() - _resetPulseStart >= 10)) {
+            _waveValue = 0;
+            _isPulseOn = false;
+            _waveActive = false;
+        }
+        return;
+    }
+
     // Calculate the period duration in ticks
     float periodTicks = PPQN / _clockDividers[_dividerIndex];
 
@@ -875,43 +931,18 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
     unsigned int _pulseDuration = int(periodTicks * (_dutyCycle / 100.0));
     unsigned int _externalPulseDuration = int(clockDividerExternal * (_dutyCycle / 100.0));
 
-    // Lambda function to handle timing
-    auto generatePulse = [this]() {
-        if (!_euclideanParams.enabled) {
-            // If not using Euclidean rhythm, generate waveform based on the pulse probability
-            if (random(100) < _pulseProbability) {
-                StartWaveform();
-            } else {
-                // We stop the waveform directly if the pulse probability is not met since StopWaveform() is used for the square wave
-                ResetWaveform();
-            }
-        } else {
-            // If using Euclidean rhythm, check if the current step is active
-            if (_euclideanRhythm[_euclideanStepIndex] == 1) {
-                StartWaveform();
-            } else {
-                ResetWaveform();
-            }
-            _euclideanStepIndex++;
-            // Restart the Euclidean rhythm if it reaches the end
-            if (_euclideanStepIndex >= _euclideanParams.steps + _euclideanParams.pad) {
-                _euclideanStepIndex = 0;
-            }
-        }
-    };
-
     // If using an external clock, generate a pulse based on the internal pulse counter
     // dirty workaround to make this work with clock dividers
     if (_externalClock && _clockDividers[_dividerIndex] < 1) {
         if (_internalPulseCounter % clockDividerExternal == 0 || _internalPulseCounter == 0) {
-            generatePulse();
+            GeneratePulse(PPQN, globalTick);
         } else if (_internalPulseCounter % clockDividerExternal == _externalPulseDuration) {
             StopWaveform();
         }
     } else {
         // Handle internal clock timing
         if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == 0 || (globalTick == 0)) {
-            generatePulse();
+            GeneratePulse(PPQN, globalTick);
         } else if ((tickCounterSwing - phaseOffsetTicks) % int(periodTicks) == _pulseDuration) {
             StopWaveform();
         }
@@ -936,6 +967,12 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
     case WaveformType::SmoothNoise:
         GenerateSmoothNoiseWave(PPQN);
         break;
+    case WaveformType::ExpEnvelope:
+        GenerateExpEnvelope(PPQN);
+        break;
+    case WaveformType::LogEnvelope:
+        GenerateLogEnvelope(PPQN);
+        break;
     case WaveformType::InvExpEnvelope:
         GenerateInvExpEnvelope(PPQN);
         break;
@@ -944,6 +981,15 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
         break;
     case WaveformType::SampleHold:
         GenerateSampleHold(PPQN);
+        break;
+    case WaveformType::Play:
+        if (_waveActive) {
+            _waveValue = MaxWaveValue;
+            _isPulseOn = true;
+        } else {
+            _waveValue = 0;
+            _isPulseOn = false;
+        }
         break;
     default:
         // For square wave or other types
@@ -977,11 +1023,30 @@ bool Output::HasPulseChanged() {
 void Output::SetMasterState(bool state) {
     if (_masterState != state) {
         _masterState = state;
+
+        // Reset all counters when state changes
+        _internalPulseCounter = 0;
+        _envTickCounter = 0;
+        _randomTickCounter = 0;
+        _euclideanStepIndex = 0;
+
         if (!_masterState) {
             _oldState = _state;
             _state = false;
+            if (_waveformType == WaveformType::ResetTrig) {
+                _waveValue = 0;
+                _isPulseOn = false;
+                _waveActive = false;
+            }
         } else {
             _state = _oldState;
+            // Only generate reset pulse when transitioning to true
+            if (_waveformType == WaveformType::ResetTrig) {
+                _waveValue = MaxWaveValue;
+                _resetPulseStart = millis();
+                _isPulseOn = true;
+                _waveActive = true;
+            }
         }
     }
 }
