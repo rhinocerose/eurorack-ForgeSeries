@@ -15,7 +15,7 @@ struct LoadSaveParams {
     int divIdx[NUM_OUTPUTS];
     int dutyCycle[NUM_OUTPUTS];
     bool outputState[NUM_OUTPUTS];
-    int outputLevel[NUM_OUTPUTS];
+    uint32_t outputLevel[NUM_OUTPUTS];
     int outputOffset[NUM_OUTPUTS];
     int swingIdx[NUM_OUTPUTS];
     int swingEvery[NUM_OUTPUTS];
@@ -27,6 +27,7 @@ struct LoadSaveParams {
     int CVInputAttenuation[NUM_CV_INS];
     int CVInputOffset[NUM_CV_INS];
     EnvelopeParams envParams[NUM_OUTPUTS];
+    QuantizerParams quantizerParams[NUM_OUTPUTS];
 };
 
 // Create 4 slots for saving settings
@@ -76,6 +77,7 @@ LoadSaveParams LoadDefaultParams() {
         p.phaseShift[i] = 0;
         p.waveformType[i] = 0;
         p.envParams[i] = {200.0f, 200.0f, 70.0f, 250.0f, 0.5f, 0.5f, 0.5f, false};
+        p.quantizerParams[i] = {false, 3, 4, 1, 0};
     }
     for (int i = 0; i < NUM_CV_INS; i++) {
         p.CVInputTarget[i] = 0;

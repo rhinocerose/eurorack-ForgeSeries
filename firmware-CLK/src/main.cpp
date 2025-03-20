@@ -10,11 +10,11 @@
 
 // Load local libraries
 #include "boardIO.hpp"
-#include "definitions.hpp"
 #include "loadsave.hpp"
 #include "outputs.hpp"
 #include "pinouts.hpp"
 #include "splash.hpp"
+#include "utils.hpp"
 #include "version.hpp"
 
 // ADC Calibration settings
@@ -81,6 +81,8 @@ enum CVTarget {
     Output4Duty,
     Envelope1,
     Envelope2,
+    Output3,
+    Output4,
 };
 
 String CVTargetDescription[] = {
@@ -116,6 +118,8 @@ String CVTargetDescription[] = {
     "Output 4 Duty",
     "Output 3 Env",
     "Output 4 Env",
+    "Output 3",
+    "Output 4",
 };
 int CVTargetLength = sizeof(CVTargetDescription) / sizeof(CVTargetDescription[0]);
 CVTarget pendingCVInputTarget[NUM_CV_INS] = {CVTarget::None, CVTarget::None};
@@ -153,8 +157,13 @@ String externalDividerDescription[dividerAmount] = {"x1", "/2 ", "/4", "/8", "/1
 int externalDividerIndex = 0;
 volatile unsigned long externalTickCounter = 0;
 
+unsigned long lastDisplayUpdateTime = 0;
+const unsigned long DISPLAY_UPDATE_INTERVAL = 50; // Minimum 50ms between display updates
+uint8_t frameSkip = 0;
+const uint8_t FRAME_SKIP_COUNT = 3; // Only update every 4th request
+
 // Menu variables
-int menuItems = 61;
+int menuItems = 66;
 int menuItem = 3;
 bool switchState = 1;
 bool oldSwitchState = 1;
@@ -162,6 +171,7 @@ int menuMode = 0;                    // Menu mode for parameter editing
 bool displayRefresh = 1;             // Display refresh flag
 bool unsavedChanges = false;         // Unsaved changes flag
 int euclideanOutputSelect = 0;       // Euclidean rhythm output index
+int quantizerOutputSelect = 2;       // Quantizer output index
 int envelopeOutputSelect = 2;        // Envelope output index
 int saveSlot = 0;                    // Save slot index
 unsigned long lastEncoderUpdate = 0; // Last encoder update time
@@ -375,13 +385,29 @@ void HandleEncoderClick() {
             case 56: // CV Input 2 offset
                 menuMode = 56;
                 break;
-            case 57: // Tap tempo
+            case 57: // Quantizer Output
+                menuMode = 57;
+                break;
+            case 58: // Quantizer Enable
+                outputs[quantizerOutputSelect].ToggleQuantizer();
+                unsavedChanges = true;
+                break;
+            case 59: // Quantizer root note
+                menuMode = 59;
+                break;
+            case 60: // Quantizer scale
+                menuMode = 60;
+                break;
+            case 61: // Quantizer octave shift
+                menuMode = 61;
+                break;
+            case 62: // Tap tempo
                 SetTapTempo();
                 break;
-            case 58: // Select save slot
+            case 63: // Select save slot
                 menuMode = 58;
                 break;
-            case 59: { // Save settings
+            case 64: { // Save settings
                 LoadSaveParams p;
                 p.valid = true;
                 p.BPM = BPM;
@@ -399,6 +425,7 @@ void HandleEncoderClick() {
                     p.phaseShift[i] = outputs[i].GetPhase();
                     p.waveformType[i] = int(outputs[i].GetWaveformType());
                     p.envParams[i] = outputs[i].GetEnvelopeParams();
+                    p.quantizerParams[i] = outputs[i].GetQuantizerParams();
                 }
                 for (int i = 0; i < NUM_CV_INS; i++) {
                     p.CVInputTarget[i] = CVInputTarget[i];
@@ -418,7 +445,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 60: { // Load from slot
+            case 65: { // Load from slot
                 LoadSaveParams p = Load(saveSlot);
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -433,7 +460,7 @@ void HandleEncoderClick() {
                 }
                 break;
             }
-            case 61: { // Load default settings
+            case 66: { // Load default settings
                 LoadSaveParams p = LoadDefaultParams();
                 UpdateParameters(p);
                 unsavedChanges = false;
@@ -668,7 +695,23 @@ void HandleEncoderPosition() {
         case 56: // CV Input 2 offset
             CVInputOffset[1] = constrain(CVInputOffset[1] - speedFactor, 0, 100);
             break;
-        case 58: // Select save slot
+        case 57: // Quantizer output
+            quantizerOutputSelect = (quantizerOutputSelect - 1 < 2) ? 3 : quantizerOutputSelect - 1;
+            unsavedChanges = true;
+            break;
+        case 59: // Quantizer root note
+            outputs[quantizerOutputSelect].SetQuantizerNoteIndex(outputs[quantizerOutputSelect].GetQuantizerNoteIndex() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 60: // Quantizer scale
+            outputs[quantizerOutputSelect].SetQuantizerScaleIndex(outputs[quantizerOutputSelect].GetQuantizerScaleIndex() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 61: // Quantizer octave shift
+            outputs[quantizerOutputSelect].SetQuantizerOctaveShift(outputs[quantizerOutputSelect].GetQuantizerOctaveShift() - speedFactor);
+            unsavedChanges = true;
+            break;
+        case 63: // Select save slot
             saveSlot = (saveSlot - 1 < 0) ? NUM_SLOTS : saveSlot - 1;
             break;
         }
@@ -856,7 +899,23 @@ void HandleEncoderPosition() {
         case 56: // CV Input 2 offset
             CVInputOffset[1] = constrain(CVInputOffset[1] + speedFactor, 0, 100);
             break;
-        case 58: // Select save slot
+        case 57: // Quantizer output
+            quantizerOutputSelect = (quantizerOutputSelect + 1 > 3) ? 2 : quantizerOutputSelect + 1;
+            unsavedChanges = true;
+            break;
+        case 59: // Quantizer root note
+            outputs[quantizerOutputSelect].SetQuantizerNoteIndex(outputs[quantizerOutputSelect].GetQuantizerNoteIndex() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 60: // Quantizer scale
+            outputs[quantizerOutputSelect].SetQuantizerScaleIndex(outputs[quantizerOutputSelect].GetQuantizerScaleIndex() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 61: // Quantizer octave shift
+            outputs[quantizerOutputSelect].SetQuantizerOctaveShift(outputs[quantizerOutputSelect].GetQuantizerOctaveShift() + speedFactor);
+            unsavedChanges = true;
+            break;
+        case 62: // Select save slot
             saveSlot = (saveSlot + 1 > NUM_SLOTS) ? 0 : saveSlot + 1;
             break;
         }
@@ -892,7 +951,12 @@ void MenuHeader(const char *header) {
 
 // Handle display drawing
 void HandleDisplay() {
-    if (displayRefresh == 1) {
+    // Only refresh the display at a reasonable rate
+    unsigned long currentTime = millis();
+
+    if (displayRefresh && (currentTime - lastDisplayUpdateTime >= DISPLAY_UPDATE_INTERVAL)) {
+        lastDisplayUpdateTime = currentTime;
+
         display.clearDisplay();
         MenuIndicator();
 
@@ -1349,7 +1413,7 @@ void HandleDisplay() {
             }
             yPosition += 9;
             display.setCursor(10, yPosition);
-            display.print("Cur:");
+            display.print("Curv:");
             display.print(String(outputs[envelopeOutputSelect].GetCurveDescription()));
             if (menuItem == menuIdx + 5 && menuMode == 0) {
                 display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
@@ -1425,6 +1489,62 @@ void HandleDisplay() {
                     }
                 }
                 yPosition += 9;
+            }
+
+            RedrawDisplay();
+            return;
+        }
+
+        // Quantize menu
+        menuIdx = menuIdx + itemAmount;
+        itemAmount = 5;
+        if (menuItem >= menuIdx && menuItem < menuIdx + itemAmount) {
+            display.setTextSize(1);
+            MenuHeader("QUANTIZE SETTINGS");
+            int yPosition = 20;
+            display.setCursor(10, yPosition);
+            display.print("OUTPUT: ");
+            display.print(String(quantizerOutputSelect + 1));
+            if (menuItem == menuIdx && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("ENABLED: ");
+            display.print(String(outputs[quantizerOutputSelect].GetQuantizerEnable() ? "YES" : "NO"));
+            if (menuItem == menuIdx + 1 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 1) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("ROOT NOTE: ");
+            display.print(String(outputs[quantizerOutputSelect].GetQuantizerNoteDescription()));
+            if (menuItem == menuIdx + 2 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 2) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("SCALE: ");
+            display.print(String(outputs[quantizerOutputSelect].GetQuantizerScaleDescription()));
+            if (menuItem == menuIdx + 3 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 3) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            }
+            yPosition += 9;
+            display.setCursor(10, yPosition);
+            display.print("OCT TRANSPOSE:");
+            display.print(String(outputs[quantizerOutputSelect].GetQuantizerOctaveShiftDescription()));
+            if (menuItem == menuIdx + 4 && menuMode == 0) {
+                display.drawTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
+            } else if (menuMode == menuIdx + 4) {
+                display.fillTriangle(1, yPosition - 1, 1, yPosition + 7, 5, yPosition + 3, 1);
             }
 
             RedrawDisplay();
@@ -1548,7 +1668,6 @@ void HandleCVInputs() {
     }
 }
 
-unsigned long lastDisplayUpdateTime = 0;
 volatile bool lastResetState = false;
 // Handle the CV target based on the CV value
 void HandleCVTarget(int ch, float CVValue, CVTarget cvTarget) {
@@ -1664,6 +1783,12 @@ void HandleCVTarget(int ch, float CVValue, CVTarget cvTarget) {
         break;
     case CVTarget::Envelope2:
         outputs[3].SetExternalTrigger(CVValue > MAXDAC / 2);
+        break;
+    case CVTarget::Output3:
+        outputs[2].SetCVValue(CVValue);
+        break;
+    case CVTarget::Output4:
+        outputs[3].SetCVValue(CVValue);
         break;
     }
     // Update the display if the CV target is not None
@@ -1793,6 +1918,7 @@ void UpdateParameters(LoadSaveParams p) {
         outputs[i].SetPhase(p.phaseShift[i]);
         outputs[i].SetWaveformType(static_cast<WaveformType>(p.waveformType[i]));
         outputs[i].SetEnvelopeParams(p.envParams[i]);
+        outputs[i].SetQuantizerParams(p.quantizerParams[i]);
     }
     for (int i = 0; i < NUM_CV_INS; i++) {
         CVInputTarget[i] = static_cast<CVTarget>(p.CVInputTarget[i]);
@@ -1806,6 +1932,9 @@ void InitializeTimer() {
     // Set up the timer
     TimerTcc0.initialize();
     TimerTcc0.attachInterrupt(ClockPulse);
+
+    // Set high priority for the timer interrupt if your platform supports it
+    NVIC_SetPriority(TCC0_IRQn, 0); // Highest priority (0)
 }
 
 void setup() {
@@ -1824,6 +1953,7 @@ void setup() {
     Wire.setClock(1000000);
     display.clearDisplay();
     display.setTextWrap(false);
+    display.cp437(true); // Use full 256 char 'Code Page 437' font
 
     display.clearDisplay();
     display.drawBitmap(30, 0, VFM_Splash, 68, 64, 1);
@@ -1870,5 +2000,9 @@ void HandleIO() {
 void loop() {
     HandleIO();
 
-    HandleDisplay();
+    // Only handle display every few frames
+    if (frameSkip == 0) {
+        HandleDisplay();
+    }
+    frameSkip = (frameSkip + 1) % FRAME_SKIP_COUNT;
 }

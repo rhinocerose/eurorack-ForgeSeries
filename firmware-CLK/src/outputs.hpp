@@ -1,8 +1,11 @@
 #pragma once
 #include <Arduino.h>
 
-#include "definitions.hpp"
 #include "euclidean.hpp"
+#include "utils.hpp"
+
+#include "quantizer.cpp"
+#include "scales.cpp"
 
 // Define a type for the DAC output type
 enum OutputType {
@@ -29,7 +32,9 @@ enum WaveformType {
     ADEnvelope,
     AREnvelope,
     ADSREnvelope,
+    QuantizeInput,
 };
+
 String WaveformTypeDescriptions[] = {
     "Square",
     "Triangle",
@@ -48,6 +53,7 @@ String WaveformTypeDescriptions[] = {
     "AD Env",
     "AR Env",
     "ADSR Env",
+    "Quantize",
 };
 int WaveformTypeLength = sizeof(WaveformTypeDescriptions) / sizeof(WaveformTypeDescriptions[0]);
 
@@ -62,6 +68,14 @@ typedef struct {
     float releaseCurve; // 0=log, 0.5=linear, 1=exp
     bool retrigger;     // Retrigger on gate high
 } EnvelopeParams;
+
+typedef struct {
+    bool enable;
+    int octaveShift;
+    int channelSensitivity;
+    int scaleIndex;
+    int noteIndex;
+} QuantizerParams;
 
 class Output {
   public:
@@ -98,8 +112,9 @@ class Output {
     String GetDutyCycleDescription() { return String(_dutyCycle) + "%"; }
 
     // Output Level
-    int GetLevel() { return _level; }
-    int GetOutputLevel(); // Output Level based on the output type
+    uint32_t GetLevel() { return _level; }
+    uint32_t GetOutputLevel(); // Output Level based on the output type
+    void QuantizerCVValue(float CVValue);
     String GetLevelDescription() { return String(_level) + "%"; }
     void SetLevel(int level) { _level = constrain(level, 0, 100); }
 
@@ -161,6 +176,7 @@ class Output {
                 HandleGateRelease();
         }
     }
+    void SetCVValue(float CVValue) { _inputCV = CVValue; }; // Set the input CV value for the quantizer
 
     // Envelope parameter setters
     EnvelopeParams GetEnvelopeParams() { return _envParams; }
@@ -197,6 +213,39 @@ class Output {
     float GetCurve() { return (_envParams.attackCurve + _envParams.decayCurve + _envParams.releaseCurve) / 3.0f; }
     String GetCurveDescription() { return String(GetCurve() * 100, 0) + "%"; }
 
+    // Quantizer
+    QuantizerParams GetQuantizerParams() { return _quantizerParams; }
+    void SetQuantizerParams(QuantizerParams params) { _quantizerParams = params; }
+    void SetupQuantizer();
+    void SetQuantizerEnable(bool enable) { _quantizerParams.enable = enable; }
+    bool GetQuantizerEnable() { return _quantizerParams.enable; }
+    void ToggleQuantizer() { _quantizerParams.enable = !_quantizerParams.enable; }
+    String GetQuantizerEnableDescription() { return _quantizerParams.enable ? "On" : "Off"; }
+    void SetQuantizerOctaveShift(int shift) {
+        _quantizerParams.octaveShift = constrain(shift, 0, 6);
+        SetupQuantizer();
+    }
+    int GetQuantizerOctaveShift() { return _quantizerParams.octaveShift; }
+    String GetQuantizerOctaveShiftDescription() { return String(_quantizerParams.octaveShift - 3); }
+    void SetQuantizerChannelSensitivity(int sensitivity) {
+        _quantizerParams.channelSensitivity = constrain(sensitivity, 0, 8);
+        SetupQuantizer();
+    }
+    int GetQuantizerChannelSensitivity() { return _quantizerParams.channelSensitivity; }
+    String GetQuantizerChannelSensitivityDescription() { return String(_quantizerParams.channelSensitivity); }
+    void SetQuantizerScaleIndex(int index) {
+        _quantizerParams.scaleIndex = constrain(index, 0, numScales);
+        SetupQuantizer();
+    }
+    int GetQuantizerScaleIndex() { return _quantizerParams.scaleIndex; }
+    String GetQuantizerScaleDescription() { return scaleNames[_quantizerParams.scaleIndex]; }
+    void SetQuantizerNoteIndex(int index) {
+        _quantizerParams.noteIndex = constrain(index, 0, 11);
+        SetupQuantizer();
+    }
+    int GetQuantizerNoteIndex() { return _quantizerParams.noteIndex; }
+    String GetQuantizerNoteDescription() { return noteNames[_quantizerParams.noteIndex]; }
+
   private:
     // Constants
     const int MaxDACValue = 4095;
@@ -214,19 +263,32 @@ class Output {
 
     // Variables
     int _ID;
-    bool _externalClock = false;             // External clock state
-    OutputType _outputType;                  // 0 = Digital, 1 = DAC
-    int _dividerIndex = 9;                   // Default to 1
-    int _dutyCycle = 50;                     // Default to 50%
-    int _phase = 0;                          // Phase offset, default to 0% (in phase with master)
-    int _level = 100;                        // Output voltage level for DAC outs (Default to 100%)
-    int _offset = 0;                         // Output voltage offset for DAC outs (default to 0%)
-    bool _isPulseOn = false;                 // Pulse state
-    bool _lastPulseState = false;            // Last pulse state
-    bool _state = true;                      // Output state
-    bool _oldState = true;                   // Previous output state (for master stop)
-    bool _masterState = true;                // Master output state
-    int _pulseProbability = 100;             // % chance of pulse
+    bool _externalClock = false;  // External clock state
+    OutputType _outputType;       // 0 = Digital, 1 = DAC
+    int _dividerIndex = 9;        // Default to 1
+    int _dutyCycle = 50;          // Default to 50%
+    int _phase = 0;               // Phase offset, default to 0% (in phase with master)
+    int _level = 100;             // Output voltage level for DAC outs (Default to 100%)
+    int _offset = 0;              // Output voltage offset for DAC outs (default to 0%)
+    bool _isPulseOn = false;      // Pulse state
+    bool _lastPulseState = false; // Last pulse state
+    bool _state = true;           // Output state
+    bool _oldState = true;        // Previous output state (for master stop)
+    bool _masterState = true;     // Master output state
+    int _pulseProbability = 100;  // % chance of pulse
+
+    QuantizerParams _quantizerParams = {
+        .enable = false,
+        .octaveShift = 3,
+        .channelSensitivity = 4,
+        .scaleIndex = 1,
+        .noteIndex = 0,
+    };
+    int _quantizerThresholdBuff[62]; // input quantize
+    bool _activeNotes[12] = {false}; // 1=note valid,0=note invalid
+    float _inputCV = 0.0f;           // Input CV value for quantizer
+    float _oldInputCV;
+
     unsigned long _internalPulseCounter = 0; // Pulse counter (used for external clock division)
     unsigned long _resetPulseStart = 0;      // Reset pulse start time
 
@@ -235,6 +297,7 @@ class Output {
     bool _waveActive = false;
     bool _waveDirection = true; // Waveform direction (true = up, false = down)
     float _waveValue = 0.0f;
+    uint32_t _oldOutputLevel = 0.0f;
     float _triangleWaveStep = 0.0f;
     float _sineWaveAngle = 0.0f;
     unsigned long _inactiveTickCounter = 0;
@@ -845,8 +908,16 @@ Output::Output(int ID, OutputType type) {
     _ID = ID;
     _outputType = type;
     GeneratePattern(_euclideanParams, _euclideanRhythm);
+    SetupQuantizer();
 }
 
+// Setup quantizer scale and buffer
+void Output::SetupQuantizer() {
+    BuildScale(_quantizerParams.scaleIndex, _quantizerParams.noteIndex, _activeNotes);
+    BuildQuantBuffer(_activeNotes, _quantizerThresholdBuff);
+}
+
+// Generate envelope based on trigger state
 void Output::GenEnvelope() {
     // Handle envelope generation based on trigger state
     if (_triggerMode) {
@@ -991,6 +1062,11 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
             _isPulseOn = false;
         }
         break;
+    case WaveformType::QuantizeInput:
+        _waveValue = (_inputCV / MaxDACValue) * MaxWaveValue;
+        _isPulseOn = true;
+        break;
+
     default:
         // For square wave or other types
         break;
@@ -1007,7 +1083,17 @@ void Output::SetWaveformType(WaveformType type) {
         _envStartTime = 0;
         _triggerMode = true;
         SetDivider(18);
+    } else if (_waveformType == WaveformType::QuantizeInput) {
+        _waveActive = true;
+        _triggerMode = false;
+        if (!_quantizerParams.enable) {
+            // Enable quantizer if it's not already enabled
+            _quantizerParams.enable = true;
+            SetupQuantizer();
+        }
     } else {
+        // For other waveforms, disable quantizer
+        _quantizerParams.enable = false;
         _triggerMode = false;
         SetDivider(9);
     }
@@ -1057,8 +1143,10 @@ void Output::ToggleMasterState() {
 }
 
 // Output Level based on the output type and pulse state
-int Output::GetOutputLevel() {
+uint32_t Output::GetOutputLevel() {
     float adjustedLevel;
+    float outputLevel;
+
     if (_outputType == OutputType::DigitalOut) {
         return _isPulseOn ? HIGH : LOW;
     } else {
@@ -1071,7 +1159,16 @@ int Output::GetOutputLevel() {
             adjustedLevel = constrain(adjustedLevel, 0, MaxWaveValue);
             adjustedLevel = _isPulseOn ? adjustedLevel : _offset;
         }
-        return adjustedLevel * MaxDACValue / MaxWaveValue;
+
+        outputLevel = adjustedLevel * MaxDACValue / MaxWaveValue;
+
+        if (_quantizerParams.enable) {
+            // Apply quantization
+            QuantizeCV(outputLevel, _oldOutputLevel, _quantizerThresholdBuff, _quantizerParams.channelSensitivity, _quantizerParams.octaveShift, &outputLevel);
+        }
+
+        _oldOutputLevel = outputLevel;
+        return uint32_t(outputLevel);
     }
 }
 
