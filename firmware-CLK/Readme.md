@@ -26,6 +26,7 @@ Part of the **Forge** series of modules which share a single hardware platform.
 - **Waveform Duty Cycle**: Adjust the pulse width of the clock signal.
 - **External modulation**: Many parameters can be modulated by the CV inputs.
 - **Tap Tempo Functionality**: Manually set the BPM by tapping a button.
+- **Quantization**: Quantize the output wave or CV input to some scale and root note.
 - **Save/Load Configuration**: Save and load up to 5 configurations.
 
 ## Configuration Parameters
@@ -62,6 +63,7 @@ Each of the four outputs can be individually configured with the following param
 - **Level**: Set the output voltage level (only for CV outputs 3 and 4).
 - **Offset**: Set the output voltage offset (only for CV outputs 3 and 4).
 - **Waveform**: Select the waveform for outputs 3 and 4.
+- **Quantization**: Quantize the output to a specific scale and root note.
 
 ## Operation
 
@@ -98,6 +100,10 @@ Outputs can be stopped individually. When stopped, the output will not generate 
 
 1. Navigate to the selected output.
 2. Click the encoder to set the output to ON or OFF
+
+If the output wave type is set to "Play", the output will be true (high) when the master clock is running and false (low) when the master clock is stopped. This is useful for triggering other modules based on the master clock.
+
+If the output wave type is set to "Reset", the output will trigger (high) when the master clock starts running. This is useful for resetting other modules based on the master clock.
 
 ### Pulse Probability
 
@@ -165,23 +171,24 @@ Outputs 3 and 4 can be configured to alternative waveforms and envelopes.
 
 They support the following:
 
-- Square: A square wave with adjustable duty cycle, level and offset.
-- Triangle: A triangle wave with adjustable duty cycle, level and offset.
-- Sawtooth: A sawtooth wave with adjustable duty cycle, level and offset.
-- Sine: A sine wave with adjustable duty cycle, level and offset.
-- Parabolic: A parabolic wave with adjustable duty cycle, level and offset.
-- Logarithm Envelope: A logarithm envelope (starts at 0% raising to 100%) with adjustable level and offset. Triggered by clock pulses.
-- Exponential Envelope: An exponential envelope (starts at 0% raising to 100%) with adjustable level and offset. Triggered by clock pulses.
-- Inverted Logarithm Envelope: An inverted logarithm envelope (starts at 100% decaying to 0) with adjustable level and offset. Triggered by clock pulses.
-- Inverted Exponential Envelope: An inverted exponential envelope (starts at 100% decaying to 0) with adjustable level and offset. Triggered by clock pulses.
-- Noise: A random signal with adjustable level and offset. Continuous.
-- Smooth Noise: A smooth random signal with adjustable level and offset. Continuous.
-- Sample & Hold: A sample and hold signal based on noise with adjustable level and offset. Triggered by clock pulses.
-- AD Envelope: An Attack-Decay envelope (no sustain while gate is held) with adjustable level and offset. Triggered by a CV input.
-- AR Envelope: An Attack-Release envelope (sustain is held at max level while gate is on) with adjustable level and offset. Triggered by a CV input.
-- ADSR Envelope: An Attack-Decay-Sustain-Release envelope with adjustable level and offset. Triggered by a CV input.
-- Play: The output will be true (high) when the master clock is running and false (low) when the master clock is stopped. This is useful for triggering other modules based on the master clock.
-- Reset: The output will trigger (high) when the master clock starts running. This is useful for resetting other modules based on the master clock.
+- **Square**: A square wave with adjustable duty cycle, level and offset.
+- **Triangle**: A triangle wave with adjustable duty cycle, level and offset.
+- **Sawtooth**: A sawtooth wave with adjustable duty cycle, level and offset.
+- **Sine**: A sine wave with adjustable duty cycle, level and offset.
+- **Parabolic**: A parabolic wave with adjustable duty cycle, level and offset.
+- **Logarithm Envelope**: A logarithm envelope (starts at 0% raising to 100%) with adjustable level and offset. Triggered by clock pulses.
+- **Exponential Envelope**: An exponential envelope (starts at 0% raising to 100%) with adjustable level and offset. Triggered by clock pulses.
+- **Inverted Logarithm Envelope**: An inverted logarithm envelope (starts at 100% decaying to 0) with adjustable level and offset. Triggered by clock pulses.
+- **Inverted Exponential Envelope**: An inverted exponential envelope (starts at 100% decaying to 0) with adjustable level and offset. Triggered by clock pulses.
+- **Noise**: A random signal with adjustable level and offset. Continuous.
+- b: A smooth random signal with adjustable level and offset. Continuous.
+- **Sample & Hold**: A sample and hold signal based on noise with adjustable level and offset. Triggered by clock pulses.
+- **AD Envelope**: An Attack-Decay envelope (no sustain while gate is held) with adjustable level and offset. Triggered by a CV input.
+- **AR Envelope**: An Attack-Release envelope (sustain is held at max level while gate is on) with adjustable level and offset. Triggered by a CV input.
+- **ADSR** Envelope: An Attack-Decay-Sustain-Release envelope with adjustable level and offset. Triggered by a CV input.
+- **Play**: The output will be true (high) when the master clock is running and false (low) when the master clock is stopped. This is useful for triggering other modules based on the master clock.
+- **Reset**: The output will trigger (high) when the master clock starts running. This is useful for resetting other modules based on the master clock.
+- **Quantize**: The output will quantize according to the selected scale and root note the CV value that is routed to this input in the CV target configuration.
 
 1. Navigate to the selected output option "Output 3/4 WAV". Click the encoder to enter edit mode.
 2. Use the encoder to select the desired waveform. The waveform will be updated in real-time.
@@ -220,6 +227,19 @@ Each input can be assigned to one of the parameters above. The CV input can be a
 5. Optionally, navigate to the attenuation and offset parameters for each CV input and set the desired values in a similar way.
 
 The CV target only apply to the selected parameter when the user exit the edit mode. This way a connected CV to an input does not change the scrolled parameters while the user is selecting the target.
+
+### Quantization
+
+The module supports quantization of the output to a specific scale and root note. The quantization can be applied to the output waveform or to the CV input.
+
+The Quantize Settings menu allows you to enable/disable quantization for the selected output, choose the root note, scale to be used and octave transpose with 3 octave levels higher or lower.
+
+To use quantization on the generated output, first select the output waveform type (sine, S&H, etc) and then enable the quantization on Quantize menu. Select the root note and scale to be used. The quantization will be applied to the output waveform.
+
+It's also possible to quantize an input CV signal to a specific scale and root note. This is useful for using CV values generated by external modules. To use quantization on the CV input, choose the "Quantize" waveform type. Then in the Quantize menu, select the root note and scale to be used. Lastly, in the CV Input Targets menu, assign the CV input to the output to be quantized.
+
+Eg. if you want to quantize the CV input 1 to the output 3, select the "Quantize" waveform type for output 3 and then in the CV Input Targets menu, assign CV input 1 to output 3. The quantization will be applied to the output waveform. Also select which scale and root note to be used in the Quantize menu.
+
 
 ### Save/Load Configuration
 

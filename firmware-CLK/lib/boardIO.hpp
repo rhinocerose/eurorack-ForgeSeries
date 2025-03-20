@@ -8,13 +8,13 @@
 
 // Add prototypes for functions defined in this file
 void InitIO();
-void InternalDAC(int intDAC_OUT);
-void MCP(int MCP_OUT);
-void DACWrite(int pin, int value);
-void PWM1(int duty1);
-void PWM2(int duty2);
-void PWMWrite(int pin, int value);
-void SetPin(int pin, int value);
+void InternalDAC(uint32_t intDAC_OUT);
+void MCP(uint32_t MCP_OUT);
+void DACWrite(int pin, uint32_t value);
+void PWM1(uint32_t duty1);
+void PWM2(uint32_t duty2);
+void PWMWrite(int pin, uint32_t value);
+void SetPin(int pin, uint32_t value);
 
 // Create the MCP4725 object
 Adafruit_MCP4725 dac;
@@ -53,16 +53,16 @@ void InitIO() {
 }
 
 // Handle DAC Outputs
-void InternalDAC(int value) {
+void InternalDAC(uint32_t value) {
     analogWrite(DAC_INTERNAL_PIN, value / 4); // "/4" -> 12bit to 10bit
 }
 
-void MCP(int value) {
+void MCP(uint32_t value) {
     dac.setVoltage(value, false);
 }
 
 // Write to DAC pins indexed by 0
-void DACWrite(int pin, int value) {
+void DACWrite(int pin, uint32_t value) {
     switch (pin) {
     case 0: // Internal DAC
         InternalDAC(value);
@@ -77,7 +77,7 @@ void DACWrite(int pin, int value) {
 }
 
 // Write to PWM pins indexed by 0
-void PWMWrite(int pin, int value) {
+void PWMWrite(int pin, uint32_t value) {
     switch (pin) {
     case 0: // PWM 1
         pwm(OUT_PINS[0], 46000, value);
@@ -93,7 +93,7 @@ void PWMWrite(int pin, int value) {
 
 // Set the output pins. Value can be from 0 to 4095 (12bit).
 // For pins 0 and 1, 0 is low and anything else is high
-void SetPin(int pin, int value) {
+void SetPin(int pin, uint32_t value) {
     switch (pin) {
     case 0: // Gate Output 1
         digitalWrite(OUT_PINS[0], value > 0 ? LOW : HIGH);
