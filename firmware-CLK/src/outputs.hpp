@@ -1080,6 +1080,16 @@ void Output::Pulse(int PPQN, unsigned long globalTick) {
 }
 
 void Output::SetWaveformType(WaveformType type) {
+    // If reverting from a trigger to a waveform, reset the divider to x1
+    if (((_waveformType == WaveformType::ADEnvelope) ||
+         (_waveformType == WaveformType::AREnvelope) ||
+         (_waveformType == WaveformType::ADSREnvelope)) &&
+        ((type != WaveformType::ADEnvelope) &&
+         (type != WaveformType::AREnvelope) &&
+         (type != WaveformType::ADSREnvelope))) {
+        SetDivider(9);
+    }
+    // Set the waveform
     _waveformType = type;
     if (_waveformType == WaveformType::ADEnvelope || _waveformType == WaveformType::AREnvelope || _waveformType == WaveformType::ADSREnvelope) {
         _waveActive = false;
@@ -1101,7 +1111,6 @@ void Output::SetWaveformType(WaveformType type) {
         // For other waveforms, disable quantizer
         _quantizerParams.enable = false;
         _triggerMode = false;
-        SetDivider(9);
     }
 }
 
