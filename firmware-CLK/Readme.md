@@ -125,6 +125,8 @@ Additional empty steps can be added to the pattern using the pad(PD) parameter. 
 3. Select the Steps, Triggers and Rotation parameters, click the encoder to edit the values.
 4. The pattern will be updated in real-time and displayed on the right of the screen. Euclidean rhythm allows up to 64 steps but only the first 47 are displayed. Rhythm steps are shown in columns, top to bottom, left to right.
 
+The euclidean rhythm pulse is affected by the pulse probability setting.
+
 ### Swing Configuration
 
 The outputs can have a swing pattern applied to them. The swing amount is in 1/96th of a note based on current BPM and the swing every is the interval between applying the swing. The swing amount can be set from 2/96th to 12/96th delay and the swing every from 1 to 16 pulses.

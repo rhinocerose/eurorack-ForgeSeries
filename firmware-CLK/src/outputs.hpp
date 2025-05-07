@@ -945,9 +945,10 @@ void Output::GenEnvelope() {
 }
 
 void Output::GeneratePulse(int PPQN, unsigned long globalTick) {
+    bool shouldTrigger = (random(100) < _pulseProbability);
     if (!_euclideanParams.enabled) {
         // If not using Euclidean rhythm, generate waveform based on the pulse probability
-        if (random(100) < _pulseProbability) {
+        if (shouldTrigger) {
             StartWaveform();
         } else {
             // We stop the waveform directly if the pulse probability is not met since StopWaveform() is used for the square wave
@@ -956,10 +957,17 @@ void Output::GeneratePulse(int PPQN, unsigned long globalTick) {
     } else {
         // If using Euclidean rhythm, check if the current step is active
         if (_euclideanRhythm[_euclideanStepIndex] == 1) {
-            StartWaveform();
+            // Active step in the pattern
+            if (shouldTrigger) {
+                StartWaveform();
+            } else {
+                ResetWaveform();
+            }
         } else {
+            // Inactive step in the pattern
             ResetWaveform();
         }
+
         _euclideanStepIndex++;
         // Restart the Euclidean rhythm if it reaches the end
         if (_euclideanStepIndex >= _euclideanParams.steps + _euclideanParams.pad) {
